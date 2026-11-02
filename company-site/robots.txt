@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /assets/data/
+
+# 上线后改成你的域名
+Sitemap: https://www.example.com/sitemap.xml
