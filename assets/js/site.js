@@ -215,7 +215,7 @@
       });
     }
 
-    // 表单：没有接后端时，本地提示并给出提交方式
+    // 表单：优先写数据库（db.js 已连接时），否则本地演示提示
     var form = document.querySelector("[data-contact-form]");
     if (form) {
       form.addEventListener("submit", function (e) {
@@ -227,6 +227,24 @@
           return;
         }
         var msg = document.querySelector(".form-msg");
+        if (window.DB && window.DB.ok() && window.DB.saveMessage) {
+          var text = ((form.querySelector("[name=msg]") || {}).value || "") +
+            (((form.querySelector("[name=company]") || {}).value) ? "（公司：" + form.querySelector("[name=company]").value + "）" : "") +
+            (((form.querySelector("[name=project]") || {}).value) ? "（咨询：" + form.querySelector("[name=project]").value + "）" : "");
+          window.DB.saveMessage({
+            name: name.trim(), phone: tel.trim(),
+            content: text.trim(), source: "联系页表单"
+          }).then(function (res) {
+            if (msg) {
+              msg.textContent = res && res.error
+                ? "提交失败，请直接拨打 " + (S.company.phone || "咨询热线") + "。"
+                : "提交成功，我们会尽快与您联系！";
+              msg.classList.add("show");
+            }
+            if (!res || !res.error) form.reset();
+          });
+          return;
+        }
         if (msg) {
           msg.textContent = "提交成功（演示）：正式上线后请按 README 接入邮件或表单服务，当前为本地提示。";
           msg.classList.add("show");
@@ -299,9 +317,12 @@
     });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", init);
-  } else {
-    init();
-  }
+  /* db.js 配置了数据库时，先等数据库内容合并完成再渲染 */
+  Promise.resolve(window.__dbGate || null).catch(function () {}).then(function () {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", init);
+    } else {
+      init();
+    }
+  });
 })();

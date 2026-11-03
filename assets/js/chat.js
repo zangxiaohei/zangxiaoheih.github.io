@@ -193,6 +193,27 @@
       ok.classList.add("show");
       return;
     }
+    /* 优先写数据库（db.js 已连接时） */
+    if (window.DB && window.DB.ok() && window.DB.saveMessage) {
+      formBtn.disabled = true;
+      formBtn.textContent = "提交中…";
+      window.DB.saveMessage({ name: name, phone: phone, content: msg, source: "官网聊天框" })
+        .then(function (res) {
+          if (res && res.error) {
+            ok.textContent = "提交失败，请直接拨打 " + (window.SITE.company.phone || "咨询热线") + "。";
+          } else {
+            ok.textContent = "✅ 提交成功，我们会尽快与您联系！";
+            el.querySelector(".chat-form").reset();
+          }
+          ok.classList.add("show");
+        })
+        .finally(function () {
+          formBtn.disabled = false;
+          formBtn.textContent = "提交留言";
+        });
+      return;
+    }
+
     var endpoint = C.formEndpoint || "";
     if (!endpoint) {
       ok.textContent = "（演示模式）留言已记录。正式上线请在 site.js 的 chat.formEndpoint 填入表单服务地址。";
