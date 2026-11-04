@@ -246,6 +246,7 @@
   input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
 
   chips.addEventListener("click", function (e) {
+    if (drag.moved) { drag.moved = false; return; }   /* 拖拽结束不当作点击 */
     var btn = e.target.closest("button");
     if (!btn) return;
     var f = (C.faqs || [])[+btn.getAttribute("data-i")];
@@ -262,6 +263,20 @@
       chips.scrollLeft += e.deltaY;
     }
   }, { passive: false });
+  /* 按住鼠标左键拖拽滑动 */
+  var drag = { on: false, x: 0, sl: 0, moved: false };
+  chips.addEventListener("mousedown", function (e) {
+    drag.on = true; drag.moved = false; drag.x = e.pageX; drag.sl = chips.scrollLeft;
+  });
+  document.addEventListener("mousemove", function (e) {
+    if (!drag.on) return;
+    var dx = e.pageX - drag.x;
+    if (Math.abs(dx) > 4 && !drag.moved) { drag.moved = true; chips.classList.add("dragging"); }
+    if (drag.moved) chips.scrollLeft = drag.sl - dx;
+  });
+  document.addEventListener("mouseup", function () {
+    if (drag.on) { drag.on = false; chips.classList.remove("dragging"); }
+  });
 
   /* ---------------- 视图切换 ---------------- */
   el.querySelectorAll("[data-goto]").forEach(function (b) {
