@@ -163,7 +163,7 @@
   }
 
   function renderChips() {
-    chips.innerHTML = (C.faqs || []).slice(0, 4).map(function (f, i) {
+    chips.innerHTML = (C.faqs || []).map(function (f, i) {
       return '<button data-i="' + i + '">' + f.q + "</button>";
     }).join("");
   }
@@ -255,6 +255,13 @@
     typing(true);
     setTimeout(function () { typing(false); botSay(f.a); renderChips(); }, 650);
   });
+  /* 电脑上滚轮也可以左右滑快捷问题条 */
+  chips.addEventListener("wheel", function (e) {
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+      e.preventDefault();
+      chips.scrollLeft += e.deltaY;
+    }
+  }, { passive: false });
 
   /* ---------------- 视图切换 ---------------- */
   el.querySelectorAll("[data-goto]").forEach(function (b) {

@@ -70,11 +70,16 @@
 }
 .msg .bubble a { color: var(--accent); font-weight: 600; text-decoration: underline; }
 
-/* 快捷问题 */
-.chat-chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 2px 14px 12px; background: #f6f9fa; flex-shrink: 0; }
+/* 快捷问题：单行横滑（参考百度商桥样式），鼠标滚轮/触屏可左右滑动 */
+.chat-chips {
+  display: flex; flex-wrap: nowrap; gap: 7px; padding: 2px 14px 12px; background: #f6f9fa; flex-shrink: 0;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+}
+.chat-chips::-webkit-scrollbar { display: none; }
 .chat-chips button {
   border: 1px solid var(--line); background: #fff; border-radius: 99px;
   padding: 6px 12px; font-size: 12.5px; color: var(--brand); cursor: pointer;
+  flex: 0 0 auto; white-space: nowrap;
   transition: all .2s;
 }
 .chat-chips button:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
@@ -148,10 +153,6 @@
 @media (max-width: 720px) {
   .chat-panel { right: 10px; left: 10px; bottom: 78px; width: auto; height: calc(100vh - 96px); max-height: none; }
   .chat-fab { right: 14px; bottom: 14px; width: 54px; height: 54px; }
-  /* 手机上快捷问题单行横滑，避免占掉两行高度 */
-  .chat-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
-  .chat-chips::-webkit-scrollbar { display: none; }
-  .chat-chips button { flex: 0 0 auto; white-space: nowrap; }
   .chat-head { padding: 12px 14px; }
   .chat-head b { font-size: 14px; }
 }
