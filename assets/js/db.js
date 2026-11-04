@@ -69,6 +69,18 @@
         content: String(m.content || "").slice(0, 2000),
         source: m.source || "web"
       }]);
+    },
+    /* 在线客服：访客发消息 / 拉取自己的会话 */
+    chatSend: function (o) {
+      return client.rpc("chat_visitor_send", {
+        p_key: o.key,
+        p_name: o.name || null,
+        p_phone: o.phone || null,
+        p_content: String(o.content || "").slice(0, 2000)
+      });
+    },
+    chatFetch: function (key) {
+      return client.rpc("chat_fetch", { p_key: key });
     }
   };
 })();

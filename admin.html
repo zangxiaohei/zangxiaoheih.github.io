@@ -43,6 +43,26 @@
     summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 6px 0; }
     .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .empty { color: #98a5b1; font-size: 14px; text-align: center; padding: 30px 0; }
+    .tabs button .badge { display: inline-block; background: #c0392b; color: #fff; border-radius: 10px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
+    .chat-layout { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+    @media (max-width: 780px) { .chat-layout { grid-template-columns: 1fr; } }
+    .thread-list { max-height: 600px; overflow: auto; }
+    .thread-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; cursor: pointer; }
+    .thread-item:hover { border-color: var(--brand); }
+    .thread-item.on { border-color: var(--brand); background: #f2f8f5; }
+    .thread-item .t-top { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
+    .thread-item .t-top b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread-item .t-sub { font-size: 12px; color: #7a8794; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block; margin-left: 6px; }
+    .thread-head { font-size: 13px; color: #55636f; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .thread-msgs { height: 380px; overflow: auto; padding: 12px 6px; background: #f8fafb; border-radius: 8px; margin: 10px 0; }
+    .bubble-row { margin-bottom: 10px; display: flex; }
+    .bubble-row.admin { justify-content: flex-end; }
+    .bubble-b { max-width: 70%; padding: 8px 12px; border-radius: 10px; background: #fff; border: 1px solid var(--line); font-size: 14px; white-space: pre-wrap; word-break: break-word; }
+    .bubble-row.admin .bubble-b { background: var(--brand); color: #fff; border-color: var(--brand); }
+    .bubble-meta { font-size: 11px; color: #98a5b1; margin-top: 3px; }
+    .reply-box { display: flex; gap: 8px; align-items: flex-end; }
+    .reply-box textarea { min-height: 64px; }
   </style>
 </head>
 <body>
@@ -76,6 +96,7 @@
 
     <div class="tabs">
       <button data-tab="msg" class="on">📋 客户留言</button>
+      <button data-tab="chat">💬 在线客服 <b id="chat-badge" class="badge hidden">0</b></button>
       <button data-tab="content">✏️ 网站内容</button>
     </div>
 
@@ -83,6 +104,28 @@
     <div id="tab-msg">
       <div class="row"><button class="ghost sm" id="btn-refresh">刷新列表</button><span class="tip" id="msg-tip"></span></div>
       <div id="msg-list" style="margin-top:12px"></div>
+    </div>
+
+    <!-- 在线客服 -->
+    <div id="tab-chat" class="hidden">
+      <div class="chat-layout">
+        <div class="card thread-list">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <b style="font-size:14px">会话列表</b>
+            <button class="ghost sm" id="btn-threads">刷新</button>
+          </div>
+          <div id="threads"></div>
+        </div>
+        <div class="card thread-view">
+          <div id="thread-head" class="thread-head">选择左侧一个会话开始回复</div>
+          <div id="thread-msgs" class="thread-msgs"></div>
+          <div class="reply-box">
+            <textarea id="reply-text" placeholder="输入回复内容，Ctrl+Enter 发送"></textarea>
+            <button id="btn-reply">发送回复</button>
+          </div>
+          <div class="tip" id="thread-tip"></div>
+        </div>
+      </div>
     </div>
 
     <!-- 内容 -->
@@ -156,6 +199,7 @@
     $("view-admin").classList.remove("hidden");
     $("whoami").textContent = "登录账号：" + (user.email || user.id);
     loadMessages();
+    loadUnread();
     initContentEditor();
   }
 
@@ -168,8 +212,11 @@
     b.addEventListener("click", function () {
       document.querySelectorAll(".tabs button").forEach(function (x) { x.classList.remove("on"); });
       b.classList.add("on");
-      $("tab-msg").classList.toggle("hidden", b.getAttribute("data-tab") !== "msg");
-      $("tab-content").classList.toggle("hidden", b.getAttribute("data-tab") !== "content");
+      var tab = b.getAttribute("data-tab");
+      $("tab-msg").classList.toggle("hidden", tab !== "msg");
+      $("tab-chat").classList.toggle("hidden", tab !== "chat");
+      $("tab-content").classList.toggle("hidden", tab !== "content");
+      if (tab === "chat") { loadThreads(); startChatTimer(); } else { stopChatTimer(); }
     });
   });
 
@@ -207,6 +254,116 @@
       if (!confirm("确定删除这条留言？删除后不可恢复。")) return;
       client.from("messages").delete().eq("id", del).then(loadMessages);
     }
+  });
+
+  /* ---------------- 在线客服 ---------------- */
+  var curThread = null;
+  var chatTimer = null;
+  var unreadMap = {};
+
+  $("btn-threads").addEventListener("click", loadThreads);
+
+  function startChatTimer() {
+    if (chatTimer) return;
+    chatTimer = setInterval(function () {
+      loadThreads();
+      if (curThread) loadMessagesOf(curThread, true);
+    }, 8000);
+  }
+  function stopChatTimer() {
+    if (chatTimer) { clearInterval(chatTimer); chatTimer = null; }
+  }
+
+  function loadThreads() {
+    client.from("chat_threads").select("*").order("last_at", { ascending: false }).limit(50)
+      .then(function (res) {
+        if (res.error) { $("threads").innerHTML = '<div class="empty">读取失败：' + esc(res.error.message) + "</div>"; return; }
+        if (!res.data.length) { $("threads").innerHTML = '<div class="empty">还没有访客会话。<br>访客在网站聊天框发消息后会出现在这里。</div>'; return; }
+        $("threads").innerHTML = res.data.map(function (t) {
+          var n = unreadMap[t.id] || 0;
+          return '<div class="thread-item' + (curThread === t.id ? " on" : "") + '" data-thread="' + t.id + '">' +
+            '<div class="t-top"><b>' + esc(t.name || "访客 " + String(t.id).slice(0, 6)) + (n ? '<span class="dot"></span>' : "") + '</b>' +
+            '<span style="color:#98a5b1">' + fmtTime(t.last_at).slice(5) + '</span></div>' +
+            '<div class="t-sub">' + esc(t.phone || "未留电话") + '</div></div>';
+        }).join("");
+        loadUnread();
+      });
+  }
+
+  function loadUnread() {
+    client.from("chat_messages").select("thread_id").eq("role", "visitor").eq("is_read", false)
+      .then(function (res) {
+        if (res.error || !res.data) return;
+        var m = {};
+        res.data.forEach(function (r) { m[r.thread_id] = (m[r.thread_id] || 0) + 1; });
+        var total = res.data.length;
+        var badge = $("chat-badge");
+        badge.textContent = total;
+        badge.classList.toggle("hidden", total === 0);
+        unreadMap = m;
+        document.querySelectorAll(".thread-item").forEach(function (el2) {
+          var id = el2.getAttribute("data-thread");
+          var nm = el2.querySelector(".t-top b .dot");
+          if (m[id] && !nm) el2.querySelector(".t-top b").insertAdjacentHTML("beforeend", '<span class="dot"></span>');
+          if (!m[id] && nm) nm.remove();
+        });
+      });
+  }
+
+  $("threads").addEventListener("click", function (e) {
+    var it = e.target.closest("[data-thread]");
+    if (!it) return;
+    curThread = it.getAttribute("data-thread");
+    document.querySelectorAll(".thread-item").forEach(function (x) { x.classList.remove("on"); });
+    it.classList.add("on");
+    loadMessagesOf(curThread, false);
+    client.from("chat_messages").update({ is_read: true }).eq("thread_id", curThread).eq("role", "visitor")
+      .then(function () { loadUnread(); });
+  });
+
+  function loadMessagesOf(threadId, quiet) {
+    client.from("chat_threads").select("*").eq("id", threadId).maybeSingle().then(function (tr) {
+      var t = (tr && tr.data) || {};
+      $("thread-head").innerHTML = "会话对象：<b>" + esc(t.name || "匿名访客") + "</b> · 📞 " +
+        esc(t.phone || "未留电话") + " · 开始于 " + fmtTime(t.created_at || "");
+    });
+
+    client.from("chat_messages").select("*").eq("thread_id", threadId).order("id").limit(300)
+      .then(function (res) {
+        if (res.error) { showTip($("thread-tip"), "读取消息失败：" + res.error.message, true); return; }
+        var box = $("thread-msgs");
+        var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+        box.innerHTML = res.data.map(function (m) {
+          return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
+            '<div><div class="bubble-b">' + esc(m.content) + '</div>' +
+            '<div class="bubble-meta" style="text-align:right">' + fmtTime(m.created_at) + '</div></div></div>';
+        }).join("") || '<div class="empty">暂无消息</div>';
+        if (!quiet || atBottom) box.scrollTop = box.scrollHeight;
+      });
+  }
+
+  function sendReply() {
+    var ta = $("reply-text");
+    var text = ta.value.trim();
+    if (!curThread) { showTip($("thread-tip"), "请先在左侧选择一个会话。", true); return; }
+    if (!text) { showTip($("thread-tip"), "回复内容不能为空。", true); return; }
+    $("btn-reply").disabled = true;
+    client.from("chat_messages").insert([{ thread_id: curThread, role: "admin", content: text.slice(0, 2000) }])
+      .then(function (res) {
+        if (res.error) { showTip($("thread-tip"), "发送失败：" + res.error.message, true); return; }
+        return client.from("chat_threads").update({ last_at: new Date().toISOString() }).eq("id", curThread);
+      })
+      .then(function () {
+        ta.value = "";
+        showTip($("thread-tip"), "✅ 已发送，访客页面上 6 秒内可见。", false);
+        loadMessagesOf(curThread, false);
+      })
+      .finally(function () { $("btn-reply").disabled = false; });
+  }
+
+  $("btn-reply").addEventListener("click", sendReply);
+  $("reply-text").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(); }
   });
 
   /* ---------------- 内容编辑 ---------------- */
