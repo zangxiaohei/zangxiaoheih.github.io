@@ -255,6 +255,13 @@
   });
 
   /* ---------------- 留言表单 ---------------- */
+  /* .chat-form 是 div，没有原生 reset()，手动清空 */
+  function clearForm() {
+    var f = el.querySelector(".chat-form");
+    if (!f) return;
+    Array.prototype.forEach.call(f.querySelectorAll("input, textarea"), function (i) { i.value = ""; });
+  }
+
   var formBtn = el.querySelector(".chat-form .btn");
   formBtn.addEventListener("click", function () {
     var name = el.querySelector('.chat-form [name="name"]').value.trim();
@@ -273,16 +280,29 @@
     if (dbOn()) {
       formBtn.disabled = true;
       formBtn.textContent = "提交中…";
-      window.DB.chatSend({ key: VK, name: name, phone: phone, content: msg || "（访客通过留言表单联系）" })
+      var lead = msg || "（访客通过留言表单联系）";
+      window.DB.chatSend({ key: VK, name: name, phone: phone, content: lead })
         .then(function (res) {
           if (res && res.error) throw res.error;
           ok.textContent = "✅ 已提交，客服会尽快回复您（回复会出现在本聊天窗口）。";
-          el.querySelector(".chat-form").reset();
+          clearForm();
           show("chat");
           poll();
         })
-        .catch(function () {
-          ok.textContent = "提交失败，请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。";
+        .catch(function (err) {
+          /* 兜底：聊天通道失败时，至少把客户线索存进留言表，不让询盘丢掉 */
+          if (!window.DB.saveMessage) throw (err || new Error("chat"));
+          return window.DB.saveMessage({ name: name, phone: phone, content: lead, source: "chat-form" })
+            .then(function (r2) {
+              if (r2 && r2.error) throw r2.error;
+              ok.textContent = "✅ 已提交，客服会尽快联系您。";
+              clearForm();
+              show("chat");
+            });
+        })
+        .catch(function (e) {
+          var code = (e && (e.code || e.message)) || "网络异常";
+          ok.textContent = "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。";
         })
         .finally(function () {
           ok.classList.add("show");

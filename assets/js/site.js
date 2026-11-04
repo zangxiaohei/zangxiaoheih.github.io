@@ -235,13 +235,15 @@
             name: name.trim(), phone: tel.trim(),
             content: text.trim(), source: "联系页表单"
           }).then(function (res) {
+            if (res && res.error) throw res.error;
+            if (msg) { msg.textContent = "提交成功，我们会尽快与您联系！"; msg.classList.add("show"); }
+            form.reset();
+          }).catch(function (e) {
             if (msg) {
-              msg.textContent = res && res.error
-                ? "提交失败，请直接拨打 " + (S.company.phone || "咨询热线") + "。"
-                : "提交成功，我们会尽快与您联系！";
+              var code = (e && (e.code || e.message)) || "网络异常";
+              msg.textContent = "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + (S.company.phone || "咨询热线") + "。";
               msg.classList.add("show");
             }
-            if (!res || !res.error) form.reset();
           });
           return;
         }

@@ -16,10 +16,21 @@
   var gateResolve;
   window.__dbGate = new Promise(function (res) { gateResolve = res; });
 
+  /* SDK 优先用本地自托管版本（国内访问 CDN 不稳），失败再回退官方 CDN */
   var sdk = document.createElement("script");
-  sdk.src = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+  var CDN = "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js";
+  var triedCdn = false;
+  sdk.src = "assets/vendor/supabase.min.js";
   sdk.onload = boot;
-  sdk.onerror = function () { gateResolve(); };
+  sdk.onerror = function () {
+    if (triedCdn) { gateResolve(); return; }
+    triedCdn = true;
+    var s2 = document.createElement("script");
+    s2.src = CDN;
+    s2.onload = boot;
+    s2.onerror = function () { gateResolve(); };
+    document.head.appendChild(s2);
+  };
   document.head.appendChild(sdk);
 
   var client = null;
