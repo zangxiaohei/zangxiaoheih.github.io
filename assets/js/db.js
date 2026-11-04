@@ -63,12 +63,17 @@
   window.DB = {
     ok: function () { return !!client; },
     saveMessage: function (m) {
-      return client.from("messages").insert([{
-        name: String(m.name || "").slice(0, 80),
-        phone: String(m.phone || "").slice(0, 40),
-        content: String(m.content || "").slice(0, 2000),
-        source: m.source || "web"
-      }]);
+      var name = String(m.name || "").slice(0, 80);
+      var phone = String(m.phone || "").slice(0, 40);
+      var content = String(m.content || "").slice(0, 2000);
+      var source = m.source || "web";
+      /* 优先走安全函数（策略出问题也能写入），失败再退回直写表 */
+      return client.rpc("web_save_message", {
+        p_name: name, p_phone: phone, p_content: content, p_source: source
+      }).then(function (res) {
+        if (res && res.error) return client.from("messages").insert([{ name: name, phone: phone, content: content, source: source }]);
+        return res;
+      });
     },
     /* 在线客服：访客发消息 / 拉取自己的会话 */
     chatSend: function (o) {
