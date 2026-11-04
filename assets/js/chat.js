@@ -52,7 +52,7 @@
     '  <div class="chat-head"><span class="avatar">' + (C.mark || "客") + '</span>' +
     '    <span class="info"><b>' + C.title + '</b><small><i></i>' + C.sub + '</small></span>' +
     '    <button class="x chat-new" aria-label="新会话" title="开始新会话">⟳</button>' +
-    '    <button class="x" aria-label="关闭">✕</button></div>' +
+    '    <button class="x" aria-label="关闭" title="关闭">✕</button></div>' +
     '  <div class="chat-body"></div>' +
     '  <div class="chat-chips"></div>' +
     '  <div class="chat-input"><input type="text" placeholder="输入您的问题…" maxlength="200">' +
@@ -113,7 +113,7 @@
   fab.addEventListener("click", function () {
     panel.classList.contains("open") ? close() : open();
   });
-  panel.querySelector(".x").addEventListener("click", close);
+  panel.querySelector('.x[aria-label="关闭"]').addEventListener("click", close);
   /* 新会话：换一个访客标识，聊天窗从头开始；旧会话保留在客服后台 */
   panel.querySelector(".chat-new").addEventListener("click", function () {
     if (!confirm("开始新会话？\n本窗口将从头开始；之前的聊天记录仍保留在客服后台。")) return;
