@@ -135,14 +135,17 @@
   }
 
   function typing(on) {
-    var t = body.querySelector(".typing");
+    var t = body.querySelector(".bubble > .typing");
     if (on && !t) {
-      t = document.createElement("div");
-      t.className = "msg";
-      t.innerHTML = '<span class="b-av">' + (C.mark || "客") + '</span><span class="bubble"><span class="typing"><i></i><i></i><i></i></span></span>';
-      body.appendChild(t);
+      var w = document.createElement("div");
+      w.className = "msg";
+      w.innerHTML = '<span class="b-av">' + (C.mark || "客") + '</span><span class="bubble"><span class="typing"><i></i><i></i><i></i></span></span>';
+      body.appendChild(w);
       body.scrollTop = body.scrollHeight;
-    } else if (!on && t) t.remove();
+    } else if (!on && t) {
+      var wrap = t.closest(".msg");
+      if (wrap) wrap.remove();
+    }
   }
 
   function renderChips() {

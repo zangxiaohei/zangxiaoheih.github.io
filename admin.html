@@ -374,7 +374,7 @@
     $("btn-reply").disabled = true;
     client.from("chat_messages").insert([{ thread_id: curThread, role: "admin", content: text.slice(0, 2000) }])
       .then(function (res) {
-        if (res.error) { showTip($("thread-tip"), "发送失败：" + res.error.message, true); return; }
+        if (res.error) throw new Error(res.error.message);
         return client.from("chat_threads").update({ last_at: new Date().toISOString() }).eq("id", curThread);
       })
       .then(function () {
@@ -382,7 +382,10 @@
         showTip($("thread-tip"), "✅ 已发送，访客页面上 6 秒内可见。", false);
         loadMessagesOf(curThread, false);
       })
-      .finally(function () { $("btn-reply").disabled = false; });
+      .catch(function (e) {
+        showTip($("thread-tip"), "发送失败：" + ((e && e.message) || "网络异常") + "，请重试。", true);
+      })
+      .then(function () { $("btn-reply").disabled = false; });
   }
 
   $("btn-reply").addEventListener("click", sendReply);
