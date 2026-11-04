@@ -53,6 +53,8 @@
     .thread-item .t-top { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; }
     .thread-item .t-top b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .thread-item .t-sub { font-size: 12px; color: #7a8794; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread-item .t-del { flex: 0 0 auto; border: 0; background: none; color: #b6c0c9; font-size: 15px; line-height: 1; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+    .thread-item .t-del:hover { color: #e5484d; background: #fdecec; }
     .thread-item .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block; margin-left: 6px; }
     .thread-head { font-size: 13px; color: #55636f; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
     .thread-msgs { height: 380px; overflow: auto; padding: 12px 6px; background: #f8fafb; border-radius: 8px; margin: 10px 0; }
@@ -112,7 +114,10 @@
         <div class="card thread-list">
           <div class="row" style="justify-content:space-between;margin-bottom:8px">
             <b style="font-size:14px">会话列表</b>
-            <button class="ghost sm" id="btn-threads">刷新</button>
+            <span>
+              <button class="ghost sm" id="btn-readall">全部已读</button>
+              <button class="ghost sm" id="btn-threads">刷新</button>
+            </span>
           </div>
           <div id="threads"></div>
         </div>
@@ -282,6 +287,41 @@
 
   $("btn-threads").addEventListener("click", loadThreads);
 
+  /* 全部标为已读：清零角标（聊天未读 + 留言未读） */
+  $("btn-readall").addEventListener("click", function () {
+    var b = $("btn-readall");
+    b.disabled = true;
+    var done = function () { b.disabled = false; loadUnread(); };
+    client.from("chat_messages").update({ is_read: true }).eq("role", "visitor").eq("is_read", false)
+      .then(function () { return client.from("messages").update({ is_read: true }).eq("is_read", false); })
+      .then(done, done);
+  });
+
+  /* 删除会话：先删消息（级联也会删），再删会话本身 */
+  function delThread(id) {
+    if (!confirm("确定删除这个会话吗？里面的所有聊天记录会一并删除，且无法恢复。")) return;
+    var wasCur = curThread === id;
+    client.from("chat_messages").delete().eq("thread_id", id)
+      .then(function (r1) {
+        if (r1.error) throw r1.error;
+        return client.from("chat_threads").delete().eq("id", id);
+      })
+      .then(function (r2) {
+        if (r2.error) throw r2.error;
+        if (wasCur) {
+          curThread = null;
+          $("thread-head").textContent = "会话对象：—";
+          $("thread-msgs").innerHTML = '<div class="empty">会话已删除。</div>';
+        }
+        loadThreads();
+      })
+      .catch(function (err) {
+        alert("删除失败：" + (err && err.message ? err.message : "未知错误") +
+          "\n\n如果提示与权限（policy/GRANT）有关，请先在 Supabase SQL Editor 运行 admin/grant-thread-delete.sql 一次。");
+        loadThreads();
+      });
+  }
+
   function startChatTimer() {
     if (chatTimer) return;
     chatTimer = setInterval(function () {
@@ -302,7 +342,8 @@
           var n = unreadMap[t.id] || 0;
           return '<div class="thread-item' + (curThread === t.id ? " on" : "") + '" data-thread="' + t.id + '">' +
             '<div class="t-top"><b>' + esc(t.name || "访客 " + String(t.id).slice(0, 6)) + (n ? '<span class="dot"></span>' : "") + '</b>' +
-            '<span style="color:#98a5b1">' + fmtTime(t.last_at).slice(5) + '</span></div>' +
+            '<span style="color:#98a5b1">' + fmtTime(t.last_at).slice(5) +
+            '<button class="t-del" data-del="' + t.id + '" title="删除此会话">✕</button></span></div>' +
             '<div class="t-sub">' + esc(t.phone || "未留电话") + '</div></div>';
         }).join("");
         loadUnread();
@@ -335,6 +376,8 @@
   }
 
   $("threads").addEventListener("click", function (e) {
+    var del = e.target.closest(".t-del");
+    if (del) { delThread(del.getAttribute("data-del")); return; }
     var it = e.target.closest("[data-thread]");
     if (!it) return;
     curThread = it.getAttribute("data-thread");
