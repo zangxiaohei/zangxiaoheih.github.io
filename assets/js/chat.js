@@ -141,10 +141,10 @@
     hideInvite();
     open();
   });
-  /* 页面停留10秒且没打开过聊天窗 → 弹出邀请 */
+  /* 页面打开3秒且没点开过聊天窗 → 弹出邀请 */
   setTimeout(function () {
     if (!panel.classList.contains("open")) invite.classList.add("show");
-  }, 10000);
+  }, 3000);
 
   fab.addEventListener("click", function () {
     panel.classList.contains("open") ? close() : open();
