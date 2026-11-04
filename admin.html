@@ -102,7 +102,7 @@
 
     <!-- 留言 -->
     <div id="tab-msg">
-      <div class="row"><button class="ghost sm" id="btn-refresh">刷新列表</button><span class="tip" id="msg-tip"></span></div>
+      <div class="row"><button class="ghost sm" id="btn-refresh">刷新列表</button><button class="ghost sm" id="btn-export">导出 CSV</button><span class="tip" id="msg-tip"></span></div>
       <div id="msg-list" style="margin-top:12px"></div>
     </div>
 
@@ -229,6 +229,7 @@
       .then(function (res) {
         if (res.error) { tipMsg.className = "tip err"; tipMsg.textContent = "读取失败：" + res.error.message; return; }
         tipMsg.textContent = "共 " + res.data.length + " 条";
+        lastMsgs = res.data;
         var box = $("msg-list");
         if (!res.data.length) { box.innerHTML = '<div class="empty">还没有留言。客户在聊天框或联系页提交后会出现在这里。</div>'; return; }
         box.innerHTML = res.data.map(function (m) {
@@ -245,8 +246,7 @@
       });
   }
 
-  $("msg-list").addEventListener("click", function (e) {
-    var mark = e.target.getAttribute("data-mark");
+  $("msg-list").addEventListener("click", function (e) {    var mark = e.target.getAttribute("data-mark");
     var del = e.target.getAttribute("data-del");
     if (mark) {
       client.from("messages").update({ is_read: mark === "true" }).eq("id", mark).then(loadMessages);
@@ -254,6 +254,25 @@
       if (!confirm("确定删除这条留言？删除后不可恢复。")) return;
       client.from("messages").delete().eq("id", del).then(loadMessages);
     }
+  });
+
+  /* ---------------- 留言导出 CSV ---------------- */
+  var lastMsgs = [];
+  $("btn-export").addEventListener("click", function () {
+    if (!lastMsgs.length) { showTip(tipMsg, "还没有可导出的留言。", true); return; }
+    var head = ["称呼", "电话", "内容", "来源", "是否已读", "提交时间"];
+    var rows = lastMsgs.map(function (m) {
+      return [m.name, m.phone, (m.content || "").replace(/[\r\n]+/g, " "), m.source || "", m.is_read ? "已读" : "未读", fmtTime(m.created_at)];
+    });
+    var csv = [head].concat(rows).map(function (r) {
+      return r.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(",");
+    }).join("\r\n");
+    var blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "客户留言_" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    showTip(tipMsg, "已导出 " + lastMsgs.length + " 条。", false);
   });
 
   /* ---------------- 在线客服 ---------------- */
@@ -296,16 +315,21 @@
         if (res.error || !res.data) return;
         var m = {};
         res.data.forEach(function (r) { m[r.thread_id] = (m[r.thread_id] || 0) + 1; });
-        var total = res.data.length;
-        var badge = $("chat-badge");
-        badge.textContent = total;
-        badge.classList.toggle("hidden", total === 0);
         unreadMap = m;
         document.querySelectorAll(".thread-item").forEach(function (el2) {
           var id = el2.getAttribute("data-thread");
           var nm = el2.querySelector(".t-top b .dot");
           if (m[id] && !nm) el2.querySelector(".t-top b").insertAdjacentHTML("beforeend", '<span class="dot"></span>');
           if (!m[id] && nm) nm.remove();
+        });
+        /* 留言表的未读也计入角标与标题提醒 */
+        client.from("messages").select("id").eq("is_read", false).then(function (r2) {
+          var mu = (r2 && r2.data) ? r2.data.length : 0;
+          var total = res.data.length + mu;
+          var badge = $("chat-badge");
+          badge.textContent = total;
+          badge.classList.toggle("hidden", total === 0);
+          document.title = (total > 0 ? "(" + total + ") " : "") + "官网后台管理";
         });
       });
   }
