@@ -101,7 +101,7 @@
           '<div class="ic">' + icon(s.icon) + "</div>" +
           "<h3>" + s.title + "</h3><p>" + s.desc + "</p>" +
           '<div class="tags">' + (s.tags || []).map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</div>" +
-          '<div class="more"><a class="textlink" href="services.html">查看详情 ' + icon("arrow") + "</a></div>" +
+          '<div class="more"><a class="textlink" href="service.html?s=' + (s.slug || "") + '">查看详情 ' + icon("arrow") + "</a></div>" +
           "</article>";
       }).join("");
     }
@@ -114,7 +114,7 @@
           '<div class="ic">' + icon(s.icon) + "</div>" +
           "<div><h3>" + s.title + "</h3><p>" + s.desc + "</p>" +
           '<div class="chips">' + (s.tags || []).map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</div></div>" +
-          '<div class="more"><a class="btn btn--line btn--sm" href="contact.html">咨询项目</a></div>' +
+          '<div class="more"><a class="btn btn--line btn--sm" href="service.html?s=' + (s.slug || "") + '">查看详情</a></div>' +
           "</div>";
       }).join("");
     }
@@ -140,12 +140,12 @@
     // 新闻卡片
     function newsCard(n) {
       return '<article class="news-card reveal">' +
-        '<a class="news-thumb" href="news.html" aria-label="' + n.title + '">' +
+        '<a class="news-thumb" href="article.html?s=' + (n.slug || "") + '" aria-label="' + n.title + '">' +
         '<span class="tagp">' + n.tag + "</span>" +
         '<span class="ph">' + icon("image") + "</span></a>" +
         '<div class="news-body"><time>' + n.date + "</time>" +
-        "<h3><a href=\"news.html\">" + n.title + "</a></h3><p>" + n.excerpt + "</p>" +
-        '<a class="textlink" href="news.html">阅读全文 ' + icon("arrow") + "</a></div></article>";
+        '<h3><a href="article.html?s=' + (n.slug || "") + '">' + n.title + "</a></h3><p>" + n.excerpt + "</p>" +
+        '<a class="textlink" href="article.html?s=' + (n.slug || "") + '">阅读全文 ' + icon("arrow") + "</a></div></article>";
     }
     var nw = document.querySelector('[data-render="news"]');
     if (nw) nw.innerHTML = (S.news || []).slice(0, 3).map(newsCard).join("");
@@ -173,9 +173,30 @@
     var fl = document.querySelector('[data-render="footer-services"]');
     if (fl) {
       fl.innerHTML = (S.services || []).slice(0, 5).map(function (s) {
-        return '<li><a href="services.html">' + s.title + "</a></li>";
+        return '<li><a href="service.html?s=' + (s.slug || "") + '">' + s.title + "</a></li>";
       }).join("");
     }
+  }
+
+  /* ---------------- 3.5 悬浮工具条（电话 / 微信 / 回到顶部） ---------------- */
+  function buildSideTools() {
+    if (document.querySelector(".side-tools")) return;
+    var box = document.createElement("div");
+    box.className = "side-tools";
+    box.innerHTML =
+      '<a href="tel:' + (S.company.phoneRaw || "") + '" aria-label="电话咨询">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICONS.phone + '</svg>' +
+        '<span class="st-tip">' + (S.company.phone || "电话咨询") + "</span></a>" +
+      '<a href="contact.html" aria-label="留言咨询">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9.6 9.6 0 01-3.4-.6L3 21l1.7-4.6A8.4 8.4 0 1121 11.5z"/></svg>' +
+        '<span class="st-tip">留言 / 询价</span></a>' +
+      '<button type="button" data-to-top aria-label="回到顶部">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICONS.arrowUp + '</svg>' +
+        '<span class="st-tip">回到顶部</span></button>';
+    document.body.appendChild(box);
+    box.querySelector("[data-to-top]").addEventListener("click", function () {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
   }
 
   /* ---------------- 4. 交互：滚动阴影 / 移动菜单 ---------------- */
@@ -215,6 +236,19 @@
       });
     }
 
+    // 从项目详情页跳转过来时，自动选中对应项目
+    var projSel = document.querySelector("[name=project]");
+    if (projSel) {
+      var map = { grs: "GRS", iscc: "ISCC", ecovadis: "EcoVadis", bsci: "BSCI", iso: "ISO", lean: "其他" };
+      var key = new URLSearchParams(location.search).get("p");
+      var want = key && map[key.toLowerCase()];
+      if (want) {
+        Array.prototype.forEach.call(projSel.options, function (o) {
+          if (o.text.indexOf(want) === 0 || o.text.indexOf(want) > -1) projSel.value = o.value || o.text;
+        });
+      }
+    }
+
     // 表单：优先写数据库（db.js 已连接时），否则本地演示提示
     var form = document.querySelector("[data-contact-form]");
     if (form) {
@@ -230,7 +264,9 @@
         if (window.DB && window.DB.ok() && window.DB.saveMessage) {
           var text = ((form.querySelector("[name=msg]") || {}).value || "") +
             (((form.querySelector("[name=company]") || {}).value) ? "（公司：" + form.querySelector("[name=company]").value + "）" : "") +
-            (((form.querySelector("[name=project]") || {}).value) ? "（咨询：" + form.querySelector("[name=project]").value + "）" : "");
+            (((form.querySelector("[name=project]") || {}).value) ? "（咨询：" + form.querySelector("[name=project]").value + "）" : "") +
+            (((form.querySelector("[name=industry]") || {}).value) ? "（行业：" + form.querySelector("[name=industry]").value + "）" : "") +
+            (((form.querySelector("[name=staff]") || {}).value) ? "（人数：" + form.querySelector("[name=staff]").value + "）" : "");
           window.DB.saveMessage({
             name: name.trim(), phone: tel.trim(),
             content: text.trim(), source: "联系页表单"
@@ -313,6 +349,7 @@
     render();
     bindUI();
     bindMotion();
+    buildSideTools();
     // 顶部信息条 / 页脚的联系方式图标
     document.querySelectorAll("[data-icon]").forEach(function (el) {
       el.innerHTML = icon(el.getAttribute("data-icon"));
