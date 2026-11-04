@@ -51,6 +51,7 @@
     '<div class="chat-view on" data-view="chat">' +
     '  <div class="chat-head"><span class="avatar">' + (C.mark || "客") + '</span>' +
     '    <span class="info"><b>' + C.title + '</b><small><i></i>' + C.sub + '</small></span>' +
+    '    <button class="x chat-new" aria-label="新会话" title="开始新会话">⟳</button>' +
     '    <button class="x" aria-label="关闭">✕</button></div>' +
     '  <div class="chat-body"></div>' +
     '  <div class="chat-chips"></div>' +
@@ -113,6 +114,19 @@
     panel.classList.contains("open") ? close() : open();
   });
   panel.querySelector(".x").addEventListener("click", close);
+  /* 新会话：换一个访客标识，聊天窗从头开始；旧会话保留在客服后台 */
+  panel.querySelector(".chat-new").addEventListener("click", function () {
+    if (!confirm("开始新会话？\n本窗口将从头开始；之前的聊天记录仍保留在客服后台。")) return;
+    VK = uuid();
+    try { localStorage.setItem("zt_vk", VK); } catch (e) {}
+    lastId = 0;
+    pending = [];
+    body.innerHTML = "";
+    botSay("您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。");
+    renderChips();
+    stopPoll();
+    startPoll();
+  });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
 
   /* ---------------- 消息渲染 ---------------- */
