@@ -87,10 +87,18 @@
 
   var fab = el.querySelector(".chat-fab");
   var panel = el.querySelector(".chat-panel");
+  var badge = el.querySelector(".chat-dot");
   var body = el.querySelector(".chat-body");
   var chips = el.querySelector(".chat-chips");
   var input = el.querySelector(".chat-input input");
   var views = el.querySelectorAll(".chat-view");
+
+  /* 未读数：初始显示1条作提醒，打开过聊天窗后改为真实未读 */
+  var unread = 1;
+  function setBadge(n) {
+    badge.textContent = n;
+    badge.style.display = n > 0 ? "grid" : "none";
+  }
 
   el.querySelector('[data-ic="tel"]').innerHTML = ICON_TEL;
   el.querySelector('[data-ic="qr"]').innerHTML = ICON_QR;
@@ -102,6 +110,8 @@
   function open() {
     panel.classList.add("open");
     fab.classList.add("is-open");
+    unread = 0;
+    setBadge(0);
     hideInvite();
     setTimeout(function () { input.focus(); }, 250);
     if (!body.childElementCount) {
@@ -110,7 +120,11 @@
     }
     startPoll();
   }
-  function close() { panel.classList.remove("open"); fab.classList.remove("is-open"); stopPoll(); }
+  function close() {
+    panel.classList.remove("open");
+    fab.classList.remove("is-open");
+    /* 关窗后继续轮询，这样客服回复时未读角标才会跳动 */
+  }
 
   /* ---------------- 10秒未互动 → 主动邀请气泡 ---------------- */
   var invite = document.createElement("div");
@@ -219,6 +233,8 @@
         if (m.role === "admin") {
           typing(false);
           botSay(escapeHtml(m.content));
+          /* 聊天窗关着时收到客服回复 → 未读角标+1 */
+          if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
         } else {
           if (pending.indexOf(m.content) !== -1) { clearPending(m.content); return; }
           meSay(m.content);
