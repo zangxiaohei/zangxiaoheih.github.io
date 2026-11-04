@@ -102,6 +102,7 @@
   function open() {
     panel.classList.add("open");
     fab.classList.add("is-open");
+    hideInvite();
     setTimeout(function () { input.focus(); }, 250);
     if (!body.childElementCount) {
       botSay("您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。");
@@ -110,6 +111,27 @@
     startPoll();
   }
   function close() { panel.classList.remove("open"); fab.classList.remove("is-open"); stopPoll(); }
+
+  /* ---------------- 10秒未互动 → 主动邀请气泡 ---------------- */
+  var invite = document.createElement("div");
+  invite.className = "chat-invite";
+  invite.innerHTML =
+    '<span class="av">' + (C.mark || "客") + '</span>' +
+    '<div class="bubble"><button class="x" aria-label="关闭提醒">✕</button>' +
+    '您好，我是<b>' + (C.mark || "客服") + '顾问</b>，需要我帮助吗？<br>' +
+    '<span class="go">💬 在线咨询</span></div>';
+  document.body.appendChild(invite);
+  function hideInvite() { invite.classList.remove("show"); }
+  invite.querySelector(".bubble").addEventListener("click", function (e) {
+    if (e.target.closest(".x")) { hideInvite(); return; }
+    hideInvite();
+    open();
+  });
+  /* 页面停留10秒且没打开过聊天窗 → 弹出邀请 */
+  setTimeout(function () {
+    if (!panel.classList.contains("open")) invite.classList.add("show");
+  }, 10000);
+
   fab.addEventListener("click", function () {
     panel.classList.contains("open") ? close() : open();
   });
