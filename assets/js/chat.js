@@ -130,7 +130,6 @@
   var invite = document.createElement("div");
   invite.className = "chat-invite";
   invite.innerHTML =
-    '<span class="av">' + (C.mark || "客") + '</span>' +
     '<div class="bubble"><button class="x" aria-label="关闭提醒">✕</button>' +
     '您好，我是<b>' + (C.mark || "客服") + '顾问</b>，需要我帮助吗？<br>' +
     '<span class="go">💬 在线咨询</span></div>';
