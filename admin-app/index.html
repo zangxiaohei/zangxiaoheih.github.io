@@ -177,7 +177,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="中天后台" />
-  <script src="../assets/js/push.js?v=2026110522" defer></script>
+  <script src="../assets/js/push.js?v=202611052250" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -204,7 +204,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052245 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611052250 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -437,8 +437,9 @@
     loadMessages();
     loadUnread();
     initContentEditor();
-    /* 自动刷新：列表/会话每 12 秒静默更新，切回前台立即刷新，不用再手动下拉 */
+    /* 自动刷新：列表/会话每 6 秒静默更新，切回前台立即刷新，不用再手动下拉 */
     startAuto();
+    initRealtime();
     /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
     if (window.ZTPush) window.ZTPush.adminOnline();
   }
@@ -500,6 +501,10 @@
         })
         .catch(function () { add("推送订阅", "读取失败", false); flush(); });
     } else { add("推送订阅", "浏览器不支持", false); }
+
+    add("角标数字", typeof window.__ztUnread === "number"
+      ? window.__ztUnread + " 条（留言+客服未读）"
+      : "尚未计算（停留 6 秒后自动算）", typeof window.__ztUnread === "number" ? window.__ztUnread > 0 : null);
 
     if (!cfg.url || !cfg.anonKey) { add("未读数接口", "缺少数据库配置", false); flush(); return; }
     fetch(cfg.url + "/rest/v1/rpc/msg_unread_count", {
@@ -626,13 +631,15 @@
   function autoRefresh(force) {
     if (!force && document.visibilityState !== "visible") return;
     if (!client) return;
+    /* 未读总数每次都算（很轻），保证角标/标题/页签数字随时最新 */
+    loadUnread();
     var t = currentTab();
     if (t === "msg") loadMessages(true);
     else if (t === "chat") { loadThreads(true); if (curThread) loadMessagesOf(curThread, true); }
   }
   function startAuto() {
     if (autoTimer) return;
-    autoTimer = setInterval(function () { autoRefresh(false); }, 12000);
+    autoTimer = setInterval(function () { autoRefresh(false); }, 6000);
     if (!autoBound) {
       autoBound = true;
       document.addEventListener("visibilitychange", function () {
@@ -641,6 +648,26 @@
       window.addEventListener("online", function () { autoRefresh(true); });
       window.addEventListener("focus", function () { autoRefresh(true); });
     }
+  }
+
+  /* 桌面图标角标：把「留言未读 + 客服未读」总数写到 App 图标上（装了 App 才生效） */
+  function syncBadge(total) {
+    window.__ztUnread = total;
+    try {
+      if (total > 0 && navigator.setAppBadge) navigator.setAppBadge(total).catch(function () {});
+      else if (navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {});
+    } catch (e) {}
+  }
+
+  /* 实时通道：数据库开了 Realtime 就能"一有留言立刻刷新"；没开也能靠 6 秒轮询兜底 */
+  function initRealtime() {
+    if (!client || !client.channel || window.__ztChannel) return;
+    try {
+      window.__ztChannel = client.channel("zt-admin-rt")
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, function () { autoRefresh(true); })
+        .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages" }, function () { autoRefresh(true); })
+        .subscribe();
+    } catch (e) {}
   }
 
   function loadMessages(silent) {
@@ -893,6 +920,8 @@
           badge.textContent = total;
           badge.classList.toggle("hidden", total === 0);
           document.title = (total > 0 ? "(" + total + ") " : "") + "官网后台管理";
+          /* 关键：同步到手机桌面图标角标（留言 + 客服 全部未读） */
+          syncBadge(total);
         });
       });
   }
@@ -931,6 +960,12 @@
         var sig = res.data.map(function (m) { return m.id + (m.role === "admin" ? "a" : "v"); }).join(",");
         if (quiet && chatSig[threadId] === sig) return;
         chatSig[threadId] = sig;
+        /* 正在看这个会话 = 已读：把新来的访客消息标为已读，角标数字才会随之下降 */
+        var hasUnreadVisitor = res.data.some(function (m) { return m.role === "visitor" && !m.is_read; });
+        if (hasUnreadVisitor) {
+          client.from("chat_messages").update({ is_read: true }).eq("thread_id", threadId).eq("role", "visitor")
+            .then(function () { loadUnread(); });
+        }
         var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
         box.innerHTML = res.data.map(function (m) {
           return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +

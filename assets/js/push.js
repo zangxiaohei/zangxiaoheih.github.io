@@ -30,14 +30,23 @@
   function updateBadge() {
     if (localStorage.getItem(ADMIN_MARK) !== "1") return;
     if (!cfg.url || !cfg.anonKey) return;
+    /* 后台页面自己算出的"留言+客服"总未读优先，避免这里只用留言数把角标清掉 */
+    if (typeof window.__ztUnread === "number") {
+      applyBadge(window.__ztUnread);
+      return;
+    }
     fetch(cfg.url + "/rest/v1/rpc/msg_unread_count", { method: "POST", headers: sbHeaders(), body: "{}" })
       .then(function (r) { return r.ok ? r.json() : null; })
       .then(function (n) {
         if (typeof n !== "number" || isNaN(n)) return;
-        if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n).catch(function () {});
-        if (n === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {});
+        applyBadge(n);
       })
       .catch(function () {});
+  }
+
+  function applyBadge(n) {
+    if (n > 0 && navigator.setAppBadge) navigator.setAppBadge(n).catch(function () {});
+    if (n === 0 && navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {});
   }
 
   function startPolling() {
