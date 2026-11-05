@@ -10,17 +10,28 @@ android {
         applicationId "com.zhongtian.admin"
         minSdk 26
         targetSdk 34
-        versionCode 3
-        versionName "1.2"
+        versionCode 4
+        versionName "1.3"
+    }
+
+    /* 固定签名：所有构建（debug/release）用同一个密钥库，
+       保证云端每次编译出的 APK 签名一致 → 手机上直接覆盖安装升级，无需卸载 */
+    signingConfigs {
+        appSign {
+            storeFile file("zt-release.keystore")
+            storePassword "zt2026admin"
+            keyAlias "zhongtian"
+            keyPassword "zt2026admin"
+        }
     }
 
     buildTypes {
         debug {
-            // debug 包即可直接安装，签名用系统调试证书
-            applicationIdSuffix ""
+            signingConfig signingConfigs.appSign
         }
         release {
             minifyEnabled false
+            signingConfig signingConfigs.appSign
         }
     }
 
