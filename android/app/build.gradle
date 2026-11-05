@@ -1,0 +1,35 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.zhongtian.admin'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.zhongtian.admin"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+
+    buildTypes {
+        debug {
+            // debug 包即可直接安装，签名用系统调试证书
+            applicationIdSuffix ""
+        }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+// 不引入任何第三方依赖：纯系统 API，构建快、体积小、无兼容坑
+dependencies {
+}
