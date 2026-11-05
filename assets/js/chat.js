@@ -37,6 +37,7 @@
   })();
   var PROFILE = {};        /* 访客填过的称呼/电话，随消息一起带上 */
   var lastId = 0;          /* 已渲染的最大消息 id */
+  var humanReplied = false; /* 客服人工回复过 → 机器人停止自动回复 */
   var pending = [];        /* 本地已显示、等待服务端回显的消息 */
   var pollTimer = null;
 
@@ -155,6 +156,7 @@
     VK = uuid();
     try { localStorage.setItem("zt_vk", VK); } catch (e) {}
     lastId = 0;
+    humanReplied = false;
     pending = [];
     body.innerHTML = "";
     botSay("您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。");
@@ -232,6 +234,7 @@
         if (m.role === "admin") {
           typing(false);
           botSay(escapeHtml(m.content));
+          humanReplied = true; /* 人工已接入，后续不再自动回复 */
           /* 聊天窗关着时收到客服回复 → 未读角标+1 */
           if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
         } else {
@@ -265,8 +268,13 @@
         .then(function (res) {
           if (res && res.error) throw res.error;
           if (res && res.data && res.data.ok === false) throw new Error("empty");
+          if (humanReplied) return; /* 客服人工已接入，等人工回复 */
           typing(true);
-          setTimeout(function () { typing(false); botSay(answer(text)); renderChips(); }, 600);
+          setTimeout(function () {
+            typing(false);
+            if (!humanReplied) botSay(answer(text));
+            renderChips();
+          }, 600);
         })
         .catch(function () {
           clearPending(text);
@@ -290,8 +298,13 @@
     if (!f) return;
     meSay(f.q);
     chips.innerHTML = "";
+    if (humanReplied) return; /* 人工接入后快捷问题也不再自动答 */
     typing(true);
-    setTimeout(function () { typing(false); botSay(f.a); renderChips(); }, 650);
+    setTimeout(function () {
+      typing(false);
+      if (!humanReplied) botSay(f.a);
+      renderChips();
+    }, 650);
   });
   /* 电脑上滚轮也可以左右滑快捷问题条 */
   chips.addEventListener("wheel", function (e) {
