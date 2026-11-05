@@ -7,3 +7,9 @@ admin/harden-rls.sql
 # VAPID 私钥文件，严禁提交到公开仓库（公钥 _vapid_public.txt 可以提交）
 admin/_vapid_private.txt
 admin/push-notify.sql
+
+# 图标/探针临时文件
+_icongen*.html
+_icon_src*.png
+_icon_mask_src*.png
+_probe_*.html
