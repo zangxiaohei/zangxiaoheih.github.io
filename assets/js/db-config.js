@@ -14,5 +14,5 @@ window.SUPABASE_CONFIG = {
   turnstileSiteKey: "",
   /* Web Push 推送公钥（VAPID Public Key，公开无妨）。
      留空 = 不订阅推送（桌面红点仍可用）；配套私钥在数据库 app_secrets 表里 */
-  vapidPublicKey: "04xDu7cC4bH0P48UH0tR0-dpW0CiD-JZ1__9MhX2glVIA0l-TJT6rvYi0cmvf_QycssR3UloH2vEAJiVoeWSWPFw"
+  vapidPublicKey: "BMQ7u3AuGx9D-PFB9LUdPnaVtAog_iWdf__TIV9oJVSA0l-TJT6rvYi0cmvf_QycssR3UloH2vEAJiVoeWSWPFw"
 };
