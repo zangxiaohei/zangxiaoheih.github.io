@@ -24,11 +24,16 @@
             margin: 0 -16px 20px; padding: 22px 24px 24px; border-radius: 0 0 18px 18px;
             box-shadow: 0 6px 18px rgba(8, 62, 45, .22); position: relative; overflow: hidden; }
     .hero::after { content: ""; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px;
-                   border-radius: 50%; background: rgba(255,255,255,.07); }
+                   border-radius: 50%; background: rgba(255,255,255,.07); pointer-events: none; }
+    /* 头部按钮抬高到装饰层之上，保证任何窗口尺寸都能点到 */
+    .hero button, .hero a { position: relative; z-index: 2; }
     .hero h1 { color: #fff; }
     .hero h1::before { background: #8fe3c0; }
     .hero .sub { color: rgba(255,255,255,.78); margin-bottom: 0; }
     .topbar.hero { align-items: flex-start; margin-bottom: 20px; }
+    /* 头部按钮：小屏不换行、不挤压，保证点击区域完整 */
+    .hero .ghost { white-space: nowrap; flex-shrink: 0; padding: 9px 14px; }
+    .topbar.hero { flex-wrap: wrap; gap: 10px; }
     h1 { font-size: 21px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
     h1::before { content: ""; width: 12px; height: 22px; border-radius: 4px;
                  background: linear-gradient(180deg, var(--brand2), var(--brand)); }
@@ -204,7 +209,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052325 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611060038 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
