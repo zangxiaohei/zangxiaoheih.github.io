@@ -178,16 +178,22 @@
     }
   }
 
-  /* ---------------- 3.5 悬浮工具条（电话 / 微信 / 回到顶部） ---------------- */
+  /* ---------------- 3.5 悬浮工具条（电话 / 微信 / 留言 / 回到顶部） ---------------- */
   function buildSideTools() {
     if (document.querySelector(".side-tools")) return;
+    var QR_ICON = '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/>';
     var box = document.createElement("div");
     box.className = "side-tools";
     box.innerHTML =
       '<a href="tel:' + (S.company.phoneRaw || "") + '" aria-label="电话咨询">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICONS.phone + '</svg>' +
         '<span class="st-tip">' + (S.company.phone || "电话咨询") + "</span></a>" +
-      '<a href="contact.html" aria-label="留言咨询">' +
+      '<button type="button" data-wechat aria-label="添加微信">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + QR_ICON + '</svg>' +
+        '<span class="st-tip">添加微信</span>' +
+        '<span class="qr-pop"><img src="assets/img/wechat-qr.svg" alt="微信二维码">' +
+        '<b>扫码添加顾问微信</b><i>或拨打 ' + (S.company.phone || "") + '</i></span></button>' +
+      '<a href="contact.html" data-msg aria-label="留言咨询">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9.6 9.6 0 01-3.4-.6L3 21l1.7-4.6A8.4 8.4 0 1121 11.5z"/></svg>' +
         '<span class="st-tip">留言 / 询价</span></a>' +
       '<button type="button" data-to-top aria-label="回到顶部">' +
@@ -196,6 +202,23 @@
     document.body.appendChild(box);
     box.querySelector("[data-to-top]").addEventListener("click", function () {
       window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+    /* 微信：弹出二维码卡片，点别处关闭 */
+    var wxBtn = box.querySelector("[data-wechat]");
+    wxBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      wxBtn.classList.toggle("qr-open");
+    });
+    document.addEventListener("click", function (e) {
+      if (!wxBtn.contains(e.target)) wxBtn.classList.remove("qr-open");
+    });
+    /* 留言：已在联系页时不再重新加载，直接滚到表单 */
+    var msgBtn = box.querySelector("[data-msg]");
+    msgBtn.addEventListener("click", function (e) {
+      if (!/contact\.html$/.test(location.pathname)) return;
+      e.preventDefault();
+      var form = document.querySelector("[data-contact-form]") || document.body;
+      form.scrollIntoView({ behavior: "smooth", block: "center" });
     });
   }
 

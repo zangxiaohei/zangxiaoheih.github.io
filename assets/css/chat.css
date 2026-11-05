@@ -3,7 +3,7 @@
    ========================================================================== */
 
 .chat-fab {
-  position: fixed; right: 12px; top: calc(50% + 116px); bottom: auto; z-index: 900;
+  position: fixed; right: 12px; top: calc(50% + 144px); bottom: auto; z-index: 900;
   width: 58px; height: 58px; border-radius: 50%; border: 0; cursor: pointer;
   background: linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%);
   box-shadow: 0 12px 30px rgba(11, 74, 111, .38);
@@ -21,7 +21,7 @@
 
 /* 10秒未互动的主动邀请气泡（参考百度商桥） */
 .chat-invite {
-  position: fixed; right: 12px; bottom: calc(50% - 97px); z-index: 899;
+  position: fixed; right: 12px; bottom: calc(50% - 125px); z-index: 899;
   display: flex; align-items: flex-end; gap: 10px;
   max-width: calc(100vw - 32px);
   opacity: 0; visibility: hidden; transform: translateY(14px);
