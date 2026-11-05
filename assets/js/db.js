@@ -84,7 +84,8 @@
       var source = m.source || "web";
       /* 优先走安全函数（策略出问题也能写入），失败再退回直写表 */
       return client.rpc("web_save_message", {
-        p_name: name, p_phone: phone, p_content: content, p_source: source
+        p_name: name, p_phone: phone, p_content: content, p_source: source,
+        p_token: m.token || ""
       }).then(function (res) {
         if (res && res.error) return client.from("messages").insert([{ name: name, phone: phone, content: content, source: source }]);
         return res;
@@ -96,7 +97,9 @@
         p_key: o.key,
         p_name: o.name || null,
         p_phone: o.phone || null,
-        p_content: String(o.content || "").slice(0, 2000)
+        p_content: String(o.content || "").slice(0, 2000),
+        p_need_captcha: !!o.needCaptcha,
+        p_token: o.token || ""
       });
     },
     chatFetch: function (key) {

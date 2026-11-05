@@ -191,3 +191,9 @@
 @media (prefers-reduced-motion: reduce) {
   .chat-fab, .chat-panel { transition: none; }
 }
+
+/* ---------- 每日限额：强制电话联系 ---------- */
+.chat-limit { padding: 14px 16px; text-align: center; border-top: 1px solid var(--line); background: #fff8ef; }
+.chat-limit p { font-size: 13.5px; color: #8a5a1f; margin: 0 0 10px; line-height: 1.7; }
+.chat-limit .btn { display: inline-flex; margin: 0 5px 6px; padding: 10px 20px; font-size: 15px; }
+.chat-form .ts-slot { min-height: 0; }

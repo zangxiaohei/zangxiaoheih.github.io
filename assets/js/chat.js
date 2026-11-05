@@ -65,6 +65,7 @@
     '  <div class="chat-chips"></div>' +
     '  <div class="chat-input"><input type="text" placeholder="输入您的问题…" maxlength="200">' +
     '    <button aria-label="发送">' + ICON_SEND + '</button></div>' +
+    '  <div class="chat-limit" style="display:none"></div>' +
     '  <div class="chat-tools">' +
     '    <button data-goto="tel"><span data-ic="tel"></span>电话咨询</button>' +
     '    <button data-goto="qr"><span data-ic="qr"></span>微信</button>' +
@@ -78,6 +79,7 @@
     '    <div class="field"><label>怎么称呼您 <i>*</i></label><input name="name" type="text" placeholder="如：李经理"></div>' +
     '    <div class="field"><label>联系电话 <i>*</i></label><input name="phone" type="tel" placeholder="手机或固话"></div>' +
     '    <div class="field"><label>需求描述</label><textarea name="msg" placeholder="产品、人数、客户要求……"></textarea></div>' +
+    '    <div class="ts-slot" aria-hidden="true"></div>' +
     '    <button class="btn btn--primary" type="button">提交留言</button>' +
     '    <div class="ok"></div>' +
     '  </div>' +
@@ -122,6 +124,8 @@
     setBadge(0);
     chatOpened = true;
     hideInvite();
+    /* 当天已触发限额：每次打开都重新检查（防止漏判） */
+    if (limitedToday()) enterLimited();
     setTimeout(function () { input.focus(); }, 250);
     if (!body.childElementCount) {
       botSay(HELLO);
@@ -289,7 +293,10 @@
       window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: text })
         .then(function (res) {
           if (res && res.error) throw res.error;
-          if (res && res.data && res.data.ok === false) throw new Error("empty");
+          if (res && res.data && res.data.ok === false) {
+            if (res.data.error === "limit") { enterLimited(); return; }
+            throw new Error("empty");
+          }
           if (humanReplied) return; /* 客服人工已接入，等人工回复 */
           typing(true);
           setTimeout(function () {
@@ -363,6 +370,40 @@
     b.addEventListener("click", function () { show("chat"); });
   });
 
+  /* ---------------- 每日限额：超出 100 条强制电话联系 ---------------- */
+  var LIMIT_MAX = 100;
+  var LIMIT_KEY = "zt_limit_date";
+  function todayStr() {
+    var d = new Date();
+    return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+  }
+  function limitedToday() {
+    try { return localStorage.getItem(LIMIT_KEY) === todayStr(); } catch (e) { return false; }
+  }
+  var limitEntered = false;
+  function enterLimited() {
+    if (limitEntered) return;
+    limitEntered = true;
+    try { localStorage.setItem(LIMIT_KEY, todayStr()); } catch (e) {}
+    var phone = (window.SITE.company || {}).phone || "";
+    var box = el.querySelector(".chat-limit");
+    if (box) {
+      box.innerHTML =
+        '<p>' + L("您今天的咨询消息已达上限（" + LIMIT_MAX + " 条），为不耽误您的问题，请直接联系：",
+                  "You've reached today's chat limit (" + LIMIT_MAX + " messages). To avoid delay, please contact us directly:") + '</p>' +
+        '<a class="btn btn--primary" href="tel:' + phone + '">📞 ' + phone + '</a>' +
+        '<button class="btn btn--line" data-limit-form>' + L("提交留言，我们回电", "Leave a message instead") + '</button>';
+      box.style.display = "block";
+      box.querySelector("[data-limit-form]").addEventListener("click", function () { show("form"); });
+    }
+    var iw = el.querySelector(".chat-input");
+    if (iw) iw.style.display = "none";
+    botSay(L("为保障服务质量，今天的咨询次数已用完。请拨打 <b>" + phone + "</b> 或提交留言，我们会尽快回电。",
+             "You've used up today's chat quota. Please call <b>" + phone + "</b> or leave a message and we'll call back."));
+  }
+  /* 当天已触发过限额：打开聊天窗直接进入电话联系模式 */
+  if (limitedToday()) setTimeout(enterLimited, 400);
+
   /* ---------------- 留言表单 ---------------- */
   /* .chat-form 是 div，没有原生 reset()，手动清空 */
   function clearForm() {
@@ -386,13 +427,25 @@
     PROFILE.name = name;
     PROFILE.phone = phone;
 
-    if (dbOn()) {
+    var submitLead = function (tsToken) {
       formBtn.disabled = true;
       formBtn.textContent = L("提交中…", "Sending…");
       var lead = msg || L("（访客通过留言表单联系）", "(Visitor contacted us via the message form)");
-      window.DB.chatSend({ key: VK, name: name, phone: phone, content: lead })
+      window.DB.chatSend({ key: VK, name: name, phone: phone, content: lead, needCaptcha: true, token: tsToken })
         .then(function (res) {
           if (res && res.error) throw res.error;
+          var d = res && res.data;
+          if (d && d.ok === false && d.error === "limit") {
+            ok.textContent = L("今天的咨询次数已达上限，请直接拨打 " + ((window.SITE.company || {}).phone || "客服电话") + " 联系我们。",
+                               "You've reached today's chat limit. Please call " + ((window.SITE.company || {}).phone || "us") + " directly.");
+            enterLimited();
+            return;
+          }
+          if (d && d.ok === false && d.error === "captcha") {
+            ok.textContent = L("人机验证未通过，请重新提交。", "Verification failed. Please try again.");
+            return;
+          }
+          if (d && d.ok === false) throw new Error(d.error || "empty");
           ok.textContent = L("✅ 已提交，客服会尽快回复您（回复会出现在本聊天窗口）。",
                              "✅ Sent. Our team will reply here shortly.");
           clearForm();
@@ -402,9 +455,10 @@
         .catch(function (err) {
           /* 兜底：聊天通道失败时，至少把客户线索存进留言表，不让询盘丢掉 */
           if (!window.DB.saveMessage) throw (err || new Error("chat"));
-          return window.DB.saveMessage({ name: name, phone: phone, content: lead, source: "chat-form" })
+          return window.DB.saveMessage({ name: name, phone: phone, content: lead, source: "chat-form", token: tsToken })
             .then(function (r2) {
               if (r2 && r2.error) throw r2.error;
+              if (r2 && r2.data && r2.data.ok === false) throw new Error(r2.data.error || "captcha");
               ok.textContent = L("✅ 已提交，客服会尽快联系您。", "✅ Sent. Our team will contact you shortly.");
               clearForm();
               show("chat");
@@ -412,16 +466,31 @@
         })
         .catch(function (e) {
           var code = (e && (e.code || e.message)) || L("网络异常", "Network error");
-          ok.textContent = L(
-            "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。",
-            "Submission failed (" + String(code).slice(0, 40) + "). Please call " + ((window.SITE.company || {}).phone || "our hotline") + "."
-          );
+          if (String(code) === "captcha") {
+            ok.textContent = L("人机验证未通过，请重新提交。", "Verification failed. Please try again.");
+          } else {
+            ok.textContent = L(
+              "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。",
+              "Submission failed (" + String(code).slice(0, 40) + "). Please call " + ((window.SITE.company || {}).phone || "our hotline") + "."
+            );
+          }
         })
         .finally(function () {
           ok.classList.add("show");
           formBtn.disabled = false;
           formBtn.textContent = L("提交留言", "Send message");
         });
+    };
+
+    if (dbOn()) {
+      /* 人机验证：Turnstile 启用时先拿 token 再提交 */
+      if (window.TS && window.TS.enabled) {
+        formBtn.disabled = true;
+        formBtn.textContent = L("安全验证中…", "Verifying…");
+        window.TS.token(".chat-form .ts-slot", submitLead);
+      } else {
+        submitLead("");
+      }
       return;
     }
 

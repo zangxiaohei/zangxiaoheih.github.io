@@ -68,6 +68,21 @@
     .msg-card .meta b { color: var(--ink); font-size: 14px; }
     .msg-card .body { font-size: 14px; white-space: pre-wrap; word-break: break-all; }
     .msg-card .ops { margin-top: 8px; display: flex; gap: 8px; }
+    /* 按日期折叠 */
+    .day-head {
+      width: 100%; text-align: left; cursor: pointer; user-select: none;
+      display: flex; align-items: center; gap: 10px;
+      background: #e6f2ec; border: 1px solid #cfe3d8; border-radius: 9px;
+      padding: 10px 14px; margin: 14px 0 10px; font-size: 14px; font-weight: 700; color: var(--ink);
+    }
+    .day-head:first-child { margin-top: 0; }
+    .day-head .arrow { margin-left: auto; transition: transform .2s; font-size: 12px; color: var(--mut); }
+    .day-group.closed .arrow { transform: rotate(-90deg); }
+    .day-group.closed .day-body { display: none; }
+    .day-body { padding: 2px 4px 6px; }
+    .day-head .cnt { font-weight: 600; font-size: 12.5px; color: var(--brand); background: #fff; border-radius: 999px; padding: 1px 9px; }
+    .day-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
+    .day-head.read-day .dot { background: #b9cfc4; }
     .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
     @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
     .sec-title { font-size: 15px; font-weight: 600; margin: 18px 0 4px; padding-bottom: 6px;
@@ -204,8 +219,8 @@
 
 </div>
 
-<script src="assets/js/db-config.js?v=2026110512"></script>
-<script src="assets/vendor/supabase.min.js?v=2026110515"></script>
+<script src="assets/js/db-config.js?v=2026110516"></script>
+<script src="assets/vendor/supabase.min.js?v=2026110516"></script>
 <script>
 (function () {
   "use strict";
@@ -332,21 +347,55 @@
         lastMsgs = res.data;
         var box = $("msg-list");
         if (!res.data.length) { box.innerHTML = '<div class="empty">还没有留言。客户在聊天框或联系页提交后会出现在这里。</div>'; return; }
-        box.innerHTML = res.data.map(function (m) {
-          return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
-            '<div class="meta"><b>' + esc(m.name) + '</b><span>📞 ' + esc(m.phone) + '</span>' +
-            '<span>' + esc(m.source || "web") + '</span><span>' + fmtTime(m.created_at) + '</span>' +
-            (m.is_read ? '<span>已读</span>' : '<span style="color:var(--brand);font-weight:600">未读</span>') + '</div>' +
-            '<div class="body">' + esc(m.content || "（无描述）") + '</div>' +
-            '<div class="ops">' +
-            '<button class="ghost sm" data-mark="' + m.id + '" data-read="' + (m.is_read ? "false" : "true") + '">' + (m.is_read ? "标为未读" : "标为已读") + '</button>' +
-            '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
-            '</div></div>';
+
+        /* 按日期分组折叠：默认最新一天展开，其余收起 */
+        var DAY = ["日", "一", "二", "三", "四", "五", "六"];
+        function dayKey(iso) { try { return new Date(iso).toISOString().slice(0, 10); } catch (e) { return "未知"; } }
+        function dayLabel(k) {
+          var d = new Date(k + "T12:00:00+08:00");
+          var today = new Date(); var yd = new Date(Date.now() - 864e5);
+          var same = function (a, b) { return a.getFullYear() + "-" + (a.getMonth() + 1) + "-" + a.getDate() === b.getFullYear() + "-" + (b.getMonth() + 1) + "-" + b.getDate(); };
+          var name = (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + DAY[d.getDay()];
+          if (same(d, today)) return "今天 · " + name;
+          if (same(d, yd)) return "昨天 · " + name;
+          return d.getFullYear() + "年" + name;
+        }
+        var groups = {}, order = [];
+        res.data.forEach(function (m) {
+          var k = dayKey(m.created_at);
+          if (!groups[k]) { groups[k] = []; order.push(k); }
+          groups[k].push(m);
+        });
+        order.sort(); order.reverse();
+        box.innerHTML = order.map(function (k, idx) {
+          var list = groups[k];
+          var hasUnread = list.some(function (m) { return !m.is_read; });
+          var cards = list.map(function (m) {
+            return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
+              '<div class="meta"><b>' + esc(m.name) + '</b><span>📞 ' + esc(m.phone) + '</span>' +
+              '<span>' + esc(m.source || "web") + '</span><span>' + fmtTime(m.created_at) + '</span>' +
+              (m.is_read ? '<span>已读</span>' : '<span style="color:var(--brand);font-weight:600">未读</span>') + '</div>' +
+              '<div class="body">' + esc(m.content || "（无描述）") + '</div>' +
+              '<div class="ops">' +
+              '<button class="ghost sm" data-mark="' + m.id + '" data-read="' + (m.is_read ? "false" : "true") + '">' + (m.is_read ? "标为未读" : "标为已读") + '</button>' +
+              '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
+              '</div></div>';
+          }).join("");
+          return '<div class="day-group' + (idx === 0 ? "" : " closed") + '">' +
+            '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
+            '<span class="dot"></span>' + dayLabel(k) +
+            '<span class="cnt">' + list.length + ' 条</span>' +
+            (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+            '<span class="arrow">▼</span></button>' +
+            '<div class="day-body">' + cards + '</div></div>';
         }).join("");
       });
   }
 
-  $("msg-list").addEventListener("click", function (e) {    var mark = e.target.getAttribute("data-mark");
+  $("msg-list").addEventListener("click", function (e) {
+    var head = e.target.closest(".day-head");
+    if (head) { head.parentElement.classList.toggle("closed"); return; }    /* 折叠/展开某一天 */
+    var mark = e.target.getAttribute("data-mark");
     var del = e.target.getAttribute("data-del");
     if (mark) {
       client.from("messages").update({ is_read: mark === "true" }).eq("id", mark).then(loadMessages);

@@ -396,6 +396,7 @@
         }
         var msg = document.querySelector(".form-msg");
         if (window.DB && window.DB.ok() && window.DB.saveMessage) {
+        var doSubmit = function (tsToken) {
           var text = ((form.querySelector("[name=msg]") || {}).value || "") +
             (((form.querySelector("[name=company]") || {}).value) ? "（公司：" + form.querySelector("[name=company]").value + "）" : "") +
             (((form.querySelector("[name=project]") || {}).value) ? "（咨询：" + form.querySelector("[name=project]").value + "）" : "") +
@@ -403,20 +404,35 @@
             (((form.querySelector("[name=staff]") || {}).value) ? "（人数：" + form.querySelector("[name=staff]").value + "）" : "");
           window.DB.saveMessage({
             name: name.trim(), phone: tel.trim(),
-            content: text.trim(), source: L("联系页表单", "Contact form")
+            content: text.trim(), source: L("联系页表单", "Contact form"),
+            token: tsToken
           }).then(function (res) {
             if (res && res.error) throw res.error;
+            if (res && res.data && res.data.ok === false) {
+              throw new Error(res.data.error === "captcha" ? "captcha" : (res.data.error || "fail"));
+            }
             if (msg) { msg.textContent = L("提交成功，我们会尽快与您联系！", "Sent — we will contact you shortly."); msg.classList.add("show"); }
             form.reset();
           }).catch(function (e) {
+            var raw = (e && (e.code || e.message)) || L("网络异常", "Network error");
             if (msg) {
-              var code = (e && (e.code || e.message)) || L("网络异常", "Network error");
-              msg.textContent = L("提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + (S.company.phone || "咨询热线") + "。",
-                                  "Submission failed (" + String(code).slice(0, 40) + "). Please call " + (S.company.phone || "our hotline") + ".");
+              if (String(raw) === "captcha") {
+                msg.textContent = L("人机验证未通过，请重新提交。", "Verification failed. Please try again.");
+              } else {
+                msg.textContent = L("提交失败（" + String(raw).slice(0, 40) + "），请直接拨打 " + (S.company.phone || "咨询热线") + "。",
+                                    "Submission failed (" + String(raw).slice(0, 40) + "). Please call " + (S.company.phone || "our hotline") + ".");
+              }
               msg.classList.add("show");
             }
           });
-          return;
+        };
+        if (window.TS && window.TS.enabled) {
+          if (msg) { msg.textContent = L("安全验证中…", "Verifying…"); msg.classList.add("show"); }
+          window.TS.token("#contact-ts-slot", doSubmit);
+        } else {
+          doSubmit("");
+        }
+        return;
         }
         if (msg) {
           msg.textContent = L("提交成功（演示）：正式上线后请按 README 接入邮件或表单服务，当前为本地提示。",

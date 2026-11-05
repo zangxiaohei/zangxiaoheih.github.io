@@ -8,5 +8,8 @@
 
 window.SUPABASE_CONFIG = {
   url: "https://ndjctekubqinrlyokmzp.supabase.co",
-  anonKey: "sb_publishable_f_3Lam0m4JQfajKTjuXnMw_GnnWOP-x"
+  anonKey: "sb_publishable_f_3Lam0m4JQfajKTjuXnMw_GnnWOP-x",
+  /* Cloudflare Turnstile 站点密钥（Site Key，公开无妨）。
+     留空 = 不启用人机验证；拿到后填进来即可生效（Secret Key 配在数据库 app_secrets 表里） */
+  turnstileSiteKey: ""
 };
