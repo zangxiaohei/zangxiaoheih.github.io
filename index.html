@@ -13,9 +13,9 @@
 <meta property="og:title" content="深圳市中天技术服务有限公司 | 一站式合规认证辅导" />
 <meta property="og:description" content="12 年行业经验，服务 3600+ 制造企业，一次性通过率 98%。" />
 <meta property="og:image" content="https://www.example.com/assets/img/og-cover.jpg" />
-<link rel="icon" href="assets/img/favicon.png?v=2026110511" type="image/png" />
-<link rel="stylesheet" href="assets/css/style.css?v=2026110511" />
-<link rel="stylesheet" href="assets/css/chat.css?v=2026110511" />
+<link rel="icon" href="assets/img/favicon.png?v=2026110512" type="image/png" />
+<link rel="stylesheet" href="assets/css/style.css?v=2026110512" />
+<link rel="stylesheet" href="assets/css/chat.css?v=2026110512" />
 <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Organization",
 "name":"华诚认证咨询","url":"https://www.example.com/",
@@ -42,7 +42,7 @@
 <header class="header">
   <div class="wrap">
     <a class="logo" href="index.html">
-      <img class="logo-img" src="assets/img/logo.png?v=2026110511" alt="ZENITHE 中天" />
+      <img class="logo-img" src="assets/img/logo.png?v=2026110512" alt="ZENITHE 中天" />
       <span class="logo-text">
         <b data-site="company.name"></b>
         <span data-site="company.nameEn"></span>
@@ -66,23 +66,36 @@
 
 <main>
 
-  <!-- ===== Hero ===== -->
+  <!-- ===== 首屏大Banner（轮播） ===== -->
   <section class="hero">
     <div class="wrap">
-      <div>
-        <span class="eyebrow eyebrow--light">合规认证 · 一站式辅导</span>
-        <h1 data-i18n="heroTitle">把复杂的认证流程，<br />交给<em>真正懂审核</em>的人</h1>
-        <p>从 GRS、ISCC 到 EcoVadis、BSCI，我们不做文件搬运工。先诊断差距，再逐条整改，陪你把证书拿到手。</p>
-        <div class="hero-actions">
-          <a class="btn btn--primary" href="contact.html">免费获取诊断方案 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
-          <a class="btn btn--ghost" href="services.html">查看认证项目</a>
+      <div class="hero-slides">
+        <div class="hero-slide on">
+          <span class="eyebrow eyebrow--light">合规认证 · 一站式辅导</span>
+          <h1 data-i18n="heroTitle">把复杂的认证流程，<br />交给<em>真正懂审核</em>的人</h1>
+          <p>从 GRS、ISCC 到 EcoVadis、BSCI，我们不做文件搬运工。先诊断差距，再逐条整改，陪你把证书拿到手。</p>
         </div>
-        <div class="hero-meta">
-          <div><span data-icon="check"></span>40+ 项认证覆盖</div>
-          <div><span data-icon="check"></span>98% 一次性通过率</div>
-          <div><span data-icon="check"></span>不通过按约定退费</div>
+        <div class="hero-slide">
+          <span class="eyebrow eyebrow--light">可持续认证 · 欧盟合规</span>
+          <h1>再生材料与碳管理，<br /><em>一个顾问团队</em>全搞定</h1>
+          <p>GRS、RCS、OBP、ISCC 全套回收认证与碳足迹核算，应对欧盟新规与品牌方要求，从台账到发证一步到位。</p>
+        </div>
+        <div class="hero-slide">
+          <span class="eyebrow eyebrow--light">客户验厂 · 一次通过</span>
+          <h1>让每一次审核，<br />都变成<em>订单竞争力</em></h1>
+          <p>BSCI、Sedex、SLCP 社会责任验厂全程驻厂辅导，现场经得起问、文件经得起查、追溯经得起核。</p>
         </div>
       </div>
+      <div class="hero-actions">
+        <a class="btn btn--primary" href="contact.html">免费获取诊断方案 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+        <a class="btn btn--ghost" href="services.html">查看认证项目</a>
+      </div>
+      <div class="hero-meta">
+        <div><span data-icon="check"></span>40+ 项认证覆盖</div>
+        <div><span data-icon="check"></span>98% 一次性通过率</div>
+        <div><span data-icon="check"></span>不通过按约定退费</div>
+      </div>
+      <div class="hero-dots" id="heroDots"></div>
 
       <div class="hero-visual" aria-hidden="true">
         <div class="hv-ring"></div>
@@ -102,23 +115,87 @@
     </div>
   </section>
 
-  <!-- ===== 数据条 ===== -->
+  <!-- ===== 数据条（白底图标版） ===== -->
   <div class="stats">
     <div class="wrap"><div class="stats-inner" data-render="stats"></div></div>
   </div>
 
-  <!-- ===== 认证项目 ===== -->
+  <!-- ===== 三大服务 ===== -->
+  <section class="section">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow">What We Do</span>
+        <h2>中天咨询可以为您提供什么服务？</h2>
+        <p>专注认证辅导、可持续发展项目与管理培训，一站式满足客户与法规要求。</p>
+      </div>
+      <div class="grid-3" data-render="big-services"></div>
+      <div class="hotline-bar">
+        <span data-icon="phone"></span>
+        <span>咨询热线：<b data-site="company.phone"></b>（工作日 9:00 - 18:00）</span>
+        <a class="btn btn--primary btn--sm" href="contact.html">立即咨询</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 主营认证项目（分类Tab） ===== -->
   <section class="section section--tint">
     <div class="wrap">
-      <div class="sec-head">
+      <div class="sec-head center">
         <span class="eyebrow">Our Services</span>
-        <h2>覆盖出口企业最常被客户要求的认证</h2>
-        <p>按行业与目标市场匹配标准，不推销你用不上的项目。</p>
+        <h2>主营认证项目</h2>
+        <p>按标准类别分组，点击分类查看对应项目，全部涵盖诊断、文件、整改、陪审到取证。</p>
       </div>
-      <div class="grid-3" data-render="services"></div>
-      <div style="margin-top:36px;text-align:center">
-        <a class="btn btn--line" href="services.html">查看全部认证项目</a>
+      <div data-render="cert-cats"></div>
+    </div>
+  </section>
+
+  <!-- ===== 深色宣传横幅 ===== -->
+  <section class="zix-band">
+    <div class="wrap">
+      <div>
+        <h3>熟悉各发证机构审核规则，排期与整改重点提前规划</h3>
+        <p>项目节点全程可查，绝无拖延推诿</p>
       </div>
+      <div class="zix-tel">
+        <small>24 小时服务咨询热线</small>
+        <b data-site="company.phone"></b>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 选择对比 ===== -->
+  <section class="section">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow">Why Choose Us</span>
+        <h2>为什么选择中天咨询？</h2>
+        <p>全职审核背景顾问、透明报价、项目制管理，把每个环节做到可交付。</p>
+      </div>
+      <div class="cmp-table reveal" data-render="compare"></div>
+    </div>
+  </section>
+
+  <!-- ===== 客户墙 ===== -->
+  <section class="section section--soft">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow">Our Clients</span>
+        <h2>他们一直选择中天</h2>
+        <p>3600+ 制造企业的共同选择，覆盖纺织、电子、塑胶、五金、包装等 30 多个行业。</p>
+      </div>
+      <div class="client-wall" data-render="clients"></div>
+    </div>
+  </section>
+
+  <!-- ===== 合作流程（6步） ===== -->
+  <section class="section">
+    <div class="wrap">
+      <div class="sec-head center">
+        <span class="eyebrow">Process</span>
+        <h2>合作流程</h2>
+        <p>每个节点有明确交付物与验收标准，进度随时可查。</p>
+      </div>
+      <div class="flow" data-render="steps6"></div>
     </div>
   </section>
 
@@ -143,65 +220,51 @@
         <div class="badge reveal"><span class="bd" style="color:#37536b">CTPAT</span><small>C-TPAT / SCAN 反恐</small></div>
       </div>
       <div class="promise">
-        <div><span data-icon="check"></span><div><b>不通过按约定退费</b><small>退费条款白纸黑字写进合同，不做口头承诺。</small></div></div>
-        <div><span data-icon="award"></span><div><b>审核背景顾问团队</b><small>超三分之一顾问出自第三方审核机构。</small></div></div>
-        <div><span data-icon="users"></span><div><b>驻厂 + 远程双模式</b><small>顾问驻厂辅导，远程随时答疑响应。</small></div></div>
-        <div><span data-icon="shield"></span><div><b>证书有效期全程维护</b><small>年审提醒、标准换版转换，全程托管。</small></div></div>
-        <div><span data-icon="clock"></span><div><b>24 小时即时响应</b><small>提交需求 24 小时内给方案与预算区间。</small></div></div>
-        <div><span data-icon="doc"></span><div><b>客户资料严格保密</b><small>项目资料与整改数据，绝不对外披露。</small></div></div>
+        <div><span data-icon="check"></span><div><b>结果承诺</b><small>不通过按约定退费，条款白纸黑字写进合同。</small></div></div>
+        <div><span data-icon="chart"></span><div><b>预算承诺</b><small>诊断后分项报价，中途不增加额外费用。</small></div></div>
+        <div><span data-icon="clock"></span><div><b>限时承诺</b><small>承诺 24 小时内给出方案，按表推进。</small></div></div>
+        <div><span data-icon="users"></span><div><b>即时承诺</b><small>顾问全程在线，随时解答项目疑问。</small></div></div>
+        <div><span data-icon="doc"></span><div><b>保密承诺</b><small>客户资料与整改数据，绝不对外披露。</small></div></div>
+        <div><span data-icon="shield"></span><div><b>维护承诺</b><small>取证后年审提醒、换版转换，长期托管。</small></div></div>
       </div>
     </div>
   </section>
 
-  <!-- ===== 客户墙 ===== -->
+  <!-- ===== 关于我们 + 资质 ===== -->
   <section class="section">
     <div class="wrap">
-      <div class="sec-head center">
-        <span class="eyebrow">Our Clients</span>
-        <h2>他们一直选择中天</h2>
-        <p>3600+ 制造企业的共同选择，覆盖纺织、电子、塑胶、五金、包装等 30 多个行业。</p>
+      <div class="sec-head">
+        <span class="eyebrow">About Us</span>
+        <h2>关于中天</h2>
+        <p>我们将付出 100% 的努力，来换取您的肯定和推荐。</p>
       </div>
-      <div class="client-wall" data-render="clients"></div>
-    </div>
-  </section>
-
-  <!-- ===== 为什么选我们 ===== -->
-  <section class="section section--soft">
-    <div class="wrap split">
-      <div>
-        <span class="eyebrow">Why Us</span>
-        <h2 style="margin-top:14px;font-size:clamp(26px,3.2vw,38px)">审核官看什么，我们就补什么</h2>
-        <p style="margin-top:14px">很多企业卡在同一个地方：文件写了一堆，现场一问就露馅。我们的顾问大多做过审核，知道问题会从哪问出来。</p>
-        <div class="feat-list" data-render="advantages"></div>
-      </div>
-      <div class="visual-panel reveal">
-        <div class="vp-top">
-          <small>Compliance Snapshot</small>
-          <h3>合规成熟度评估</h3>
-          <div class="vp-bars">
-            <div class="vp-bar"><span>文件体系完备度 <b>92%</b></span><i style="--w:92%"></i></div>
-            <div class="vp-bar"><span>现场执行一致性 <b>78%</b></span><i style="--w:78%"></i></div>
-            <div class="vp-bar"><span>供应链追溯完整度 <b>86%</b></span><i style="--w:86%"></i></div>
-            <div class="vp-bar"><span>员工访谈准备度 <b>70%</b></span><i style="--w:70%"></i></div>
+      <div class="about-home split">
+        <div class="aboyt-con">
+          <p>深圳市中天技术服务有限公司专注社会责任、质量体系与可持续发展认证辅导十余年，是一家集验厂认证咨询、体系培训、企业可持续规划于一体的一站式综合服务企业。</p>
+          <p>我们把工作重心放在「诊断」和「现场整改」上：文件写到真实工序上、现场经得起问、数据经得起查、供应链经得起追溯。目前团队有 40 余位全职顾问，其中超过三分之一有第三方审核或品牌方验厂背景，累计服务 3600 余家制造企业。</p>
+          <div class="qualifications">
+            <h4>资质与实力</h4>
+            <ul data-render="about-certs"></ul>
+          </div>
+          <a class="btn btn--line" href="about.html">了解更多 &gt;&gt;</a>
+        </div>
+        <div class="visual-panel reveal">
+          <div class="vp-top">
+            <small>Compliance Snapshot</small>
+            <h3>合规成熟度评估</h3>
+            <div class="vp-bars">
+              <div class="vp-bar"><span>文件体系完备度 <b>92%</b></span><i style="--w:92%"></i></div>
+              <div class="vp-bar"><span>现场执行一致性 <b>78%</b></span><i style="--w:78%"></i></div>
+              <div class="vp-bar"><span>供应链追溯完整度 <b>86%</b></span><i style="--w:86%"></i></div>
+              <div class="vp-bar"><span>员工访谈准备度 <b>70%</b></span><i style="--w:70%"></i></div>
+            </div>
+          </div>
+          <div class="vp-badge">
+            <span data-icon="shield"></span>
+            <div><small>平均整改周期缩短</small><b>约 30 个工作日</b></div>
           </div>
         </div>
-        <div class="vp-badge">
-          <span data-icon="shield"></span>
-          <div><small>平均整改周期缩短</small><b>约 30 个工作日</b></div>
-        </div>
       </div>
-    </div>
-  </section>
-
-  <!-- ===== 服务流程 ===== -->
-  <section class="section">
-    <div class="wrap">
-      <div class="sec-head center">
-        <span class="eyebrow">How We Work</span>
-        <h2>四步走，每一步都有交付物</h2>
-        <p>不做无期限的口头承诺，每个节点都有明确的产出和验收标准。</p>
-      </div>
-      <div class="steps" data-render="process"></div>
     </div>
   </section>
 
@@ -234,13 +297,33 @@
 
 </main>
 
+<!-- ===== 底部服务特色条 ===== -->
+<div class="waiter-band">
+  <div class="wrap" data-render="waiter"></div>
+</div>
+
+<!-- ===== 友情链接 ===== -->
+<div class="friend-band">
+  <div class="wrap">
+    <span>友情链接：</span>
+    <a href="services.html">GRS认证</a>
+    <a href="services.html">BSCI验厂</a>
+    <a href="services.html">Sedex验厂</a>
+    <a href="services.html">EcoVadis评级</a>
+    <a href="services.html">ISO9001认证</a>
+    <a href="services.html">SLCP验证</a>
+    <a href="services.html">ISCC认证</a>
+    <a href="news.html">认证资讯</a>
+  </div>
+</div>
+
 <!-- ===== 页脚 ===== -->
 <footer class="footer">
   <div class="wrap">
     <div class="footer-grid">
       <div class="footer-about">
         <a class="logo" href="index.html">
-          <img class="logo-img" src="assets/img/logo.png?v=2026110511" alt="ZENITHE 中天" />
+          <img class="logo-img" src="assets/img/logo.png?v=2026110512" alt="ZENITHE 中天" />
           <span class="logo-text"><b data-site="company.name"></b><span data-site="company.nameEn"></span></span>
         </a>
         <p data-site="company.desc"></p>
@@ -279,12 +362,12 @@
   </div>
 </footer>
 
-<script src="assets/data/site.js?v=2026110511"></script>
-  <script src="assets/data/site.en.js?v=2026110511"></script>
-<script src="assets/js/i18n.js?v=2026110511"></script>
-<script src="assets/js/db-config.js?v=2026110511"></script>
-<script src="assets/js/db.js?v=2026110511"></script>
-<script src="assets/js/site.js?v=2026110511"></script>
-<script src="assets/js/chat.js?v=2026110511"></script>
+<script src="assets/data/site.js?v=2026110512"></script>
+  <script src="assets/data/site.en.js?v=2026110512"></script>
+<script src="assets/js/i18n.js?v=2026110512"></script>
+<script src="assets/js/db-config.js?v=2026110512"></script>
+<script src="assets/js/db.js?v=2026110512"></script>
+<script src="assets/js/site.js?v=2026110512"></script>
+<script src="assets/js/chat.js?v=2026110512"></script>
 </body>
 </html>

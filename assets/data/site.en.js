@@ -237,6 +237,93 @@ window.SITE_EN = {
     { name: "Zhongke New Materials", en: "Hefei" }
   ],
 
+  /* Certification categories (homepage tabs) */
+  certCats: [
+    {
+      name: "Sustainability",
+      items: [
+        { abbr: "GRS", color: "#2e9e5b", title: "GRS – Global Recycled Standard" },
+        { abbr: "RCS", color: "#1c9a8f", title: "RCS – Recycled Claim Standard" },
+        { abbr: "ISCC", color: "#1c7cc0", title: "ISCC sustainability certification" },
+        { abbr: "OBP", color: "#0f7fb8", title: "OBP – Ocean Bound Plastic" },
+        { abbr: "GOTS", color: "#5b8f3e", title: "GOTS – Organic Textile Standard" }
+      ]
+    },
+    {
+      name: "Social Compliance",
+      items: [
+        { abbr: "BSCI", color: "#d97a2b", title: "BSCI social compliance audit" },
+        { abbr: "Sedex", color: "#d94f43", title: "Sedex / SMETA audit" },
+        { abbr: "SLCP", color: "#6a4fa3", title: "SLCP convergence assessment" },
+        { abbr: "SA8000", color: "#b03a48", title: "SA8000 social accountability" },
+        { abbr: "RBA", color: "#33679b", title: "RBA – Responsible Business Alliance" }
+      ]
+    },
+    {
+      name: "Systems & Ratings",
+      items: [
+        { abbr: "ISO", color: "#0b4a6f", title: "ISO 9001 Quality management" },
+        { abbr: "ISO", color: "#0a8a6d", title: "ISO 14001 Environmental management" },
+        { abbr: "ISO", color: "#3f6fb5", title: "ISO 45001 Occupational health & safety" },
+        { abbr: "EcoVadis", color: "#16457c", title: "EcoVadis sustainability rating" },
+        { abbr: "CTPAT", color: "#37536b", title: "C-TPAT / SCAN supply-chain security" }
+      ]
+    }
+  ],
+
+  /* Three flagship services */
+  bigServices: [
+    { title: "Audit & Certification", desc: "Consultants versed in every major audit standard deliver gap diagnosis through audit support and certification for export manufacturers.", icon: "shield" },
+    { title: "Sustainability Advisory", desc: "Focused on recycled materials and supply-chain carbon — recycled-content schemes, footprint accounting and disclosure readiness.", icon: "recycle" },
+    { title: "Management Training", desc: "Courses built on your real processes: system documentation, internal auditor training and interview readiness for the shop floor.", icon: "users" }
+  ],
+
+  /* Comparison: us vs typical consultancies */
+  compare: {
+    rows: [
+      { k: "Consultant team", ours: "Full-time consultants with 5+ years; over a third ex-auditors who know the standard inside out", theirs: "Part-time staff, high turnover, uneven accountability" },
+      { k: "Process control", ours: "Project-based tracking with visible milestones — no delays, no buck-passing", theirs: "Verbal management, shifting blame, missed deadlines" },
+      { k: "Pricing", ours: "Transparent contract pricing with no hidden extras", theirs: "Low-ball signing, extra charges midway" },
+      { k: "Documentation", ours: "Template library plus on-site interviews — documents right the first time", theirs: "Generic templates, handwritten overtime work, constant rework" },
+      { k: "Audit resources", ours: "Familiar with certification-body rules; scheduling and remediation planned ahead", theirs: "Outdated information, passive scheduling" },
+      { k: "After-sales", ours: "Free surveillance reminders and document updates while the certificate is valid", theirs: "Expensive after-sales, updates billed separately" }
+    ]
+  },
+
+  /* Six-step cooperation process */
+  steps6: [
+    { title: "Enquiry", desc: "Call or message us about your products and customer requirements" },
+    { title: "Assessment", desc: "Free gap diagnosis with timeline and workload" },
+    { title: "Contract", desc: "Deliverables, schedule and fees in writing" },
+    { title: "Implementation", desc: "Documentation, on-site remediation and training" },
+    { title: "Delivery", desc: "Full audit support until the certificate is issued" },
+    { title: "After-sales", desc: "Surveillance reminders, transitions and free advice" }
+  ],
+
+  /* About section qualification list */
+  aboutCerts: [
+    "SCM working group member, international chemicals manufacturers association",
+    "Recognised Sedex consulting partner",
+    "SLCP advisory organisation",
+    "Long-term partner of GRS / RCS certification bodies",
+    "Practitioner of EcoVadis rating improvement",
+    "3,600+ BSCI projects delivered end to end",
+    "One-stop ISO system certification provider",
+    "C-TPAT / SCAN supply-chain security advisory",
+    "Member of provincial export-compliance chamber",
+    "Quality-management internship base for universities",
+    "Over a third of consultants hold auditor qualifications",
+    "3,600+ manufacturers served to date"
+  ],
+
+  /* Bottom feature strip */
+  waiter: [
+    { k: "Expert team", v: "One-to-one specialist service" },
+    { k: "Fast response", v: "Quick diagnosis, faster certification" },
+    { k: "Deep experience", v: "Ten years of proven methods" },
+    { k: "Save cost & effort", v: "Fully managed, progress visible" }
+  ],
+
   news: [
     {
       slug: "grs-4-transition",

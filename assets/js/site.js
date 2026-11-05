@@ -186,6 +186,82 @@
         return '<div class="client-card reveal"><b>' + c.name + "</b>" + (c.en ? "<small>" + c.en + "</small>" : "") + "</div>";
       }).join("");
     }
+
+    // 三大服务卡（首页）
+    var bs = document.querySelector('[data-render="big-services"]');
+    if (bs) {
+      bs.innerHTML = (S.bigServices || []).map(function (s) {
+        return '<div class="bs-card reveal">' +
+          '<div class="ic">' + icon(s.icon) + "</div>" +
+          "<h3>" + s.title + "</h3><p>" + s.desc + "</p>" +
+          '<a class="btn btn--line btn--sm" href="contact.html">' + L("立即咨询", "Enquire now") + "</a></div>";
+      }).join("");
+    }
+
+    // 认证项目分类 Tab（首页）
+    var cc = document.querySelector('[data-render="cert-cats"]');
+    if (cc) {
+      var cats = S.certCats || [];
+      var tabs = cats.map(function (c, i) {
+        return '<button class="tab' + (i === 0 ? " on" : "") + '" data-cat="' + i + '">' + c.name + "</button>";
+      }).join("");
+      var panels = cats.map(function (c, i) {
+        return '<div class="tab-panel' + (i === 0 ? " on" : "") + '" data-panel="' + i + '">' +
+          c.items.map(function (it) {
+            return '<a class="cert-card reveal" href="services.html">' +
+              '<span class="cc-logo" style="color:' + it.color + '">' + it.abbr + "</span>" +
+              "<b>" + it.title + "</b>" +
+              '<span class="more-link">' + L("查看更多 &gt;&gt;", "View more &gt;&gt;") + "</span></a>";
+          }).join("") + "</div>";
+      }).join("");
+      cc.innerHTML = '<div class="tab-bar">' + tabs + '<a class="tab-more" href="services.html">' + L("查看更多", "View all") + " " + icon("arrow") + "</a></div>" + panels;
+      cc.addEventListener("click", function (e) {
+        var t = e.target.closest("[data-cat]");
+        if (!t) return;
+        cc.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === t); });
+        var idx = t.getAttribute("data-cat");
+        cc.querySelectorAll(".tab-panel").forEach(function (p) { p.classList.toggle("on", p.getAttribute("data-panel") === idx); });
+        bindMotion();
+      });
+    }
+
+    // 选择对比表（首页）
+    var cp = document.querySelector('[data-render="compare"]');
+    if (cp && S.compare) {
+      var rowsHtml = (S.compare.rows || []).map(function (r, i) {
+        return '<div class="cmp-row' + (i % 2 ? " alt" : "") + '">' +
+          '<div class="cmp-k">' + r.k + "</div>" +
+          '<div class="cmp-ours"><span class="ok">' + icon("check") + "</span>" + r.ours + "</div>" +
+          '<div class="cmp-theirs"><span class="no">' + icon("doc") + "</span>" + r.theirs + "</div></div>";
+      }).join("");
+      cp.innerHTML = '<div class="cmp-head"><div class="cmp-k"></div>' +
+        '<div class="cmp-ours cmp-title"><span class="ok">' + icon("shield") + "</span>" + L("中天顾问团队", "Zenithe consultants") + "</div>" +
+        '<div class="cmp-theirs cmp-title dim"><span class="no">' + icon("doc") + "</span>" + L("一般咨询公司", "Typical consultancies") + "</div></div>" + rowsHtml;
+    }
+
+    // 六步合作流程（首页）
+    var s6 = document.querySelector('[data-render="steps6"]');
+    if (s6) {
+      s6.innerHTML = (S.steps6 || []).map(function (p, i) {
+        return '<div class="flow-step reveal"><span class="fnum">0' + (i + 1) + "</span><b>" + p.title + "</b><small>" + p.desc + "</small></div>";
+      }).join("");
+    }
+
+    // 关于板块资质列表（首页）
+    var ac = document.querySelector('[data-render="about-certs"]');
+    if (ac) {
+      ac.innerHTML = (S.aboutCerts || []).map(function (t, i) {
+        return "<li><i>" + (i + 1) + ".</i>" + t + "</li>";
+      }).join("");
+    }
+
+    // 底部特色条
+    var wt = document.querySelector('[data-render="waiter"]');
+    if (wt) {
+      wt.innerHTML = (S.waiter || []).map(function (w) {
+        return '<div class="w-item"><div><b>' + w.k + "</b><small>" + w.v + "</small></div></div>";
+      }).join("");
+    }
   }
 
   /* ---------------- 3.5 悬浮工具条（电话 / 微信 / 留言 / 回到顶部） ---------------- */
@@ -382,6 +458,29 @@
   }
 
   /* ---------------- 启动 ---------------- */
+  /* Hero 标语轮播 */
+  function heroSlider() {
+    var slides = document.querySelectorAll(".hero-slide");
+    var dotsBox = document.getElementById("heroDots");
+    if (slides.length < 2 || !dotsBox) return;
+    var idx = 0, timer = null;
+    slides.forEach(function (s, i) {
+      var b = document.createElement("button");
+      b.setAttribute("aria-label", "第" + (i + 1) + "张");
+      if (i === 0) b.classList.add("on");
+      b.addEventListener("click", function () { go(i); restart(); });
+      dotsBox.appendChild(b);
+    });
+    var dots = dotsBox.querySelectorAll("button");
+    function go(i) {
+      idx = (i + slides.length) % slides.length;
+      slides.forEach(function (s, k) { s.classList.toggle("on", k === idx); });
+      dots.forEach(function (d, k) { d.classList.toggle("on", k === idx); });
+    }
+    function restart() { if (timer) clearInterval(timer); timer = setInterval(function () { go(idx + 1); }, 5200); }
+    restart();
+  }
+
   function init() {
     fillText();
     renderNav();
@@ -389,6 +488,7 @@
     bindUI();
     bindMotion();
     buildSideTools();
+    heroSlider();
     // 顶部信息条 / 页脚的联系方式图标
     document.querySelectorAll("[data-icon]").forEach(function (el) {
       el.innerHTML = icon(el.getAttribute("data-icon"));
