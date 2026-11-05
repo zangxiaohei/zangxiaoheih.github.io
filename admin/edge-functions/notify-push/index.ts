@@ -121,7 +121,15 @@ Deno.serve(async (req: Request) => {
       return Response.json({ sent: 0, note: "no-subscribers" });
     }
 
-    // 3. 逐条推送
+    // 3. 取当前未读总数（随推送一起下发，手机端用它点亮桌面图标红点）
+    let unread = rows.length;
+    try {
+      const uq = await rest("messages?select=id&is_read=eq.false&limit=1000");
+      const urows: any[] = await uq.json();
+      if (Array.isArray(urows)) unread = urows.length;
+    } catch { /* 取不到就退化为本批条数，不影响推送 */ }
+
+    // 4. 逐条推送
     let sent = 0;
     const deadIds: number[] = [];
     for (const m of rows) {
@@ -132,6 +140,7 @@ Deno.serve(async (req: Request) => {
           .slice(0, 60)}`,
         url: ADMIN_URL,
         tag: `msg-${m.id}`,
+        unread: unread,
       });
       for (const s of subs) {
         try {

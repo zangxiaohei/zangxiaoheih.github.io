@@ -70,21 +70,31 @@ self.addEventListener("fetch", function (e) {
   );
 });
 
-/* 收到推送：弹系统通知（横幅 / 锁屏 / 通知中心） */
+/* 收到推送：点亮桌面图标红点 + 弹系统通知（横幅 / 锁屏 / 通知中心） */
 self.addEventListener("push", function (e) {
   var data = {};
   try { data = e.data ? e.data.json() : {}; } catch (err) { data = { title: "中天认证", body: (e.data && e.data.text()) || "您有新的消息" }; }
   var title = data.title || "中天认证 · 新消息";
   var body = data.body || "点击查看详情";
   e.waitUntil(
-    self.registration.showNotification(title, {
-      body: body,
-      icon: "assets/img/icon-192.png",
-      badge: "assets/img/icon-192.png",
-      tag: data.tag || "zt-notify",
-      renotify: true,
-      data: { url: data.url || "admin-app/index.html" }
-    })
+    (function () {
+      /* App 关闭状态下也能把红点点亮：服务器推送里带未读总数 */
+      var badge = Promise.resolve();
+      var n = Number(data.unread);
+      if (n > 0 && self.registration.setAppBadge) {
+        badge = self.registration.setAppBadge(n).catch(function () {});
+      }
+      return badge.then(function () {
+        return self.registration.showNotification(title, {
+          body: body,
+          icon: "assets/img/icon-192.png",
+          badge: "assets/img/icon-192.png",
+          tag: data.tag || "zt-notify",
+          renotify: true,
+          data: { url: data.url || "admin-app/index.html" }
+        });
+      });
+    })()
   );
 });
 
