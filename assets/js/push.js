@@ -103,21 +103,26 @@
       : Promise.resolve(Notification.permission);
 
     return ask.then(function (perm) {
-      if (perm !== "granted") return false;
+      if (perm !== "granted") return "err:通知权限为 " + perm + "（需在系统设置里允许「中天后台」的通知）";
       return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapid) })
         .then(function (sub) { return syncSub(sub).then(function (srvOk) { return srvOk ? "ok" : "browser-only"; }); })
-        .catch(function () { return false; });
-    }).catch(function () { return false; });
+        .catch(function (e) { return "err:订阅请求失败 " + (e && e.name ? e.name : "") + ": " + (e && e.message ? e.message : e); });
+    }).catch(function (e) { return "err:权限询问失败 " + (e && e.message ? e.message : e); });
   }
 
-  /* 幂等订阅：已有订阅就补登记服务器，没有才新建 */
+  /* 幂等订阅：已有订阅就补登记服务器，没有才新建。失败时把真实原因记到 window.__ztPushErr 供自检面板显示 */
   function ensurePushSubscription() {
+    var done = function (r) {
+      window.__ztPushErr = (typeof r === "string" && r.indexOf("err:") === 0) ? r.slice(4) : null;
+      return r;
+    };
+    if (!("PushManager" in window)) return Promise.resolve(done("err:此浏览器不支持 PushManager"));
     return navigator.serviceWorker.ready.then(function (reg) {
       return reg.pushManager.getSubscription().then(function (existing) {
-        if (existing) return syncSub(existing).then(function (srvOk) { return srvOk ? "ok" : "browser-only"; });
-        return subscribePush(reg);
+        if (existing) return syncSub(existing).then(function (srvOk) { return done(srvOk ? "ok" : "browser-only"); });
+        return subscribePush(reg).then(done);
       });
-    }).catch(function () { return false; });
+    }).catch(function (e) { return done("err:ServiceWorker未就绪 " + (e && e.message ? e.message : e)); });
   }
 
   /* ---------- 4. 供 admin.html 调用的开关 ---------- */

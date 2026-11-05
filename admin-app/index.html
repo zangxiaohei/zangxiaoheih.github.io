@@ -177,7 +177,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="中天后台" />
-  <script src="../assets/js/push.js?v=202611052250" defer></script>
+  <script src="../assets/js/push.js?v=202611052325" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -204,7 +204,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052320 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611052325 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -520,7 +520,7 @@
     if (navigator.serviceWorker) {
       navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); })
         .then(function (sub) {
-          add("推送订阅", sub ? "本机已订阅" : "未订阅", !!sub); flush();
+          add("推送订阅", sub ? "本机已订阅" : (window.__ztPushErr ? "未订阅 · " + window.__ztPushErr : "未订阅"), !!sub); flush();
           if (!sub && typeof Notification !== "undefined" && Notification.permission === "granted" && window.ZTPush && window.ZTPush.subscribe) {
             var rb = document.createElement("button");
             rb.textContent = "立即订阅推送";
@@ -530,7 +530,13 @@
               window.ZTPush.subscribe().then(function (res) {
                 if (res === "ok") { rb.textContent = "✓ 订阅成功，服务器已登记"; rb.style.background = "#0b6e4f"; }
                 else if (res === "browser-only") { rb.textContent = "本机已订阅，但服务器登记失败 → 请执行 admin/push-notify.sql"; rb.style.background = "#c0392b"; }
-                else { rb.textContent = "订阅失败：请确认用已安装的 App 打开、通知权限已允许，且 VAPID 公钥已配置"; rb.style.background = "#c0392b"; rb.disabled = false; }
+                else {
+                  /* res 形如 "err:订阅请求失败 NotAllowedError: xxx"，把真实原因直接显示出来 */
+                  var msg = (typeof res === "string" && res.indexOf("err:") === 0) ? res.slice(4) : "未知原因";
+                  rb.textContent = "订阅失败原因：" + msg;
+                  rb.style.cssText += ";white-space:normal;text-align:left;line-height:1.6;background:#c0392b";
+                  rb.disabled = false;
+                }
               });
             };
             extraBtns.push(rb); flush();
