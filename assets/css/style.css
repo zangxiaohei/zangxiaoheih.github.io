@@ -105,6 +105,8 @@ input, textarea, select { font: inherit; color: inherit; }
 .header .wrap { display: flex; align-items: center; justify-content: space-between; height: 76px; gap: 24px; }
 
 .logo { display: flex; align-items: center; gap: 11px; flex-shrink: 0; }
+.logo-img { height: 40px; width: auto; display: block; }
+.footer .logo-img { filter: brightness(0) invert(1); opacity: .95; }
 .logo-mark {
   width: 40px; height: 40px; border-radius: 11px; flex-shrink: 0;
   background: linear-gradient(135deg, var(--brand) 0%, var(--accent) 100%);
