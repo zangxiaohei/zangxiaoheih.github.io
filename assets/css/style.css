@@ -1014,3 +1014,28 @@ body.lang-en .topbar li { font-size: 12px; }
   .pagehead .wrap { flex-direction: column; align-items: flex-start; }
 }
 .qual-page { max-width: 900px; margin: 0 auto; padding: 26px 28px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 6px 18px rgba(11,74,111,.06); }
+
+/* ---------- 详情页侧栏：更多服务 / 成功案例推荐 ---------- */
+.side-block {
+  margin-top: 24px; background: #fff; border: 1px solid var(--line);
+  border-radius: var(--radius); overflow: hidden; box-shadow: 0 6px 18px rgba(11, 74, 111, .06);
+}
+.side-block .sb-head {
+  padding: 14px 12px 13px; text-align: center; font-weight: 700; font-size: 16.5px; color: var(--ink);
+  border-top: 4px solid var(--accent); border-bottom: 1px solid var(--line); background: #fff;
+}
+.side-block ul { list-style: none; margin: 0; padding: 4px 20px; }
+.side-block ul li a {
+  display: block; padding: 13px 0; font-size: 14.5px; color: var(--body); text-decoration: none;
+  border-bottom: 1px dashed var(--line); transition: color .25s var(--ease), padding-left .25s var(--ease);
+}
+.side-block ul li:last-child a { border-bottom: 0; }
+.side-block ul li a::before { content: "·"; color: var(--accent); font-weight: 800; margin-right: 9px; }
+.side-block ul li a:hover { color: var(--brand); padding-left: 5px; }
+.sb-cases { padding: 4px 20px; }
+.sb-case { padding: 13px 0; border-bottom: 1px dashed var(--line); }
+.sb-case:last-child { border-bottom: 0; }
+.sb-case b { display: block; font-size: 13.5px; color: var(--ink); line-height: 1.65; }
+.sb-case small { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.sb-case a { text-decoration: none; color: inherit; display: block; transition: color .25s var(--ease); }
+.sb-case a:hover b { color: var(--brand); }

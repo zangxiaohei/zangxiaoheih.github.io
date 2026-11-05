@@ -309,6 +309,16 @@ window.SITE = {
   ],
 
   /* ---------------- 6.10 首页关于板块（资质列表） ---------------- */
+  /* 详情页侧栏：更多服务 + 成功案例推荐 */
+  moreServices: [
+    { name: "欧盟电池法规辅导", href: "services.html" },
+    { name: "绿色工厂评价", href: "services.html" },
+    { name: "ISO 14064 温室气体核查", href: "services.html" },
+    { name: "RWS 负责任羊毛认证", href: "services.html" },
+    { name: "ISO 46001 水效率管理体系", href: "services.html" },
+    { name: "GOTS 有机纺织品标准", href: "services.html" }
+  ],
+
   aboutCerts: [
     "国际化学品制造商协会供应链工作组成员",
     "Sedex 认可咨询合作机构",

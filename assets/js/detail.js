@@ -70,6 +70,23 @@
       }).join("");
     }
 
+    /* 右侧栏：更多服务 */
+    var ms = document.querySelector('[data-dt="more-services"]');
+    if (ms) {
+      ms.innerHTML = (S.moreServices || []).map(function (x) {
+        return '<li><a href="' + x.href + '">' + esc(x.name) + "</a></li>";
+      }).join("");
+    }
+
+    /* 右侧栏：成功案例推荐 */
+    var sc = document.querySelector('[data-dt="side-cases"]');
+    if (sc) {
+      sc.innerHTML = (S.cases || []).slice(0, 3).map(function (c) {
+        return '<div class="sb-case"><a href="cases.html"><b>' + esc(c.title) +
+          "</b><small>" + esc(c.industry) + " · " + esc((c.metrics && c.metrics[2] && c.metrics[2].v) || "") + "</small></a></div>";
+      }).join("");
+    }
+
     /* 站内 CTA 带上项目参数，联系页自动选中对应项目 */
     document.querySelectorAll('a[href="contact.html"]').forEach(function (a) {
       a.setAttribute("href", "contact.html?p=" + s.slug);

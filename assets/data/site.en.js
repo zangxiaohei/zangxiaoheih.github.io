@@ -301,6 +301,16 @@ window.SITE_EN = {
   ],
 
   /* About section qualification list */
+  /* Detail sidebar: more services + recommended cases */
+  moreServices: [
+    { name: "EU Battery Regulation", href: "services.html" },
+    { name: "Green Factory Assessment", href: "services.html" },
+    { name: "ISO 14064 GHG Verification", href: "services.html" },
+    { name: "RWS Responsible Wool Standard", href: "services.html" },
+    { name: "ISO 46001 Water Efficiency", href: "services.html" },
+    { name: "GOTS Organic Textiles", href: "services.html" }
+  ],
+
   aboutCerts: [
     "SCM working group member, international chemicals manufacturers association",
     "Recognised Sedex consulting partner",

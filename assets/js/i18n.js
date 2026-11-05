@@ -151,6 +151,8 @@
     "第1张": "Slide 1",
     "第2张": "Slide 2",
     "第3张": "Slide 3",
+    "更多服务": "More Services",
+    "成功案例推荐": "Recommended Cases",
     "友情链接：": "Links: ",
 
     /* 六大承诺 */
