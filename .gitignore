@@ -1,2 +1,5 @@
 _selftest2.html
 _t/
+
+# 安全加固脚本含管理员邮箱，不提交到公开仓库
+admin/harden-rls.sql

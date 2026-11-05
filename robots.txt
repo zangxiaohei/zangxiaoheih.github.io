@@ -1,6 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /assets/data/
+Disallow: /admin.html
+Disallow: /admin/
 
-# 上线后改成你的域名
-Sitemap: https://www.example.com/sitemap.xml
+Sitemap: https://zangxiaohei.github.io/zangxiaoheih.github.io/sitemap.xml

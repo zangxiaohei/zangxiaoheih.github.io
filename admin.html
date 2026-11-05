@@ -240,7 +240,7 @@
     showTip(tipLogin, "登录中…");
     client.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
       $("btn-login").disabled = false;
-      if (res.error) { showTip(tipLogin, "登录失败：" + res.error.message, true); return; }
+      if (res.error) { showTip(tipLogin, "邮箱或密码错误。", true); return; }
       enterAdmin(res.data.user);
     });
   }
@@ -250,6 +250,33 @@
   });
 
   function enterAdmin(user) {
+    /* 权限校验：只有 app_metadata.role = admin 的账号可进入。
+       app_metadata 只能由服务端写入，前端无法伪造。
+       未打标记的账号（数据库还没执行 harden-rls.sql 时）放行但顶部告警，
+       数据库加固后这些账号会被 RLS 拦截，读不到任何数据。 */
+    var role = (user.app_metadata && user.app_metadata.role) || "";
+    if (role === "admin") { openAdmin(user); return; }
+    client.from("messages").select("id").limit(1).then(function (res) {
+      if (res && !res.error) {
+        openAdmin(user);
+        showSecurityWarn();
+      } else {
+        client.auth.signOut();
+        showTip(tipLogin, "该账号没有后台权限，请联系管理员开通。", true);
+      }
+    });
+  }
+
+  function showSecurityWarn() {
+    if (document.getElementById("sec-warn")) return;
+    var d = document.createElement("div");
+    d.id = "sec-warn";
+    d.style.cssText = "background:#c0392b;color:#fff;font-size:13px;padding:10px 16px;text-align:center;line-height:1.6";
+    d.innerHTML = "安全策略未升级：当前任何注册用户都可能读到留言与客服会话。请在 Supabase SQL Editor 执行 <b>admin/harden-rls.sql</b>，并关闭邮件注册。";
+    document.body.insertBefore(d, document.body.firstChild);
+  }
+
+  function openAdmin(user) {
     currentUser = user;
     $("view-login").classList.add("hidden");
     $("view-admin").classList.remove("hidden");
