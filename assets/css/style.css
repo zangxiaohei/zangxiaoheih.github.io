@@ -150,6 +150,7 @@ input, textarea, select { font: inherit; color: inherit; }
 .topbar ul { display: flex; align-items: center; gap: 26px; }
 .topbar li { display: flex; align-items: center; gap: 7px; }
 .topbar svg { width: 14px; height: 14px; opacity: .8; }
+.topbar a { white-space: nowrap; }
 .topbar a:hover { color: #fff; }
 .topbar .lang { display: flex; gap: 12px; align-items: center; }
 .topbar .lang a.on { color: #fff; font-weight: 600; }
@@ -620,9 +621,19 @@ body.menu-open .drawer { opacity: 1; visibility: visible; transform: translateY(
   .sec-head { margin-bottom: 36px; }
   .grid-3, .grid-2, .grid-4 { grid-template-columns: 1fr; }
   .stats { margin-top: -50px; }
-  .hero { padding: 56px 0 96px; }
-  .hero-meta { gap: 14px 22px; }
+  .hero { padding: 40px 0 84px; }
+  .hero .wrap { gap: 14px; }
+  .hero-slides { min-height: 0; }
+  .hero h1 { margin: 10px 0 10px; }
+  .hero p { font-size: 15.5px; }
+  .hero-actions { margin-top: 20px; }
+  .hero-meta { margin-top: 20px; padding-top: 16px; gap: 10px 18px; }
+  .hero-dots { position: static; margin-top: 16px; }
   .hero-actions .btn { flex: 1 1 100%; }
+  .topbar .wrap { height: auto; padding: 7px 0; }
+  .topbar ul { gap: 14px; min-width: 0; }
+  .topbar ul li:nth-child(2), .topbar ul li:nth-child(3) { display: none; }
+  .topbar a, .topbar .lang { white-space: nowrap; }
   .footer-grid { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; text-align: center; justify-content: center; }
   .svc-row { grid-template-columns: 52px 1fr; gap: 16px; padding: 22px; }
@@ -828,7 +839,8 @@ body.lang-en .topbar li { font-size: 12px; }
    ========================================================================== */
 
 /* ---------- Hero 轮播 ---------- */
-.hero-slides { position: relative; min-height: 285px; }
+.hero-slides { position: relative; }
+@media (min-width: 721px) { .hero-slides { min-height: 285px; } }  /* 桌面给底部圆点留位；手机自适应收紧 */
 .hero-slide { display: none; }
 .hero-slide.on { display: block; animation: slideFade .7s var(--ease); }
 @keyframes slideFade { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
@@ -974,7 +986,6 @@ body.lang-en .topbar li { font-size: 12px; }
   .qualifications ul { grid-template-columns: 1fr; }
 }
 @media (max-width: 720px) {
-  .hero-slides { min-height: 330px; }
   .flow { grid-template-columns: repeat(2, 1fr); }
   .tab-panel.on { grid-template-columns: repeat(2, 1fr); }
   .client-wall { grid-template-columns: repeat(2, 1fr); }

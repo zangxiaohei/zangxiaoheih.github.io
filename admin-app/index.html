@@ -83,6 +83,25 @@
     .day-head .cnt { font-weight: 600; font-size: 12.5px; color: var(--brand); background: #fff; border-radius: 999px; padding: 1px 9px; }
     .day-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
     .day-head.read-day .dot { background: #b9cfc4; }
+    /* 年 → 月 → 日 三级折叠 */
+    .year-group { margin-top: 10px; }
+    .year-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px 12px;
+                 border: 0; background: linear-gradient(120deg,#eef6f1,#e3f2ea); border-radius: 10px;
+                 cursor: pointer; font-weight: 800; font-size: 14.5px; color: var(--ink); font-family: inherit; }
+    .year-head:hover { filter: brightness(.97); }
+    .year-head .arrow { margin-left: auto; transition: transform .2s; font-size: 12px; color: var(--mut); }
+    .year-group.closed .year-head .arrow { transform: rotate(-90deg); }
+    .year-group.closed > .y-body { display: none; }
+    .y-body { padding: 6px 0 0 8px; }
+    .month-group { margin-top: 6px; }
+    .month-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+                  border: 0; background: #f4f9f6; border-radius: 9px; cursor: pointer;
+                  font-weight: 700; font-size: 13.5px; color: var(--ink); font-family: inherit; }
+    .month-head:hover { background: #eef6f1; }
+    .month-head .arrow { margin-left: auto; transition: transform .2s; font-size: 12px; color: var(--mut); }
+    .month-group.closed .month-head .arrow { transform: rotate(-90deg); }
+    .month-group.closed > .m-body { display: none; }
+    .m-body { padding: 4px 0 0 8px; }
     .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
     @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
     .sec-title { font-size: 15px; font-weight: 600; margin: 18px 0 4px; padding-bottom: 6px;
@@ -140,7 +159,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="中天后台" />
-  <script src="../assets/js/push.js?v=2026110517" defer></script>
+  <script src="../assets/js/push.js?v=2026110518" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -173,6 +192,7 @@
         <h1>官网后台管理</h1>
         <p class="sub" id="whoami"></p>
       </div>
+      <button class="ghost sm" id="btn-diag" title="检查红点/通知为什么不生效">🔔 提醒自检</button>
       <button class="ghost sm" id="btn-logout">退出登录</button>
     </div>
 
@@ -329,11 +349,83 @@
     if (window.ZTPush) window.ZTPush.adminOnline();
   }
 
+  /* ---------------- 提醒自检：一眼看出红点/通知卡在哪 ---------------- */
+  $("btn-diag").addEventListener("click", function () {
+    var old = document.getElementById("diag-wrap");
+    if (old) { old.remove(); return; }
+    var wrap = document.createElement("div");
+    wrap.id = "diag-wrap";
+    wrap.style.cssText = "position:fixed;inset:0;background:rgba(6,32,24,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
+    var box = document.createElement("div");
+    box.style.cssText = "background:#fff;border-radius:16px;padding:16px 18px 12px;max-width:430px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.28);font-size:14px";
+    box.innerHTML = '<div style="display:flex;align-items:center;margin-bottom:8px">' +
+      '<b style="font-size:15.5px">桌面提醒自检</b>' +
+      '<button id="diag-x" style="margin-left:auto;border:0;background:#f1f6f3;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:14px">✕</button></div>' +
+      '<div id="diag-body" style="color:#5d7a6e">检测中…</div>' +
+      '<div style="font-size:12px;color:#7c9188;margin-top:10px;line-height:1.7">红点需要 4 个条件同时满足：装成桌面 App、允许通知、登录过本机、数据库已执行 push-notify.sql。</div>';
+    wrap.appendChild(box);
+    document.body.appendChild(wrap);
+    box.querySelector("#diag-x").onclick = function () { wrap.remove(); };
+    wrap.onclick = function (e) { if (e.target === wrap) wrap.remove(); };
+
+    var rows = [];
+    function add(k, v, ok) {
+      var color = ok === true ? "#0b6e4f" : ok === false ? "#c0392b" : "#334";
+      rows.push('<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #e8f1ec">' +
+        '<span style="color:#5d7a6e;flex:1">' + k + '</span>' +
+        '<span style="font-weight:600;color:' + color + ';text-align:right">' + v + '</span></div>');
+    }
+    function flush() { box.querySelector("#diag-body").innerHTML = rows.join(""); }
+
+    var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+    add("运行方式", standalone ? "桌面 App 独立窗口" : "浏览器标签内", standalone);
+    add("角标接口", navigator.setAppBadge ? "支持" : "不支持（此浏览器无 Badging API）", !!navigator.setAppBadge);
+    var perm = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
+    add("通知权限", perm === "granted" ? "已允许" : perm === "denied" ? "已拒绝，需去系统设置改" : perm === "default" ? "未询问" : "不支持", perm === "granted");
+    var mark = localStorage.getItem("zt_admin_mark") === "1";
+    add("本机管理员标记", mark ? "已开启" : "未开启（请登录一次后台）", mark);
+
+    if (navigator.serviceWorker) {
+      navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); })
+        .then(function (sub) { add("推送订阅", sub ? "本机已订阅" : "未订阅", !!sub); flush(); })
+        .catch(function () { add("推送订阅", "读取失败", false); flush(); });
+    } else { add("推送订阅", "浏览器不支持", false); }
+
+    if (!cfg.url || !cfg.anonKey) { add("未读数接口", "缺少数据库配置", false); flush(); return; }
+    fetch(cfg.url + "/rest/v1/rpc/msg_unread_count", {
+      method: "POST",
+      headers: { apikey: cfg.anonKey, Authorization: "Bearer " + cfg.anonKey, "Content-Type": "application/json" },
+      body: "{}"
+    }).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (n) {
+      add("未读数接口", "正常，当前未读 " + n + " 条", true);
+      flush();
+    }).catch(function () {
+      add("未读数接口", "不可用 → 需执行 push-notify.sql", false);
+      flush();
+    });
+  });
+
   $("btn-logout").addEventListener("click", function () {
-    /* 只清本地会话，不依赖网络；无论如何 1.2 秒后强制刷新，避免点了没反应 */
-    if (window.ZTPush) window.ZTPush.adminOffline();
+    /* 退出登录：不依赖网络，直接把本地会话清干净再强制刷新。
+       只调 signOut 在部分版本/弱网下不会清 token，刷新后会被自动登回来，表现为"点了没反应" */
+    if (window.ZTPush) { try { window.ZTPush.adminOffline(); } catch (e) {} }
     try { client.auth.signOut({ scope: "local" }); } catch (e) {}
-    setTimeout(function () { location.href = "index.html?out=" + Date.now(); }, 300);
+    try {
+      Object.keys(localStorage).forEach(function (k) {
+        if (k.indexOf("sb-") === 0 || k.indexOf("supabase.auth") === 0) localStorage.removeItem(k);
+      });
+      Object.keys(sessionStorage).forEach(function (k) {
+        if (k.indexOf("sb-") === 0) sessionStorage.removeItem(k);
+      });
+    } catch (e) {}
+    /* 清完立即跳转；replace 不留下历史，返回键不会退回后台 */
+    try { location.replace("index.html?out=" + Date.now()); }
+    catch (e) { location.href = "index.html?out=" + Date.now(); }
+    /* 兜底：极端情况下 replace 被拦截，1 秒后强制刷新 */
+    setTimeout(function () { location.reload(); }, 1000);
   });
 
   /* ---------------- 选项卡 ---------------- */
@@ -349,6 +441,32 @@
     });
   });
 
+  /* ---- 日期分组辅助：留言 / 会话共用（按本机时区，凌晨消息不再算错天） ---- */
+  function dkey(d) {
+    if (!d || isNaN(d)) return "未知";
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  var DAYCN = ["日", "一", "二", "三", "四", "五", "六"];
+  function dayLabel(k) {
+    if (k === "未知") return "未知时间";
+    var d = new Date(k + "T12:00:00");
+    var now = new Date(), yd = new Date(Date.now() - 864e5);
+    var name = (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + DAYCN[d.getDay()];
+    if (k === dkey(now)) return "今天 · " + name;
+    if (k === dkey(yd)) return "昨天 · " + name;
+    return name;
+  }
+  function putInTree(tree, k, item) {
+    var y = k.slice(0, 4), mo = k.slice(0, 7);
+    if (k === "未知") { y = "未知"; mo = "未知"; }
+    if (!tree[y]) tree[y] = {};
+    if (!tree[y][mo]) tree[y][mo] = {};
+    if (!tree[y][mo][k]) tree[y][mo][k] = [];
+    tree[y][mo][k].push(item);
+    return y;
+  }
+
   /* ---------------- 留言管理 ---------------- */
   $("btn-refresh").addEventListener("click", loadMessages);
 
@@ -362,53 +480,73 @@
         var box = $("msg-list");
         if (!res.data.length) { box.innerHTML = '<div class="empty">还没有留言。客户在聊天框或联系页提交后会出现在这里。</div>'; return; }
 
-        /* 按日期分组折叠：默认最新一天展开，其余收起 */
-        var DAY = ["日", "一", "二", "三", "四", "五", "六"];
-        function dayKey(iso) { try { return new Date(iso).toISOString().slice(0, 10); } catch (e) { return "未知"; } }
-        function dayLabel(k) {
-          var d = new Date(k + "T12:00:00+08:00");
-          var today = new Date(); var yd = new Date(Date.now() - 864e5);
-          var same = function (a, b) { return a.getFullYear() + "-" + (a.getMonth() + 1) + "-" + a.getDate() === b.getFullYear() + "-" + (b.getMonth() + 1) + "-" + b.getDate(); };
-          var name = (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + DAY[d.getDay()];
-          if (same(d, today)) return "今天 · " + name;
-          if (same(d, yd)) return "昨天 · " + name;
-          return d.getFullYear() + "年" + name;
-        }
-        var groups = {}, order = [];
+        /* 三级折叠：年 → 月 → 日。最新一年 / 最新一月 / 最新一天默认展开，其余收起 */
+        var tree = {}, latest = { y: "", m: "", d: "" };
         res.data.forEach(function (m) {
-          var k = dayKey(m.created_at);
-          if (!groups[k]) { groups[k] = []; order.push(k); }
-          groups[k].push(m);
+          var k = dkey(new Date(m.created_at));
+          var y = putInTree(tree, k, m);
+          if (!latest.y || y > latest.y) { latest.y = y; }
         });
-        order.sort(); order.reverse();
-        box.innerHTML = order.map(function (k, idx) {
-          var list = groups[k];
-          var hasUnread = list.some(function (m) { return !m.is_read; });
-          var cards = list.map(function (m) {
-            return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
-              '<div class="meta"><b>' + esc(m.name) + '</b><span>📞 ' + esc(m.phone) + '</span>' +
-              '<span>' + esc(m.source || "web") + '</span><span>' + fmtTime(m.created_at) + '</span>' +
-              (m.is_read ? '<span>已读</span>' : '<span style="color:var(--brand);font-weight:600">未读</span>') + '</div>' +
-              '<div class="body">' + esc(m.content || "（无描述）") + '</div>' +
-              '<div class="ops">' +
-              '<button class="ghost sm" data-mark="' + m.id + '" data-read="' + (m.is_read ? "false" : "true") + '">' + (m.is_read ? "标为未读" : "标为已读") + '</button>' +
-              '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
-              '</div></div>';
+        latest.m = null; latest.d = null;
+        if (tree[latest.y]) {
+          var ms = Object.keys(tree[latest.y]).sort().reverse();
+          latest.m = ms[0];
+          latest.d = Object.keys(tree[latest.y][latest.m]).sort().reverse()[0];
+        }
+        box.innerHTML = Object.keys(tree).sort().reverse().map(function (y) {
+          var months = Object.keys(tree[y]).sort().reverse();
+          var mHtml = months.map(function (mo) {
+            var days = Object.keys(tree[y][mo]).sort().reverse();
+            var dHtml = days.map(function (k) {
+              var list = tree[y][mo][k];
+              var hasUnread = list.some(function (m) { return !m.is_read; });
+              var cards = list.map(function (m) {
+                return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
+                  '<div class="meta"><b>' + esc(m.name) + '</b><span>📞 ' + esc(m.phone) + '</span>' +
+                  '<span>' + esc(m.source || "web") + '</span><span>' + fmtTime(m.created_at) + '</span>' +
+                  (m.is_read ? '<span>已读</span>' : '<span style="color:var(--brand);font-weight:600">未读</span>') + '</div>' +
+                  '<div class="body">' + esc(m.content || "（无描述）") + '</div>' +
+                  '<div class="ops">' +
+                  '<button class="ghost sm" data-mark="' + m.id + '" data-read="' + (m.is_read ? "false" : "true") + '">' + (m.is_read ? "标为未读" : "标为已读") + '</button>' +
+                  '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
+                  '</div></div>';
+              }).join("");
+              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '">' +
+                '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
+                '<span class="dot"></span>' + dayLabel(k) +
+                '<span class="cnt">' + list.length + ' 条</span>' +
+                (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+                '<span class="arrow">▼</span></button>' +
+                '<div class="day-body">' + cards + '</div></div>';
+            }).join("");
+            var mCnt = days.reduce(function (a, k) { return a + tree[y][mo][k].length; }, 0);
+            var mUnread = days.some(function (k) { return tree[y][mo][k].some(function (m) { return !m.is_read; }); });
+            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '">' +
+              '<button type="button" class="month-head">' + (mo === "未知" ? "未知月份" : parseInt(mo.slice(5), 10) + '月') +
+              '<span class="cnt">' + mCnt + ' 条</span>' +
+              (mUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
+              '<span class="arrow">▼</span></button>' +
+              '<div class="m-body">' + dHtml + '</div></div>';
           }).join("");
-          return '<div class="day-group' + (idx === 0 ? "" : " closed") + '">' +
-            '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
-            '<span class="dot"></span>' + dayLabel(k) +
-            '<span class="cnt">' + list.length + ' 条</span>' +
-            (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+          var yCnt = months.reduce(function (a, mo) { return a + Object.keys(tree[y][mo]).reduce(function (b, k) { return b + tree[y][mo][k].length; }, 0); }, 0);
+          var yUnread = months.some(function (mo) { return Object.keys(tree[y][mo]).some(function (k) { return tree[y][mo][k].some(function (m) { return !m.is_read; }); }); });
+          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '">' +
+            '<button type="button" class="year-head">' + (y === "未知" ? "未知年份" : y + '年') +
+            '<span class="cnt">' + yCnt + ' 条</span>' +
+            (yUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
             '<span class="arrow">▼</span></button>' +
-            '<div class="day-body">' + cards + '</div></div>';
+            '<div class="y-body">' + mHtml + '</div></div>';
         }).join("");
       });
   }
 
   $("msg-list").addEventListener("click", function (e) {
     var head = e.target.closest(".day-head");
-    if (head) { head.parentElement.classList.toggle("closed"); return; }    /* 折叠/展开某一天 */
+    if (head) { head.closest(".day-group").classList.toggle("closed"); return; }
+    var mh = e.target.closest(".month-head");
+    if (mh) { mh.closest(".month-group").classList.toggle("closed"); return; }
+    var yh = e.target.closest(".year-head");
+    if (yh) { yh.closest(".year-group").classList.toggle("closed"); return; }
     var mark = e.target.getAttribute("data-mark");
     var del = e.target.getAttribute("data-del");
     if (mark) {
@@ -496,13 +634,59 @@
       .then(function (res) {
         if (res.error) { $("threads").innerHTML = '<div class="empty">读取失败：' + esc(res.error.message) + "</div>"; return; }
         if (!res.data.length) { $("threads").innerHTML = '<div class="empty">还没有访客会话。<br>访客在网站聊天框发消息后会出现在这里。</div>'; return; }
-        $("threads").innerHTML = res.data.map(function (t) {
+        function threadCard(t) {
           var n = unreadMap[t.id] || 0;
           return '<div class="thread-item' + (curThread === t.id ? " on" : "") + '" data-thread="' + t.id + '">' +
             '<div class="t-top"><b>' + esc(t.name || "访客 " + String(t.id).slice(0, 6)) + (n ? '<span class="dot"></span>' : "") + '</b>' +
             '<span style="color:#98a5b1">' + fmtTime(t.last_at).slice(5) +
             '<button class="t-del" data-del="' + t.id + '" title="删除此会话">✕</button></span></div>' +
             '<div class="t-sub">' + esc(t.phone || "未留电话") + '</div></div>';
+        }
+        /* 三级折叠：年 → 月 → 日（最新年/月/日默认展开） */
+        var tree = {}, latest = { y: "", m: "", d: "" };
+        res.data.forEach(function (t) {
+          var k = dkey(new Date(t.last_at));
+          var y = putInTree(tree, k, t);
+          if (!latest.y || y > latest.y) { latest.y = y; }
+        });
+        latest.m = null; latest.d = null;
+        if (tree[latest.y]) {
+          var ms = Object.keys(tree[latest.y]).sort().reverse();
+          latest.m = ms[0];
+          latest.d = Object.keys(tree[latest.y][latest.m]).sort().reverse()[0];
+        }
+        $("threads").innerHTML = Object.keys(tree).sort().reverse().map(function (y) {
+          var months = Object.keys(tree[y]).sort().reverse();
+          var mHtml = months.map(function (mo) {
+            var days = Object.keys(tree[y][mo]).sort().reverse();
+            var dHtml = days.map(function (k) {
+              var list = tree[y][mo][k];
+              var hasUnread = list.some(function (t) { return (unreadMap[t.id] || 0) > 0; });
+              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '">' +
+                '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '">' +
+                '<span class="dot"></span>' + dayLabel(k) +
+                '<span class="cnt">' + list.length + ' 会话</span>' +
+                (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+                '<span class="arrow">▼</span></button>' +
+                '<div class="day-body">' + list.map(threadCard).join("") + '</div></div>';
+            }).join("");
+            var mCnt = days.reduce(function (a, k) { return a + tree[y][mo][k].length; }, 0);
+            var mUnread = days.some(function (k) { return tree[y][mo][k].some(function (t) { return (unreadMap[t.id] || 0) > 0; }); });
+            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '">' +
+              '<button type="button" class="month-head">' + (mo === "未知" ? "未知月份" : parseInt(mo.slice(5), 10) + '月') +
+              '<span class="cnt">' + mCnt + ' 会话</span>' +
+              (mUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
+              '<span class="arrow">▼</span></button>' +
+              '<div class="m-body">' + dHtml + '</div></div>';
+          }).join("");
+          var yCnt = months.reduce(function (a, mo) { return a + Object.keys(tree[y][mo]).reduce(function (b, k) { return b + tree[y][mo][k].length; }, 0); }, 0);
+          var yUnread = months.some(function (mo) { return Object.keys(tree[y][mo]).some(function (k) { return tree[y][mo][k].some(function (t) { return (unreadMap[t.id] || 0) > 0; }); }); });
+          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '">' +
+            '<button type="button" class="year-head">' + (y === "未知" ? "未知年份" : y + '年') +
+            '<span class="cnt">' + yCnt + ' 会话</span>' +
+            (yUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
+            '<span class="arrow">▼</span></button>' +
+            '<div class="y-body">' + mHtml + '</div></div>';
         }).join("");
         loadUnread();
       });
@@ -536,6 +720,12 @@
   $("threads").addEventListener("click", function (e) {
     var del = e.target.closest(".t-del");
     if (del) { delThread(del.getAttribute("data-del")); return; }
+    var dh = e.target.closest(".day-head");
+    if (dh) { dh.closest(".day-group").classList.toggle("closed"); return; }
+    var mh = e.target.closest(".month-head");
+    if (mh) { mh.closest(".month-group").classList.toggle("closed"); return; }
+    var yh = e.target.closest(".year-head");
+    if (yh) { yh.closest(".year-group").classList.toggle("closed"); return; }
     var it = e.target.closest("[data-thread]");
     if (!it) return;
     curThread = it.getAttribute("data-thread");

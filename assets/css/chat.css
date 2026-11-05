@@ -182,11 +182,16 @@
 
 @media (max-width: 720px) {
   .chat-fab { right: 14px; bottom: 14px; top: auto; }
-  .chat-panel { right: 10px; left: 10px; bottom: 78px; width: auto; height: calc(100vh - 96px); max-height: none; }
-  .chat-invite { right: 10px; bottom: 78px; }
+  .chat-panel { right: 8px; left: 8px; bottom: 76px; width: auto; height: calc(100vh - 110px); max-height: none; }
+  .chat-panel { height: calc(100dvh - 110px); }  /* dvh：适配安卓地址栏收起/展开 */
+  .chat-invite { right: 10px; bottom: 82px; max-width: calc(100vw - 90px); }
+  .chat-invite .bubble { padding: 10px 12px; font-size: 12.5px; }
   .chat-fab { right: 14px; bottom: 14px; width: 54px; height: 54px; }
-  .chat-head { padding: 12px 14px; }
+  .chat-head { padding: 10px 12px; gap: 9px; }
+  .chat-head .avatar { width: 34px; height: 34px; font-size: 13px; }
   .chat-head b { font-size: 14px; }
+  .chat-body { padding: 12px 10px 6px; }
+  .msg .bubble { max-width: 86%; padding: 10px 12px; font-size: 13.8px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-fab, .chat-panel { transition: none; }
