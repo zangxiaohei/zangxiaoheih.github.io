@@ -293,7 +293,6 @@
 
   /* ---------------- 4. 应用翻译 ---------------- */
   var ZH = /[\u4e00-\u9fa5]/;
-  var applying = false;   /* 重入防护：自己触发的变更不再二次翻译，杜绝循环卡死 */
 
   function applyText(node) {
     var raw = node.nodeValue;
@@ -324,7 +323,7 @@
   }
 
   function apply(root) {
-    if (!root || applying) return;
+    if (!root) return;
     if (root.nodeType === 3) { applyText(root); return; }
     if (root.nodeType !== 1 && root.nodeType !== 9) return;
 
@@ -379,17 +378,12 @@
   }
 
   function applyAll() {
-    applying = true;
-    try {
-      apply(document.body);
-      if (document.title && ZH.test(document.title)) {
-        var t = document.title.replace(/\s+/g, " ").trim();
-        if (UI[t]) document.title = UI[t];
-      }
-      applySeo();
-    } finally {
-      applying = false;
+    apply(document.body);
+    if (document.title && ZH.test(document.title)) {
+      var t = document.title.replace(/\s+/g, " ").trim();
+      if (UI[t]) document.title = UI[t];
     }
+    applySeo();
     document.documentElement.setAttribute("lang", "en");
     document.body.classList.add("lang-en");
   }
