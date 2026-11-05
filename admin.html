@@ -133,6 +133,13 @@
     ::-webkit-scrollbar-thumb { background: #c4d4cb; border-radius: 6px; }
     ::-webkit-scrollbar-thumb:hover { background: #a9bfb2; }
   </style>
+  <meta name="theme-color" content="#0b6e4f" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="中天后台" />
+  <script src="assets/js/push.js?v=2026110517" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -317,10 +324,13 @@
     loadMessages();
     loadUnread();
     initContentEditor();
+    /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
+    if (window.ZTPush) window.ZTPush.adminOnline();
   }
 
   $("btn-logout").addEventListener("click", function () {
     /* 只清本地会话，不依赖网络；无论如何 1.2 秒后强制刷新，避免点了没反应 */
+    if (window.ZTPush) window.ZTPush.adminOffline();
     try { client.auth.signOut({ scope: "local" }); } catch (e) {}
     setTimeout(function () { location.href = "admin.html?out=" + Date.now(); }, 300);
   });

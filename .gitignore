@@ -3,3 +3,7 @@ _t/
 
 # 安全加固脚本含管理员邮箱，不提交到公开仓库
 admin/harden-rls.sql
+
+# VAPID 私钥文件，严禁提交到公开仓库（公钥 _vapid_public.txt 可以提交）
+admin/_vapid_private.txt
+admin/push-notify.sql
