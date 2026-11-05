@@ -13,3 +13,5 @@ _icongen*.html
 _icon_src*.png
 _icon_mask_src*.png
 _probe_*.html
+
+# 构建产物目录（由 Actions 自动提交最新 APK）
