@@ -703,3 +703,38 @@ body.menu-open .drawer { opacity: 1; visibility: visible; transform: translateY(
   .cases-grid { grid-template-columns: 1fr; }
   .side-tools { display: none; }
 }
+
+/* ==========================================================================
+   英文版排版微调（body.lang-en 由 i18n.js 添加）
+   英文普遍比中文长，这里收一点字号与字距，避免导航和 logo 挤在一起
+   ========================================================================== */
+body.lang-en .logo-text { max-width: 250px; }
+body.lang-en .logo-text b {
+  font-size: 12.5px; letter-spacing: 0; line-height: 1.3;
+  white-space: normal; display: block;
+}
+body.lang-en .logo-text span {
+  font-size: 9px; letter-spacing: .04em; line-height: 1.3; margin-top: 2px;
+}
+body.lang-en .nav { gap: 0; }
+body.lang-en .nav > li > a { padding: 10px 11px; font-size: 14.5px; }
+body.lang-en .header-tel small { font-size: 11px; }
+body.lang-en .eyebrow { letter-spacing: .08em; }
+body.lang-en h1, body.lang-en h2, body.lang-en .sec-head h2 { letter-spacing: -.01em; }
+body.lang-en .topbar li { font-size: 12px; }
+
+@media (max-width: 720px) {
+  body.lang-en .topbar ul { gap: 12px; }
+  body.lang-en .topbar li { font-size: 11px; }
+  body.lang-en .logo-text b { font-size: 11.5px; }
+  body.lang-en .hero p { font-size: 15px; }
+}
+
+@media (max-width: 1080px) {
+  body.lang-en .nav > li > a { padding: 10px 8px; font-size: 14px; }
+  body.lang-en .logo-text { max-width: 190px; }
+}
+@media (max-width: 900px) {
+  body.lang-en .logo-text b { font-size: 12px; }
+  body.lang-en .logo-text span { display: none; }
+}

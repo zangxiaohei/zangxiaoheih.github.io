@@ -11,6 +11,13 @@
   var C = (window.SITE || {}).chat;
   if (!C) return;
 
+  /* 文案双语：L("中文", "English")；未加载 i18n.js 时回落到中文 */
+  function L(zh, en) { return (window.LANG === "en" && en) ? en : zh; }
+  var HELLO = L(
+    "您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。",
+    "Hi! I'm the <b>Zenithe</b> assistant. Tap a question below for a quick answer, or leave a message — our team replies as soon as they see it."
+  );
+
   var TEL = (window.SITE.company || {}).phoneRaw || "";
   var ICON_CHAT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 01-8 8H5l-2 2V12a8 8 0 018-8h2a8 8 0 018 8z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>';
   var ICON_SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>';
@@ -116,7 +123,7 @@
     hideInvite();
     setTimeout(function () { input.focus(); }, 250);
     if (!body.childElementCount) {
-      botSay("您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。");
+      botSay(HELLO);
       renderChips();
     }
     startPoll();
@@ -131,9 +138,11 @@
   var invite = document.createElement("div");
   invite.className = "chat-invite";
   invite.innerHTML =
-    '<div class="bubble"><button class="x" aria-label="关闭提醒">✕</button>' +
-    '您好，我是<b>' + (C.mark || "客服") + '顾问</b>，需要我帮助吗？<br>' +
-    '<span class="go">💬 在线咨询</span></div>';
+    '<div class="bubble"><button class="x" aria-label="' + L("关闭提醒", "Dismiss") + '">✕</button>' +
+    L(
+      "您好，我是<b>" + (C.mark || "客服") + "顾问</b>，需要我帮助吗？<br><span class=\"go\">💬 在线咨询</span>",
+      "Hi, need any help with certification?<br><span class=\"go\">💬 Chat now</span>"
+    ) + "</div>";
   document.body.appendChild(invite);
   function hideInvite() { invite.classList.remove("show"); }
   invite.querySelector(".bubble").addEventListener("click", function (e) {
@@ -152,19 +161,22 @@
   panel.querySelector('.x[aria-label="关闭"]').addEventListener("click", close);
   /* 新会话：换一个访客标识，聊天窗从头开始；旧会话保留在客服后台 */
   panel.querySelector(".chat-new").addEventListener("click", function () {
-    if (!confirm("开始新会话？\n本窗口将从头开始；之前的聊天记录仍保留在客服后台。")) return;
+    if (!confirm(L("开始新会话？\n本窗口将从头开始；之前的聊天记录仍保留在客服后台。",
+                   "Start a new conversation?\nThis window restarts from scratch; earlier messages stay in our back office."))) return;
     VK = uuid();
     try { localStorage.setItem("zt_vk", VK); } catch (e) {}
     lastId = 0;
     humanReplied = false;
     pending = [];
     body.innerHTML = "";
-    botSay("您好，我是<b>" + (C.mark || "客服") + "</b>。可以点下面的问题快速了解，也可以直接留言，客服看到会回复您。");
+    botSay(HELLO);
     renderChips();
     stopPoll();
     startPoll();
   });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+  /* 支持 ?chat=open 直接打开聊天窗（可用于广告落地页直达客服） */
+  if (/[?&]chat=open/.test(location.search)) setTimeout(open, 300);
 
   /* ---------------- 消息渲染 ---------------- */
   function addMsg(html, me) {
@@ -214,7 +226,7 @@
         if (t.indexOf(String(keys[j]).toLowerCase()) !== -1) return f.a;
       }
     }
-    return C.fallback || "已收到您的消息，客服看到会尽快回复您。";
+    return C.fallback || L("已收到您的消息，客服看到会尽快回复您。", "Message received — our team will get back to you shortly.");
   }
 
   /* ---------------- 与服务端同步 ---------------- */
@@ -278,7 +290,8 @@
         })
         .catch(function () {
           clearPending(text);
-          botSay("消息发送失败了，请直接拨打 <b>" + ((window.SITE.company || {}).phone || "") + "</b>，或稍后再试。");
+          botSay(L("消息发送失败了，请直接拨打 <b>" + ((window.SITE.company || {}).phone || "") + "</b>，或稍后再试。",
+                   "Sending failed. Please call <b>" + ((window.SITE.company || {}).phone || "") + "</b> or try again later."));
         });
       return;
     }
@@ -356,7 +369,7 @@
     var ok = el.querySelector(".chat-form .ok");
 
     if (!name || !phone) {
-      ok.textContent = "请填写称呼和联系电话。";
+      ok.textContent = L("请填写称呼和联系电话。", "Please fill in your name and phone number.");
       ok.classList.add("show");
       return;
     }
@@ -365,12 +378,13 @@
 
     if (dbOn()) {
       formBtn.disabled = true;
-      formBtn.textContent = "提交中…";
-      var lead = msg || "（访客通过留言表单联系）";
+      formBtn.textContent = L("提交中…", "Sending…");
+      var lead = msg || L("（访客通过留言表单联系）", "(Visitor contacted us via the message form)");
       window.DB.chatSend({ key: VK, name: name, phone: phone, content: lead })
         .then(function (res) {
           if (res && res.error) throw res.error;
-          ok.textContent = "✅ 已提交，客服会尽快回复您（回复会出现在本聊天窗口）。";
+          ok.textContent = L("✅ 已提交，客服会尽快回复您（回复会出现在本聊天窗口）。",
+                             "✅ Sent. Our team will reply here shortly.");
           clearForm();
           show("chat");
           poll();
@@ -381,24 +395,28 @@
           return window.DB.saveMessage({ name: name, phone: phone, content: lead, source: "chat-form" })
             .then(function (r2) {
               if (r2 && r2.error) throw r2.error;
-              ok.textContent = "✅ 已提交，客服会尽快联系您。";
+              ok.textContent = L("✅ 已提交，客服会尽快联系您。", "✅ Sent. Our team will contact you shortly.");
               clearForm();
               show("chat");
             });
         })
         .catch(function (e) {
-          var code = (e && (e.code || e.message)) || "网络异常";
-          ok.textContent = "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。";
+          var code = (e && (e.code || e.message)) || L("网络异常", "Network error");
+          ok.textContent = L(
+            "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + ((window.SITE.company || {}).phone || "咨询热线") + "。",
+            "Submission failed (" + String(code).slice(0, 40) + "). Please call " + ((window.SITE.company || {}).phone || "our hotline") + "."
+          );
         })
         .finally(function () {
           ok.classList.add("show");
           formBtn.disabled = false;
-          formBtn.textContent = "提交留言";
+          formBtn.textContent = L("提交留言", "Send message");
         });
       return;
     }
 
-    ok.textContent = "（演示模式）留言已记录。正式上线请在 site.js 配置数据库。";
+    ok.textContent = L("（演示模式）留言已记录。正式上线请在 site.js 配置数据库。",
+                       "(Demo mode) Message saved locally. Connect the database in site.js before going live.");
     ok.classList.add("show");
   });
 })();

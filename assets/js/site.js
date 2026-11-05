@@ -6,6 +6,8 @@
   "use strict";
 
   var S = window.SITE || {};
+  /* 双语：L("中文", "English") */
+  var L = function (zh, en) { return (window.LANG === "en" && en) ? en : zh; };
 
   /* ---------------- 图标库（线性图标，跟随文字颜色） ---------------- */
   var ICONS = {
@@ -101,7 +103,7 @@
           '<div class="ic">' + icon(s.icon) + "</div>" +
           "<h3>" + s.title + "</h3><p>" + s.desc + "</p>" +
           '<div class="tags">' + (s.tags || []).map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</div>" +
-          '<div class="more"><a class="textlink" href="service.html?s=' + (s.slug || "") + '">查看详情 ' + icon("arrow") + "</a></div>" +
+          '<div class="more"><a class="textlink" href="service.html?s=' + (s.slug || "") + '">' + L("查看详情 ", "View details ") + icon("arrow") + "</a></div>" +
           "</article>";
       }).join("");
     }
@@ -114,7 +116,7 @@
           '<div class="ic">' + icon(s.icon) + "</div>" +
           "<div><h3>" + s.title + "</h3><p>" + s.desc + "</p>" +
           '<div class="chips">' + (s.tags || []).map(function (t) { return "<span>" + t + "</span>"; }).join("") + "</div></div>" +
-          '<div class="more"><a class="btn btn--line btn--sm" href="service.html?s=' + (s.slug || "") + '">查看详情</a></div>' +
+          '<div class="more"><a class="btn btn--line btn--sm" href="service.html?s=' + (s.slug || "") + '">' + L("查看详情", "View details") + '</a></div>' +
           "</div>";
       }).join("");
     }
@@ -145,7 +147,7 @@
         '<span class="ph">' + icon("image") + "</span></a>" +
         '<div class="news-body"><time>' + n.date + "</time>" +
         '<h3><a href="article.html?s=' + (n.slug || "") + '">' + n.title + "</a></h3><p>" + n.excerpt + "</p>" +
-        '<a class="textlink" href="article.html?s=' + (n.slug || "") + '">阅读全文 ' + icon("arrow") + "</a></div></article>";
+        '<a class="textlink" href="article.html?s=' + (n.slug || "") + '">' + L("阅读全文 ", "Read more ") + icon("arrow") + "</a></div></article>";
     }
     var nw = document.querySelector('[data-render="news"]');
     if (nw) nw.innerHTML = (S.news || []).slice(0, 3).map(newsCard).join("");
@@ -185,20 +187,20 @@
     var box = document.createElement("div");
     box.className = "side-tools";
     box.innerHTML =
-      '<a href="tel:' + (S.company.phoneRaw || "") + '" aria-label="电话咨询">' +
+      '<a href="tel:' + (S.company.phoneRaw || "") + '" aria-label="' + L("电话咨询", "Call us") + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICONS.phone + '</svg>' +
-        '<span class="st-tip">' + (S.company.phone || "电话咨询") + "</span></a>" +
-      '<button type="button" data-wechat aria-label="添加微信">' +
+        '<span class="st-tip">' + (S.company.phone || L("电话咨询", "Call us")) + "</span></a>" +
+      '<button type="button" data-wechat aria-label="' + L("添加微信", "WeChat") + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + QR_ICON + '</svg>' +
-        '<span class="st-tip">添加微信</span>' +
-        '<span class="qr-pop"><img src="assets/img/wechat-qr.png?v=2026110427" alt="微信二维码">' +
-        '<b>扫码添加顾问微信</b><i>或拨打 ' + (S.company.phone || "") + '</i></span></button>' +
-      '<a href="contact.html" data-msg aria-label="留言咨询">' +
+        '<span class="st-tip">' + L("添加微信", "WeChat") + '</span>' +
+        '<span class="qr-pop"><img src="assets/img/wechat-qr.png?v=2026110427" alt="' + L("微信二维码", "WeChat QR code") + '">' +
+        '<b>' + L("扫码添加顾问微信", "Scan to add our consultant") + '</b><i>' + L("或拨打 ", "or call ") + (S.company.phone || "") + '</i></span></button>' +
+      '<a href="contact.html" data-msg aria-label="' + L("留言咨询", "Message us") + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9.6 9.6 0 01-3.4-.6L3 21l1.7-4.6A8.4 8.4 0 1121 11.5z"/></svg>' +
-        '<span class="st-tip">留言 / 询价</span></a>' +
-      '<button type="button" data-to-top aria-label="回到顶部">' +
+        '<span class="st-tip">' + L("留言 / 询价", "Message / quote") + '</span></a>' +
+      '<button type="button" data-to-top aria-label="' + L("回到顶部", "Back to top") + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + ICONS.arrowUp + '</svg>' +
-        '<span class="st-tip">回到顶部</span></button>';
+        '<span class="st-tip">' + L("回到顶部", "Back to top") + '</span></button>';
     document.body.appendChild(box);
     box.querySelector("[data-to-top]").addEventListener("click", function () {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -280,7 +282,7 @@
         var name = (form.querySelector("[name=name]") || {}).value || "";
         var tel = (form.querySelector("[name=phone]") || {}).value || "";
         if (!name.trim() || !tel.trim()) {
-          alert("请填写称呼和联系电话，方便我们回电。");
+          alert(L("请填写称呼和联系电话，方便我们回电。", "Please fill in your name and phone number so we can call you back."));
           return;
         }
         var msg = document.querySelector(".form-msg");
@@ -292,22 +294,24 @@
             (((form.querySelector("[name=staff]") || {}).value) ? "（人数：" + form.querySelector("[name=staff]").value + "）" : "");
           window.DB.saveMessage({
             name: name.trim(), phone: tel.trim(),
-            content: text.trim(), source: "联系页表单"
+            content: text.trim(), source: L("联系页表单", "Contact form")
           }).then(function (res) {
             if (res && res.error) throw res.error;
-            if (msg) { msg.textContent = "提交成功，我们会尽快与您联系！"; msg.classList.add("show"); }
+            if (msg) { msg.textContent = L("提交成功，我们会尽快与您联系！", "Sent — we will contact you shortly."); msg.classList.add("show"); }
             form.reset();
           }).catch(function (e) {
             if (msg) {
-              var code = (e && (e.code || e.message)) || "网络异常";
-              msg.textContent = "提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + (S.company.phone || "咨询热线") + "。";
+              var code = (e && (e.code || e.message)) || L("网络异常", "Network error");
+              msg.textContent = L("提交失败（" + String(code).slice(0, 40) + "），请直接拨打 " + (S.company.phone || "咨询热线") + "。",
+                                  "Submission failed (" + String(code).slice(0, 40) + "). Please call " + (S.company.phone || "our hotline") + ".");
               msg.classList.add("show");
             }
           });
           return;
         }
         if (msg) {
-          msg.textContent = "提交成功（演示）：正式上线后请按 README 接入邮件或表单服务，当前为本地提示。";
+          msg.textContent = L("提交成功（演示）：正式上线后请按 README 接入邮件或表单服务，当前为本地提示。",
+                              "Sent (demo): connect your email or form service before going live — this is a local message only.");
           msg.classList.add("show");
         }
         form.reset();

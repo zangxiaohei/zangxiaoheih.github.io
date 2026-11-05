@@ -5,6 +5,14 @@
 (function () {
   "use strict";
   var S = window.SITE || {};
+  /* 双语：L("中文", "English") */
+  var L = function (zh, en) { return (window.LANG === "en" && en) ? en : zh; };
+
+  /* 页面标题里的品牌名：英文用短名，避免标题过长被搜索截断 */
+  function brand() {
+    return window.LANG === "en" ? "Zenithe" : (S.company.name || "");
+  }
+
   var page = document.body.getAttribute("data-page");
   var qs = new URLSearchParams(location.search);
   var V = "v=2026110406";  /* 资源版本号：改 JS/CSS 后需同步升级各页面的 ?v= */
@@ -24,7 +32,7 @@
     var s = list.filter(function (x) { return x.slug === qs.get("s"); })[0] || list[0];
     if (!s) return;
 
-    document.title = s.title + " | " + (S.company.name || "");
+    document.title = s.title + " | " + brand();
     var desc = document.querySelector('meta[name="description"]');
     if (desc) desc.setAttribute("content", s.desc || "");
     var can = document.querySelector('link[rel="canonical"]');
@@ -33,7 +41,7 @@
     setText("title", s.title);
     setText("desc", s.desc);
     setText("intro", s.intro || s.desc);
-    setText("cycle", s.cycle || "以诊断结论为准");
+    setText("cycle", s.cycle || L("以诊断结论为准", "Confirmed at diagnosis"));
 
     var tags = document.querySelector('[data-dt="tags"]');
     if (tags) tags.innerHTML = (s.tags || []).map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("");
@@ -94,12 +102,12 @@
     var n = list.filter(function (x) { return x.slug === qs.get("s"); })[0] || list[0];
     if (!n) return;
 
-    document.title = n.title + " | " + (S.company.name || "");
+    document.title = n.title + " | " + brand();
     var desc = document.querySelector('meta[name="description"]');
     if (desc) desc.setAttribute("content", n.excerpt || "");
 
     setText("title", n.title);
-    setText("meta", n.date + " · " + n.tag + " · " + (S.company.name || ""));
+    setText("meta", n.date + " · " + n.tag + " · " + brand());
 
     var body = document.querySelector('[data-dt="body"]');
     if (body) {
@@ -125,7 +133,7 @@
     var box = document.querySelector('[data-render="cases"]');
     if (!box) return;
     var all = S.cases || [];
-    var inds = ["全部"].concat(all.map(function (c) { return c.industry; }).filter(function (v, i, a) { return a.indexOf(v) === i; }));
+    var inds = [L("全部", "All")].concat(all.map(function (c) { return c.industry; }).filter(function (v, i, a) { return a.indexOf(v) === i; }));
 
     var bar = document.querySelector("[data-case-filter]");
     if (bar) {
@@ -139,7 +147,7 @@
         b.classList.add("on");
         var key = b.getAttribute("data-ind");
         box.querySelectorAll(".case-card").forEach(function (c) {
-          c.style.display = (key === "全部" || c.getAttribute("data-ind") === key) ? "" : "none";
+          c.style.display = (key === L("全部", "All") || c.getAttribute("data-ind") === key) ? "" : "none";
         });
       });
     }
@@ -149,9 +157,9 @@
         '<div class="case-top"><span class="case-tag">' + esc(c.industry) + "</span></div>" +
         "<h3>" + esc(c.title) + "</h3>" +
         '<dl class="case-dl">' +
-        "<dt>问题</dt><dd>" + esc(c.situation) + "</dd>" +
-        "<dt>我们做的</dt><dd>" + esc(c.action) + "</dd>" +
-        "<dt>结果</dt><dd class=\"good\">" + esc(c.result) + "</dd></dl>" +
+        "<dt>" + L("问题", "Situation") + "</dt><dd>" + esc(c.situation) + "</dd>" +
+        "<dt>" + L("我们做的", "What we did") + "</dt><dd>" + esc(c.action) + "</dd>" +
+        "<dt>" + L("结果", "Result") + "</dt><dd class=\"good\">" + esc(c.result) + "</dd></dl>" +
         '<div class="case-metrics">' + (c.metrics || []).map(function (m) {
           return '<span><b>' + esc(m.v) + "</b>" + esc(m.k) + "</span>";
         }).join("") + "</div></article>";
