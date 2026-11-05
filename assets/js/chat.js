@@ -130,6 +130,10 @@
     if (!body.childElementCount) {
       botSay(HELLO);
       renderChips();
+    } else {
+      /* 重新打开已有记录的窗口：面板展开动画结束前后各贴底一次 */
+      stick();
+      setTimeout(stick, 350);
     }
     startPoll();
   }
@@ -193,13 +197,23 @@
   if (/[?&]chat=open/.test(location.search)) setTimeout(open, 300);
 
   /* ---------------- 消息渲染 ---------------- */
+  /* 稳定滚底：浏览器在插入后还会继续排版（字体/样式），同步 scrollTop 会差一截。
+     先同步滚一次，再在下一帧、以及 120ms 后各补滚一次，保证真正贴底无空白 */
+  function stick() {
+    body.scrollTop = body.scrollHeight;
+    requestAnimationFrame(function () {
+      body.scrollTop = body.scrollHeight;
+      requestAnimationFrame(function () { body.scrollTop = body.scrollHeight; });
+    });
+    setTimeout(function () { body.scrollTop = body.scrollHeight; }, 120);
+  }
   function addMsg(html, me) {
     var m = document.createElement("div");
     m.className = "msg" + (me ? " me" : "");
     m.innerHTML = (me ? "" : '<span class="b-av">' + (C.mark || "客") + '</span>') +
       '<span class="bubble">' + html + '</span>';
     body.appendChild(m);
-    body.scrollTop = body.scrollHeight;
+    stick();
     return m;
   }
   function botSay(html) { addMsg(html, false); }
@@ -218,10 +232,11 @@
       w.className = "msg";
       w.innerHTML = '<span class="b-av">' + (C.mark || "客") + '</span><span class="bubble"><span class="typing"><i></i><i></i><i></i></span></span>';
       body.appendChild(w);
-      body.scrollTop = body.scrollHeight;
+      stick();
     } else if (!on && t) {
       var wrap = t.closest(".msg");
       if (wrap) wrap.remove();
+      stick();
     }
   }
 
