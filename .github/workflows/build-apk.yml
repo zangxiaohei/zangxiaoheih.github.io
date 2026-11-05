@@ -9,6 +9,13 @@ on:
 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
+# 与 deploy-pages 同一组串行，避免同时发布互相取消
+concurrency:
+  group: pages
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -27,7 +34,7 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: 编译 debug APK
+      - name: 编译 debug APK（固定签名 zt-release.keystore）
         working-directory: android
         run: gradle assembleDebug --no-daemon --stacktrace
 
@@ -48,7 +55,7 @@ jobs:
           cp android/app/build/outputs/apk/debug/zhongtian-admin.apk apk/zhongtian-admin.apk
           ls -lh apk/
 
-      - name: 提交 APK 到仓库（触发 Pages 发布）
+      - name: 提交 APK 到仓库
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -56,14 +63,16 @@ jobs:
           git diff --cached --quiet || git commit -m "更新安卓安装包 apk/zhongtian-admin.apk"
           git push
 
-      - name: 发布到 Release（备用下载）
-        uses: softprops/action-gh-release@v2
+      # 注意：GITHUB_TOKEN 的 push 不会触发其他工作流，
+      # 所以部署 Pages 必须在本工作流内完成，否则新 APK 不会上线
+      - name: 配置 Pages
+        uses: actions/configure-pages@v5
+
+      - name: 打包站点（含最新 APK）
+        uses: actions/upload-pages-artifact@v3
         with:
-          tag_name: apk-latest
-          name: 中天后台 APK（最新版）
-          body: |
-            安卓安装包（WebView 壳 + 原生角标通知服务）。
-            国内推荐下载地址：https://zangxiaohei.github.io/zangxiaoheih.github.io/apk/zhongtian-admin.apk
-            下载后在手机上点开安装，首次打开需允许「通知」权限，角标才会显示。
-          files: android/app/build/outputs/apk/debug/zhongtian-admin.apk
-          fail_on_unmatched_files: true
+          path: .
+
+      - name: 发布 Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
