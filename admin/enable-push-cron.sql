@@ -6,8 +6,11 @@
 --       地址和密钥都已在里面填好，不需要你改任何东西。
 -- ============================================================================
 
--- 0) 启用定时任务扩展 pg_cron（报 schema "cron" does not exist 就是因为少了这一步）
+-- 0) 启用定时任务扩展 pg_cron + 网络请求扩展 pg_net
+--    （报 schema "cron" does not exist 就是因为少了 pg_cron；
+--      pg_net 缺了任务能建但每分钟静默失败，两句都要有）
 CREATE EXTENSION IF NOT EXISTS pg_cron WITH SCHEMA pg_catalog;
+CREATE EXTENSION IF NOT EXISTS pg_net;
 
 -- 1) 如果之前建过同名任务，先清掉（没有也不会报错）
 DO $$
