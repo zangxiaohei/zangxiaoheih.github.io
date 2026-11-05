@@ -182,6 +182,9 @@
       <div style="margin-top:18px;text-align:center">
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
+      <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
+        版本 202611052150 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+      </div>
     </div>
   </div>
 
@@ -255,6 +258,49 @@
 <script>
 (function () {
   "use strict";
+
+  /* 兜底 1：任何初始化异常都显示在页面顶部，避免"点了没反应"查不出原因 */
+  function fatal(msg) {
+    var bar = document.getElementById("zt-fatal");
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = "zt-fatal";
+      bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#c0392b;color:#fff;" +
+        "font:13px/1.6 -apple-system,'PingFang SC',sans-serif;padding:8px 12px;text-align:center;word-break:break-all";
+      document.body.appendChild(bar);
+    }
+    bar.textContent = "后台脚本出错：" + msg;
+  }
+  window.addEventListener("error", function (e) { fatal(e.message || "未知错误"); });
+
+  /* 兜底 2：按钮用事件委托绑定，写在最前面——即使后面初始化失败，退出/自检依然能点 */
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("#btn-logout")) { e.preventDefault(); ztLogout(); return; }
+    if (t.closest("#btn-diag")) { e.preventDefault(); ztDiag(); return; }
+    if (t.closest("#btn-refresh-app")) {
+      e.preventDefault();
+      var btn = t.closest("#btn-refresh-app");
+      btn.textContent = "正在更新…";
+      Promise.all([
+        (window.caches ? caches.keys().then(function (ks) {
+          return Promise.all(ks.map(function (k) { return caches.delete(k); }));
+        }) : Promise.resolve()),
+        (navigator.serviceWorker && navigator.serviceWorker.getRegistrations
+          ? navigator.serviceWorker.getRegistrations().then(function (rs) {
+              return Promise.all(rs.map(function (r) { return r.unregister(); }));
+            })
+          : Promise.resolve())
+      ]).then(function () {
+        location.replace(location.pathname + "?fresh=" + Date.now());
+      }).catch(function () {
+        location.href = location.pathname + "?fresh=" + Date.now();
+      });
+      return;
+    }
+  }, true);
+
   var cfg = window.SUPABASE_CONFIG || {};
   var tipLogin = document.getElementById("login-tip");
   var tipMsg = document.getElementById("msg-tip");
@@ -266,7 +312,12 @@
     document.getElementById("btn-login").disabled = true;
     return;
   }
-  var client = supabase.createClient(cfg.url, cfg.anonKey);
+  var client = null;
+  try {
+    client = supabase.createClient(cfg.url, cfg.anonKey);
+  } catch (e) {
+    fatal("数据库组件未加载成功，请联网后下拉刷新（不影响退出登录）");
+  }
   var currentUser = null;
 
   function $(id) { return document.getElementById(id); }
@@ -350,7 +401,7 @@
   }
 
   /* ---------------- 提醒自检：一眼看出红点/通知卡在哪 ---------------- */
-  $("btn-diag").addEventListener("click", function () {
+  function ztDiag() {
     var old = document.getElementById("diag-wrap");
     if (old) { old.remove(); return; }
     var wrap = document.createElement("div");
@@ -406,13 +457,16 @@
       add("未读数接口", "不可用 → 需执行 push-notify.sql", false);
       flush();
     });
-  });
+  }
 
-  $("btn-logout").addEventListener("click", function () {
+  /* ---------------- 退出登录（函数式，事件委托调用） ---------------- */
+  function ztLogout() {
     /* 退出登录：不依赖网络，直接把本地会话清干净再强制刷新。
        只调 signOut 在部分版本/弱网下不会清 token，刷新后会被自动登回来，表现为"点了没反应" */
+    var btn = document.getElementById("btn-logout");
+    if (btn) { btn.textContent = "正在退出…"; btn.disabled = true; }
     if (window.ZTPush) { try { window.ZTPush.adminOffline(); } catch (e) {} }
-    try { client.auth.signOut({ scope: "local" }); } catch (e) {}
+    if (client) { try { client.auth.signOut({ scope: "local" }); } catch (e) {} }
     try {
       Object.keys(localStorage).forEach(function (k) {
         if (k.indexOf("sb-") === 0 || k.indexOf("supabase.auth") === 0) localStorage.removeItem(k);
@@ -421,12 +475,22 @@
         if (k.indexOf("sb-") === 0) sessionStorage.removeItem(k);
       });
     } catch (e) {}
-    /* 清完立即跳转；replace 不留下历史，返回键不会退回后台 */
-    try { location.replace("index.html?out=" + Date.now()); }
-    catch (e) { location.href = "index.html?out=" + Date.now(); }
-    /* 兜底：极端情况下 replace 被拦截，1 秒后强制刷新 */
-    setTimeout(function () { location.reload(); }, 1000);
-  });
+    /* 立刻切回登录界面，给出明确反馈（跳转被拦也不会"看起来没反应"） */
+    try {
+      document.getElementById("view-admin").classList.add("hidden");
+      var lv = document.getElementById("view-login");
+      lv.classList.remove("hidden");
+      var lt = document.getElementById("login-tip");
+      if (lt) { lt.className = "tip ok"; lt.textContent = "已退出登录"; }
+      window.scrollTo(0, 0);
+    } catch (e) { fatal("切换界面失败：" + e.message); }
+
+    /* 再跳转到干净的登录页（带时间戳绕过缓存） */
+    var clean = location.pathname + "?out=" + Date.now();
+    setTimeout(function () {
+      try { location.replace(clean); } catch (e) { location.href = clean; }
+    }, 260);
+  }
 
   /* ---------------- 选项卡 ---------------- */
   document.querySelectorAll(".tabs button").forEach(function (b) {

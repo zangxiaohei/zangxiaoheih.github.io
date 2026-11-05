@@ -5,7 +5,7 @@
    - 通知点击跳转对应页面
    ========================================================================== */
 
-var CACHE = "zt-pwa-v1";
+var CACHE = "zt-pwa-v2";
 var CORE = [
   "./",
   "index.html",
@@ -45,7 +45,7 @@ self.addEventListener("fetch", function (e) {
 
   if (isPage) {
     e.respondWith(
-      fetch(req).then(function (res) {
+      fetch(req, { cache: "no-store" }).then(function (res) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(req, copy); });
         return res;
