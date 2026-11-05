@@ -219,11 +219,11 @@
     msgBtn.addEventListener("click", function (e) {
       if (!/contact\.html$/.test(location.pathname)) return;
       e.preventDefault();
-      /* 以“GET IN TOUCH / 直接联系我们”标题为锚点，落在页头下方约120px */
+      /* 以“GET IN TOUCH / 直接联系我们”标题为锚点，紧贴页头下方约10px */
       var grid = document.querySelector(".contact-grid");
       var anchor = grid ? (grid.querySelector(".eyebrow") || grid) : document.querySelector("[data-contact-form]") || document.body;
       var headH = (document.querySelector(".header") || {}).offsetHeight || 0;
-      var top = anchor.getBoundingClientRect().top + window.pageYOffset - headH - 120;
+      var top = anchor.getBoundingClientRect().top + window.pageYOffset - headH - 10;
       window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     });
   }
