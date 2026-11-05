@@ -311,12 +311,12 @@ window.SITE = {
   /* ---------------- 6.10 首页关于板块（资质列表） ---------------- */
   /* 详情页侧栏：更多服务 + 成功案例推荐 */
   moreServices: [
-    { name: "欧盟电池法规辅导", href: "services.html" },
-    { name: "绿色工厂评价", href: "services.html" },
-    { name: "ISO 14064 温室气体核查", href: "services.html" },
-    { name: "RWS 负责任羊毛认证", href: "services.html" },
-    { name: "ISO 46001 水效率管理体系", href: "services.html" },
-    { name: "GOTS 有机纺织品标准", href: "services.html" }
+    { name: "GOTS 有机纺织品标准", href: "services.html" },
+    { name: "OCS 有机含量标准", href: "services.html" },
+    { name: "ISO 14021 再生材料含量声明", href: "services.html" },
+    { name: "科学碳目标倡议（SBTi）", href: "services.html" },
+    { name: "B-Corp 共益企业认证", href: "services.html" },
+    { name: "欧盟电池法规辅导", href: "services.html" }
   ],
 
   aboutCerts: [

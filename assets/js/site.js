@@ -85,6 +85,12 @@
   }
 
   /* ---------------- 3. 各板块渲染 ---------------- */
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
   function render() {
     // 数据条
     var st = document.querySelector('[data-render="stats"]');
@@ -252,6 +258,21 @@
     if (ac) {
       ac.innerHTML = (S.aboutCerts || []).map(function (t, i) {
         return "<li><i>" + (i + 1) + ".</i>" + t + "</li>";
+      }).join("");
+    }
+
+    // 侧栏：更多服务 + 成功案例推荐（about 页）
+    var ms2 = document.querySelector('[data-render="more-services"]');
+    if (ms2) {
+      ms2.innerHTML = (S.moreServices || []).map(function (x) {
+        return '<li><a href="' + x.href + '">' + esc(x.name) + "</a></li>";
+      }).join("");
+    }
+    var sc2 = document.querySelector('[data-render="side-cases"]');
+    if (sc2) {
+      sc2.innerHTML = (S.cases || []).slice(0, 3).map(function (c) {
+        return '<div class="sb-case"><a href="cases.html"><b>' + esc(c.title) +
+          "</b><small>" + esc(c.industry) + " · " + esc((c.metrics && c.metrics[2] && c.metrics[2].v) || "") + "</small></a></div>";
       }).join("");
     }
 

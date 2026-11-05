@@ -303,12 +303,12 @@ window.SITE_EN = {
   /* About section qualification list */
   /* Detail sidebar: more services + recommended cases */
   moreServices: [
-    { name: "EU Battery Regulation", href: "services.html" },
-    { name: "Green Factory Assessment", href: "services.html" },
-    { name: "ISO 14064 GHG Verification", href: "services.html" },
-    { name: "RWS Responsible Wool Standard", href: "services.html" },
-    { name: "ISO 46001 Water Efficiency", href: "services.html" },
-    { name: "GOTS Organic Textiles", href: "services.html" }
+    { name: "GOTS Organic Textiles", href: "services.html" },
+    { name: "OCS Organic Content Standard", href: "services.html" },
+    { name: "ISO 14021 Recycled Content Claims", href: "services.html" },
+    { name: "Science Based Targets (SBTi)", href: "services.html" },
+    { name: "B-Corp Certification", href: "services.html" },
+    { name: "EU Battery Regulation", href: "services.html" }
   ],
 
   aboutCerts: [
