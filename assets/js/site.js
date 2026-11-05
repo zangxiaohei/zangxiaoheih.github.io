@@ -178,6 +178,14 @@
         return '<li><a href="service.html?s=' + (s.slug || "") + '">' + s.title + "</a></li>";
       }).join("");
     }
+
+    // 客户墙（首页）
+    var cl = document.querySelector('[data-render="clients"]');
+    if (cl) {
+      cl.innerHTML = (S.clients || []).map(function (c) {
+        return '<div class="client-card reveal"><b>' + c.name + "</b>" + (c.en ? "<small>" + c.en + "</small>" : "") + "</div>";
+      }).join("");
+    }
   }
 
   /* ---------------- 3.5 悬浮工具条（电话 / 微信 / 留言 / 回到顶部） ---------------- */

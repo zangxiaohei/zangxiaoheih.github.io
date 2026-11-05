@@ -231,6 +231,20 @@ window.SITE = {
     { title: "审核取证", desc: "提交申请、全程陪审、闭环不符合项并取证。" }
   ],
 
+  /* ---------------- 6.5 首页客户墙（示例名单，可自行替换为真实客户） ---------------- */
+  clients: [
+    { name: "鸿泰纺织（东莞）", en: "Hongtai Textiles" },
+    { name: "星辰电子（深圳）", en: "Xingchen Electronics" },
+    { name: "骏华塑胶（佛山）", en: "Junhua Plastics" },
+    { name: "绿源包装（苏州）", en: "Lvyuan Packaging" },
+    { name: "恒晟五金（中山）", en: "Hengsheng Hardware" },
+    { name: "凯欣服饰（惠州）", en: "Kaixin Apparel" },
+    { name: "倍顺化工（广州）", en: "Beishun Chemicals" },
+    { name: "远大精密（宁波）", en: "Yuanda Precision" },
+    { name: "东联玩具（汕头）", en: "Donglian Toys" },
+    { name: "中科新材料（合肥）", en: "Zhongke New Materials" }
+  ],
+
   /* ---------------- 7. 新闻 / 动态 ---------------- */
   /* 首页显示前 3 条；news.html 显示全部。加新闻就在最前面加一段 */
   news: [

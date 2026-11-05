@@ -223,6 +223,20 @@ window.SITE_EN = {
     { title: "Audit & certification", desc: "Application, full audit support, closure of non-conformities and certificate issuance." }
   ],
 
+  /* Homepage client wall (sample names — replace with real clients) */
+  clients: [
+    { name: "Hongtai Textiles", en: "Dongguan" },
+    { name: "Xingchen Electronics", en: "Shenzhen" },
+    { name: "Junhua Plastics", en: "Foshan" },
+    { name: "Lvyuan Packaging", en: "Suzhou" },
+    { name: "Hengsheng Hardware", en: "Zhongshan" },
+    { name: "Kaixin Apparel", en: "Huizhou" },
+    { name: "Beishun Chemicals", en: "Guangzhou" },
+    { name: "Yuanda Precision", en: "Ningbo" },
+    { name: "Donglian Toys", en: "Shantou" },
+    { name: "Zhongke New Materials", en: "Hefei" }
+  ],
+
   news: [
     {
       slug: "grs-4-transition",
