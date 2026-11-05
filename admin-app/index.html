@@ -204,7 +204,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052305 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611052315 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -452,7 +452,7 @@
     wrap.id = "diag-wrap";
     wrap.style.cssText = "position:fixed;inset:0;background:rgba(6,32,24,.5);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px";
     var box = document.createElement("div");
-    box.style.cssText = "background:#fff;border-radius:16px;padding:16px 18px 12px;max-width:430px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.28);font-size:14px";
+    box.style.cssText = "background:#fff;border-radius:16px;padding:16px 18px 12px;max-width:430px;width:100%;max-height:86vh;overflow:auto;-webkit-overflow-scrolling:touch;box-shadow:0 24px 60px rgba(0,0,0,.28);font-size:14px";
     box.innerHTML = '<div style="display:flex;align-items:center;margin-bottom:8px">' +
       '<b style="font-size:15.5px">桌面提醒自检</b>' +
       '<button id="diag-x" style="margin-left:auto;border:0;background:#f1f6f3;width:30px;height:30px;border-radius:9px;cursor:pointer;font-size:14px">✕</button></div>' +
@@ -464,7 +464,7 @@
     wrap.onclick = function (e) { if (e.target === wrap) wrap.remove(); };
 
     var rows = [];
-    var resubBtn = null;
+    var extraBtns = [];
     function add(k, v, ok) {
       var color = ok === true ? "#0b6e4f" : ok === false ? "#c0392b" : "#334";
       rows.push('<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px dashed #e8f1ec">' +
@@ -475,7 +475,7 @@
     function flush() {
       var body = box.querySelector("#diag-body");
       body.innerHTML = rows.join("");
-      if (resubBtn) body.appendChild(resubBtn);
+      extraBtns.forEach(function (b) { body.appendChild(b); });
     }
 
     var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
@@ -502,17 +502,35 @@
                 else { rb.textContent = "订阅失败：请确认用已安装的 App 打开、通知权限已允许，且 VAPID 公钥已配置"; rb.style.background = "#c0392b"; rb.disabled = false; }
               });
             };
-            resubBtn = rb; flush();
+            extraBtns.push(rb); flush();
           }
         })
         .catch(function () { add("推送订阅", "读取失败", false); flush(); });
     } else { add("推送订阅", "浏览器不支持", false); }
 
-    add("角标数字", typeof window.__ztUnread === "number"
-      ? window.__ztUnread + " 条（留言+客服未读）" + (window.__ztBadge ? " · " + window.__ztBadge : "")
+    function n_(v) { return typeof v === "number" ? v : null; }
+    var mu0 = n_(window.__ztMsgUnread), cu0 = n_(window.__ztChatUnread);
+    add("客户留言未读", mu0 === null ? "尚未计算" : mu0 + " 条", mu0 === null ? null : mu0 > 0);
+    add("在线客服未读", cu0 === null ? "尚未计算" : cu0 + " 条", cu0 === null ? null : cu0 > 0);
+    add("图标角标（应显示的数字）", typeof window.__ztUnread === "number"
+      ? window.__ztUnread + " 条" + (window.__ztBadge ? " · " + window.__ztBadge : "")
       : "尚未计算（停留 6 秒后自动算）", typeof window.__ztUnread === "number" ? window.__ztUnread > 0 : null);
 
-    if (!cfg.url || !cfg.anonKey) { add("未读数接口", "缺少数据库配置", false); flush(); return; }
+    /* 手动点一次角标，用来区分"代码没写进去"还是"手机桌面不显示角标" */
+    var tb = document.createElement("button");
+    tb.textContent = "点亮图标测试（写数字 1 到图标）";
+    tb.style.cssText = "width:100%;margin-top:10px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
+    tb.onclick = function () {
+      if (!navigator.setAppBadge) { tb.textContent = "此设备不支持角标接口"; return; }
+      navigator.setAppBadge(1).then(function () {
+        tb.textContent = "已写入 1 · 请立刻回桌面看图标有没有红点/数字";
+      }).catch(function (e) {
+        tb.textContent = "写入被拒绝：" + ((e && e.message) || e);
+      });
+    };
+    extraBtns.push(tb);
+
+    if (!cfg.url || !cfg.anonKey) { add("留言接口", "缺少数据库配置", false); flush(); return; }
     fetch(cfg.url + "/rest/v1/rpc/msg_unread_count", {
       method: "POST",
       headers: { apikey: cfg.anonKey, Authorization: "Bearer " + cfg.anonKey, "Content-Type": "application/json" },
@@ -521,7 +539,7 @@
       if (!r.ok) throw new Error(r.status);
       return r.json();
     }).then(function (n) {
-      add("未读数接口", "正常，当前未读 " + n + " 条", true);
+      add("留言统计接口", "正常（只统计客户留言，当前 " + n + " 条）", true);
       flush();
     }).catch(function () {
       add("未读数接口", "不可用 → 需执行 push-notify.sql", false);
@@ -929,7 +947,10 @@
         /* 留言表的未读也计入角标与标题提醒 */
         client.from("messages").select("id").eq("is_read", false).then(function (r2) {
           var mu = (r2 && r2.data) ? r2.data.length : 0;
-          var total = res.data.length + mu;
+          var cu = res.data.length;
+          window.__ztMsgUnread = mu;     /* 客户留言未读 */
+          window.__ztChatUnread = cu;    /* 在线客服未读 */
+          var total = cu + mu;
           var badge = $("chat-badge");
           badge.textContent = total;
           badge.classList.toggle("hidden", total === 0);
