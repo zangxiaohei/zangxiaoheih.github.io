@@ -198,12 +198,13 @@
       </div>
       <button id="btn-install-app" class="hidden" style="width:100%;margin-top:10px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit">📲 安装到桌面（推荐，装了才有红点）</button>
       <div id="install-tip" style="margin-top:8px;font-size:12px;color:#9aada4;line-height:1.7">想用桌面红点提醒，必须用「安装应用」装到桌面；纯网页快捷方式没有角标权限。</div>
+      <div style="margin-top:6px;text-align:center"><a href="javascript:void(0)" id="btn-install-help" style="font-size:12.5px;color:#0b6e4f">装不上？看图文步骤 ▸</a></div>
       <div class="tip" id="login-tip"></div>
       <div style="margin-top:18px;text-align:center">
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052150 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611052230 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -302,14 +303,19 @@
     if (t.closest("#btn-install-app")) {
       e.preventDefault();
       var ib = t.closest("#btn-install-app");
+      var tipEl = document.getElementById("install-tip");
       if (window.__ztInstall) {
-        window.__ztInstall.prompt();
-        window.__ztInstall.userChoice.then(function (c) {
-          if (c.outcome === "accepted") ib.classList.add("hidden");
-          window.__ztInstall = null;
-        });
+        try {
+          window.__ztInstall.prompt();
+          window.__ztInstall.userChoice.then(function (c) {
+            if (c.outcome === "accepted") { ib.classList.add("hidden"); if (tipEl) tipEl.textContent = "安装成功！回手机桌面找绿色盾牌图标「中天后台」。"; }
+            else if (tipEl) tipEl.textContent = "刚才弹出的安装框被点了「取消」。过几分钟再点绿色按钮，或用 Chrome 菜单「⋮ → 安装应用」。";
+          });
+        } catch (err) {
+          if (tipEl) tipEl.textContent = "Chrome 暂时不肯弹安装框（刚取消过会有冷却）。请点 Chrome 右上角「⋮」→「安装应用」。";
+        }
+        window.__ztInstall = null;
       } else {
-        var tipEl = document.getElementById("install-tip");
         if (tipEl) tipEl.textContent = "当前浏览器没给出安装入口：请用 Chrome 打开本页 → 右上角「⋮」→ 找「安装应用」或「添加到主屏幕」；若只有「添加到主屏幕」，装出来的是快捷方式（无角标）。";
       }
       return;
@@ -976,6 +982,30 @@
     return base;
   }
 })();
+</script>
+
+<!-- 安装图文教程弹窗 -->
+<div id="install-help-modal" style="display:none;position:fixed;inset:0;z-index:100000;background:rgba(10,25,18,.55);padding:18px;overflow:auto">
+  <div style="max-width:430px;margin:40px auto 20px;background:#fff;border-radius:14px;padding:20px 18px;color:#2b3a33;font:14px/1.8 -apple-system,'PingFang SC',sans-serif">
+    <h3 style="margin:0 0 12px;font-size:17px;color:#0b6e4f">把后台真正「安装」到手机桌面</h3>
+    <ol style="margin:0 0 12px;padding-left:22px">
+      <li>请确认用 <b>Chrome 浏览器</b>打开本页（微信 / QQ 内打开没法安装）。</li>
+      <li>点下面的绿色大按钮 <b>「📲 安装到桌面」</b>，屏幕<b>底部</b>会弹出系统确认框，点 <b>「安装」</b>。</li>
+      <li>如果按钮没反应：点 Chrome <b>右上角「⋮」</b>菜单 → 找 <b>「安装应用」</b>（有的手机显示为「添加到主屏幕」）→ 点「安装」。</li>
+      <li>安装成功后，手机<b>桌面</b>会出现绿色盾牌图标「中天后台」——以后都从这个图标打开后台，才有红点提醒。</li>
+    </ol>
+    <p style="margin:0 0 6px;background:#fff4e5;border-radius:8px;padding:9px 11px;font-size:13px;color:#8a5a19">⚠️ 注意：浏览器菜单里的「下载网页」只是存一个文件（.mht），<b>不是安装</b>，桌面上不会出现图标，也没有红点。下载列表里的 .mht 文件可以删掉。</p>
+    <p style="margin:0 0 14px;font-size:12.5px;color:#9aada4">小提示：安装弹窗被点过「取消」后，Chrome 会在一段时间内不再弹出，这时请直接用菜单「⋮ → 安装应用」。</p>
+    <button id="btn-install-help-close" style="width:100%;background:#0b6e4f;color:#fff;border:0;border-radius:10px;padding:12px;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit">我知道了</button>
+  </div>
+</div>
+<script>
+  document.addEventListener("click", function (e) {
+    var t = e.target;
+    if (!t || !t.closest) return;
+    if (t.closest("#btn-install-help")) { e.preventDefault(); var m = document.getElementById("install-help-modal"); if (m) m.style.display = "block"; return; }
+    if (t.closest("#btn-install-help-close") || t.closest("#install-help-modal") === t) { e.preventDefault(); var m2 = document.getElementById("install-help-modal"); if (m2) m2.style.display = "none"; return; }
+  });
 </script>
 </body>
 </html>
