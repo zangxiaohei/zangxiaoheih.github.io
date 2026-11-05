@@ -47,15 +47,15 @@
 .chat-invite .bubble .x:hover { background: #64748b; }
 
 .chat-panel {
-  position: fixed; right: 22px; bottom: calc(50% - 101px); z-index: 901;
-  width: 640px; max-width: calc(100vw - 32px); height: 720px; max-height: calc(50vh + 80px);
+  position: fixed; right: 94px; top: 50%; bottom: auto; z-index: 901;
+  width: 640px; max-width: calc(100vw - 126px); height: calc(100vh - 110px); max-height: 780px;
   background: #fff; border-radius: 18px; overflow: hidden;
   box-shadow: 0 24px 70px rgba(11, 27, 43, .28);
   display: flex; flex-direction: column;
-  opacity: 0; visibility: hidden; transform: translateY(16px) scale(.98);
+  opacity: 0; visibility: hidden; transform: translateY(calc(-50% + 16px)) scale(.98);
   transition: opacity .25s var(--ease), transform .25s var(--ease), visibility .25s;
 }
-.chat-panel.open { opacity: 1; visibility: visible; transform: none; }
+.chat-panel.open { opacity: 1; visibility: visible; transform: translateY(-50%); }
 
 /* 头部 */
 .chat-head {
