@@ -10,8 +10,8 @@ android {
         applicationId "com.zhongtian.admin"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0"
+        versionCode 2
+        versionName "1.1"
     }
 
     buildTypes {
@@ -30,6 +30,8 @@ android {
     }
 }
 
-// 不引入任何第三方依赖：纯系统 API，构建快、体积小、无兼容坑
+// ShortcutBadger：适配小米/华为/荣耀/OPPO/vivo/三星等厂商桌面的私有角标接口
+// （国产桌面不认标准通知的 setNumber，必须调各家 API 才亮角标）
 dependencies {
+    implementation 'me.leolin:ShortcutBadger:1.1.22@aar'
 }

@@ -13,6 +13,8 @@ import android.os.Looper;
 
 import org.json.JSONArray;
 
+import me.leolin.shortcutbadger.ShortcutBadger;
+
 import java.io.BufferedReader;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -67,6 +69,9 @@ public class BadgeService extends Service {
             @Override public void run() {
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
                 if (nm != null) nm.notify(NOTI_ID, build(msg, chat, total, false));
+                /* 厂商角标：小米/华为/荣耀/OPPO/vivo/三星等桌面不认标准通知数字，
+                   必须调各家私有接口（ShortcutBadger 内部反射适配）。失败不影响通知栏数字 */
+                try { ShortcutBadger.applyCount(BadgeService.this, total); } catch (Exception ignored) { }
                 lastTotal = total;
             }
         });
