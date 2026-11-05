@@ -70,26 +70,68 @@ public class BadgeService extends Service {
     }
 
     private void tick() {
-        final int msg = count("messages?select=id&is_read=eq.false");
-        final int chat = msg < 0 ? -1
-                : count("chat_messages?select=id&is_read=eq.false&role=eq.visitor");
-        final String err = lastErr;
+        /* 首选组合 RPC（数据库加固后也能用）；函数不存在再走 兜底：留言RPC + 客服直读。
+           注意：messages 表已对匿名收权(HTTP 401 42501)，不能直读，必须走 SECURITY DEFINER RPC */
+        int total = rpc("app_unread_total");
+        int msg = -2, chat = -2;
+        if (total < 0) {
+            msg = rpc("msg_unread_count");
+            chat = msg < 0 ? -1 : count("chat_messages?select=id&is_read=eq.false&role=eq.visitor");
+            if (msg < 0 || chat < 0) {
+                final String err = lastErr;
+                ui.post(new Runnable() {
+                    @Override public void run() {
+                        NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+                        if (nm != null) nm.notify(NOTI_ID, buildErr("查询失败：" + err));
+                    }
+                });
+                return;
+            }
+            total = msg + chat;
+        }
+        final int fTotal = total, fMsg = msg, fChat = chat;
         ui.post(new Runnable() {
             @Override public void run() {
-                if (msg < 0 || chat < 0) {
-                    /* 失败也要把原因显示在通知上，桌面角标保持现状不清零 */
-                    NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                    if (nm != null) nm.notify(NOTI_ID, buildErr("查询失败：" + err));
-                    return;
-                }
-                okRounds++;
-                final int total = msg + chat;
                 NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-                if (nm != null) nm.notify(NOTI_ID, build(msg, chat, total, false));
+                if (nm != null) nm.notify(NOTI_ID, build(fMsg, fChat, fTotal, false));
                 /* 厂商角标：小米/华为/OPPO/vivo/三星等桌面私有接口 */
-                try { ShortcutBadger.applyCount(BadgeService.this, total); } catch (Throwable ignored) { }
+                try { ShortcutBadger.applyCount(BadgeService.this, fTotal); } catch (Throwable ignored) { }
             }
         });
+    }
+
+    /** 调用 SECURITY DEFINER RPC 返回未读数；函数不存在(404)返回-1且不记错，其余失败写入 lastErr */
+    private int rpc(String fn) {
+        HttpURLConnection c = null;
+        lastErr = "";
+        try {
+            URL u = new URL(BASE + "rpc/" + fn);
+            c = (HttpURLConnection) u.openConnection();
+            c.setRequestMethod("POST");
+            c.setConnectTimeout(12000);
+            c.setReadTimeout(12000);
+            c.setRequestProperty("apikey", KEY);
+            c.setRequestProperty("Authorization", "Bearer " + KEY);
+            c.setRequestProperty("Content-Type", "application/json");
+            c.setDoOutput(true);
+            c.getOutputStream().write("{}".getBytes("UTF-8"));
+            int code = c.getResponseCode();
+            if (code == 404) { lastErr = ""; return -1; }      // 没这个函数 → 静默走兜底
+            if (code != 200) {
+                lastErr = fn + ": HTTP " + code;
+                return -1;
+            }
+            return Integer.parseInt(readAll(c.getInputStream()).trim());
+        } catch (NumberFormatException e) {
+            lastErr = "";                                      // 返回的不是数字 → 走兜底
+            return -1;
+        } catch (Exception e) {
+            String m = e.getMessage();
+            lastErr = fn + ": " + e.getClass().getSimpleName() + (m == null ? "" : ":" + m);
+            return -1;
+        } finally {
+            if (c != null) c.disconnect();
+        }
     }
 
     /** 返回未读条数；-1 表示请求失败（原因写入 lastErr） */
@@ -156,9 +198,11 @@ public class BadgeService extends Service {
 
     private Notification build(int msg, int chat, int total, boolean first) {
         String title = total > 0 ? "中天后台 · " + total + " 条未读" : "中天后台";
-        String text = first ? "正在读取未读消息…"
-                : total > 0 ? "留言 " + msg + " + 客服 " + chat + "（" + hm.format(new Date()) + " 更新）"
-                : "暂无新消息（" + hm.format(new Date()) + "）";
+        String now = hm.format(new Date());
+        String text;
+        if (first) text = "正在读取未读消息…";
+        else if (msg == -2) text = total > 0 ? "未读 " + total + " 条（" + now + " 更新）" : "暂无新消息（" + now + "）";
+        else text = total > 0 ? "留言 " + msg + " + 客服 " + chat + "（" + now + " 更新）" : "暂无新消息（" + now + "）";
         return makeNotification(title, text, total);
     }
 
