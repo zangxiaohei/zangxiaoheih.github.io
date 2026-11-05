@@ -360,7 +360,7 @@ window.SITE = {
     title: "中天技术服务 · 在线客服",        // 聊天窗标题
     sub: "工作时间内 2 小时回复",            // 标题下方小字
     mark: "中天",                            // 客服头像里的字
-    wechatImg: "assets/img/wechat-qr.svg",   // 微信二维码图片（换成你的：assets/img/wechat.jpg）
+    wechatImg: "assets/img/wechat-qr.png?v=2026110426",   // 微信二维码图片（换成你的：assets/img/wechat.jpg）
     /* 自动回答规则：q=快捷按钮文字；keys=客户消息命中任意一词就回复 a（支持 <b> 加粗）*/
     faqs: [
       {
