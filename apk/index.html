@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>中天后台 App 下载</title>
+<meta name="theme-color" content="#0b6e4f">
+<link rel="icon" href="../assets/img/admin-icon-192.png">
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  body{margin:0;background:#f2f6f4;color:#22322c;font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.65}
+  .wrap{max-width:520px;margin:0 auto;padding:22px 16px 44px}
+  .card{background:#fff;border-radius:16px;padding:22px 18px;box-shadow:0 6px 24px rgba(11,110,79,.08);margin-bottom:14px}
+  h1{font-size:20px;margin:0 0 6px}
+  .sub{color:#6b8378;font-size:13px;margin:0 0 18px}
+  .icon{width:72px;height:72px;border-radius:18px;display:block;margin:0 auto 12px;box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .btn{display:block;text-align:center;background:#0b6e4f;color:#fff;text-decoration:none;font-size:17px;font-weight:700;padding:15px;border-radius:12px;margin-top:6px}
+  .btn:active{background:#095a40}
+  .meta{text-align:center;color:#8b9e95;font-size:12px;margin-top:10px}
+  h2{font-size:15px;margin:0 0 10px;color:#0b6e4f}
+  ol{margin:0;padding-left:20px;font-size:14px}
+  ol li{margin-bottom:10px}
+  .k{background:#eef5f1;color:#0b6e4f;border-radius:5px;padding:1px 6px;font-size:13px;font-weight:600}
+  .warn{background:#fff8e6;border:1px solid #ffe2a8;border-radius:12px;padding:12px 14px;font-size:13px;color:#7a5a12}
+  .note{font-size:12px;color:#8b9e95;margin-top:12px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="card">
+    <img class="icon" src="../assets/img/admin-icon-192.png" alt="中天后台">
+    <h1 style="text-align:center">中天后台 App（安卓）</h1>
+    <p class="sub" style="text-align:center">装上后桌面图标会显示未读数字角标</p>
+    <a class="btn" href="zhongtian-admin.apk" download>下载安装包（139 KB）</a>
+    <div class="meta">版本 1.0 · 适用于安卓 8.0 及以上</div>
+  </div>
+
+  <div class="card">
+    <h2>安装步骤</h2>
+    <ol>
+      <li>点上面的绿色按钮下载 APK 文件</li>
+      <li>下载完成后点开它，若提示"禁止安装未知来源应用"，点 <span class="k">设置</span> → 允许来自浏览器的安装，再返回继续</li>
+      <li>安装完成，打开「中天后台」，弹出通知权限时选 <span class="k">允许</span></li>
+      <li>用管理员邮箱登录一次，之后桌面图标就会显示未读数字</li>
+    </ol>
+  </div>
+
+  <div class="card">
+    <h2>角标不显示？打开这两个开关</h2>
+    <ol>
+      <li><b>通知权限</b>：设置 → 通知管理 → 中天后台 → 允许通知</li>
+      <li><b>桌面角标</b>：设置 → 桌面（或桌面设置）→ 图标角标 → 找到「中天后台」→ 允许</li>
+      <li><b>后台运行</b>：设置 → 应用管理 → 中天后台 → 省电策略 → 选「无限制」（否则息屏后可能停止刷新）</li>
+    </ol>
+    <div class="note">App 会常驻一条静音的未读提醒通知，这是安卓角标的工作方式，不是出错。</div>
+  </div>
+
+  <div class="warn">
+    苹果手机不需要装这个包：用 Safari 打开后台 → 分享 → 添加到主屏幕，角标已经能正常显示。
+  </div>
+
+</div>
+</body>
+</html>
