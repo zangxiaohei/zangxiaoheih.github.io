@@ -155,6 +155,24 @@
   <meta name="theme-color" content="#0b6e4f" />
   <!-- 后台是独立 PWA：scope 限定在 admin-app/，添加到桌面后点开直接进后台 -->
   <link rel="manifest" href="manifest.webmanifest" />
+<script>
+  /* 捕获「可安装」事件：Chrome 认为本站可安装时才会派发 */
+  window.__ztInstall = null;
+  window.__ztInstallable = false;
+  window.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault();
+    window.__ztInstall = e;
+    window.__ztInstallable = true;
+    var b = document.getElementById("btn-install-app");
+    if (b) { b.classList.remove("hidden"); b.textContent = "📲 安装到桌面（推荐，装了才有红点）"; }
+  });
+  window.addEventListener("appinstalled", function () {
+    var b = document.getElementById("btn-install-app");
+    if (b) b.classList.add("hidden");
+    var t = document.getElementById("install-tip");
+    if (t) t.textContent = "已安装为应用，可以用桌面图标打开后台了";
+  });
+</script>
   <link rel="apple-touch-icon" href="../assets/img/admin-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -178,6 +196,8 @@
       <div class="row" style="margin-top:14px">
         <button id="btn-login">登 录</button>
       </div>
+      <button id="btn-install-app" class="hidden" style="width:100%;margin-top:10px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:11px 14px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit">📲 安装到桌面（推荐，装了才有红点）</button>
+      <div id="install-tip" style="margin-top:8px;font-size:12px;color:#9aada4;line-height:1.7">想用桌面红点提醒，必须用「安装应用」装到桌面；纯网页快捷方式没有角标权限。</div>
       <div class="tip" id="login-tip"></div>
       <div style="margin-top:18px;text-align:center">
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
@@ -279,6 +299,21 @@
     if (!t || !t.closest) return;
     if (t.closest("#btn-logout")) { e.preventDefault(); ztLogout(); return; }
     if (t.closest("#btn-diag")) { e.preventDefault(); ztDiag(); return; }
+    if (t.closest("#btn-install-app")) {
+      e.preventDefault();
+      var ib = t.closest("#btn-install-app");
+      if (window.__ztInstall) {
+        window.__ztInstall.prompt();
+        window.__ztInstall.userChoice.then(function (c) {
+          if (c.outcome === "accepted") ib.classList.add("hidden");
+          window.__ztInstall = null;
+        });
+      } else {
+        var tipEl = document.getElementById("install-tip");
+        if (tipEl) tipEl.textContent = "当前浏览器没给出安装入口：请用 Chrome 打开本页 → 右上角「⋮」→ 找「安装应用」或「添加到主屏幕」；若只有「添加到主屏幕」，装出来的是快捷方式（无角标）。";
+      }
+      return;
+    }
     if (t.closest("#btn-refresh-app")) {
       e.preventDefault();
       var btn = t.closest("#btn-refresh-app");
