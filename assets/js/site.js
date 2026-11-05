@@ -219,8 +219,12 @@
     msgBtn.addEventListener("click", function (e) {
       if (!/contact\.html$/.test(location.pathname)) return;
       e.preventDefault();
-      var form = document.querySelector("[data-contact-form]") || document.body;
-      form.scrollIntoView({ behavior: "smooth", block: "center" });
+      /* 滚到联系区块的开头（标题完整可见），并预留固定页头高度 */
+      var grid = document.querySelector(".contact-grid");
+      var target = grid ? grid.closest(".section") || grid : document.querySelector("[data-contact-form]") || document.body;
+      var headH = (document.querySelector(".header") || {}).offsetHeight || 0;
+      var top = target.getBoundingClientRect().top + window.pageYOffset - headH - 12;
+      window.scrollTo({ top: Math.max(0, top), behavior: "smooth" });
     });
   }
 
