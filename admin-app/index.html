@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN" translate="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="google" content="notranslate" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>中天后台管理</title>
+  <style>
+    :root { --brand: #0b6e4f; --brand2: #12805c; --soft: #e7f3ed; --softer: #f3f9f6;
+            --danger: #c0392b; --line: #dde8e2; --bg: #eef3f0; --ink: #1f2d28; --mut: #6b7d75; }
+    * { box-sizing: border-box; margin: 0; }
+    html, body { overflow-x: hidden; max-width: 100%; }
+    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px 60px; }
+    .card { max-width: 100%; }
+    input, textarea, select { min-width: 0; }
+    body { font-family: "PingFang SC", "Microsoft YaHei", system-ui, sans-serif; color: var(--ink);
+           background: #dfece5; background-image: radial-gradient(circle at 12% 0%, #cfe6da 0, transparent 45%),
+           radial-gradient(circle at 88% 8%, #d8ebe1 0, transparent 40%); min-height: 100vh; }
+    .hero { background: linear-gradient(120deg, #084b36 0%, #0b6e4f 45%, #12886a 100%); color: #fff;
+            margin: 0 -16px 20px; padding: 22px 24px 24px; border-radius: 0 0 18px 18px;
+            box-shadow: 0 6px 18px rgba(8, 62, 45, .22); position: relative; overflow: hidden; }
+    .hero::after { content: ""; position: absolute; right: -40px; top: -60px; width: 220px; height: 220px;
+                   border-radius: 50%; background: rgba(255,255,255,.07); }
+    .hero h1 { color: #fff; }
+    .hero h1::before { background: #8fe3c0; }
+    .hero .sub { color: rgba(255,255,255,.78); margin-bottom: 0; }
+    .topbar.hero { align-items: flex-start; margin-bottom: 20px; }
+    h1 { font-size: 21px; margin-bottom: 4px; display: flex; align-items: center; gap: 10px; }
+    h1::before { content: ""; width: 12px; height: 22px; border-radius: 4px;
+                 background: linear-gradient(180deg, var(--brand2), var(--brand)); }
+    .sub { color: var(--mut); font-size: 13px; margin-bottom: 18px; }
+    .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px;
+            margin-bottom: 16px; box-shadow: 0 3px 14px rgba(15, 60, 45, .08); }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    label { display: block; font-size: 13px; color: #55655e; margin: 10px 0 4px; }
+    input, textarea, select { width: 100%; padding: 9px 11px; border: 1px solid var(--line);
+                              border-radius: 8px; font: inherit; background: #fbfdfc; }
+    textarea { min-height: 120px; font-family: Consolas, monospace; font-size: 13px; line-height: 1.5; }
+    textarea.small { min-height: 64px; }
+    input:focus, textarea:focus, select:focus { outline: 2px solid rgba(11,110,79,.22); border-color: var(--brand); background: #fff; }
+    button { padding: 9px 18px; border: 0; border-radius: 9px; color: #fff; font: inherit; cursor: pointer;
+             background: linear-gradient(180deg, var(--brand2), var(--brand));
+             box-shadow: 0 1px 4px rgba(11,110,79,.28); }
+    button:hover { filter: brightness(1.06); }
+    button.ghost { background: #fff; color: #3c4d46; border: 1px solid var(--line); box-shadow: none; }
+    button.ghost:hover { border-color: var(--brand); color: var(--brand); background: var(--softer); filter: none; }
+    button.danger { background: linear-gradient(180deg, #d35448, var(--danger)); box-shadow: 0 1px 4px rgba(192,57,43,.28); }
+    button.sm { padding: 5px 11px; font-size: 12px; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .tip { font-size: 13px; margin-top: 10px; }
+    .tip.ok { color: #1e7e34; } .tip.err { color: var(--danger); }
+    .hidden { display: none !important; }
+    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tabs button { background: #fff; color: #3c5350; border: 1px solid #c9dcd2; border-radius: 999px;
+                   box-shadow: 0 1px 3px rgba(15,60,45,.06); font-weight: 500; }
+    .tabs button:hover { border-color: var(--brand); color: var(--brand); background: var(--softer); }
+    .tabs button.on { background: linear-gradient(180deg, var(--brand2), var(--brand)); color: #fff;
+                      border-color: var(--brand); box-shadow: 0 2px 8px rgba(11,110,79,.3); }
+    .msg-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px;
+                background: #fff; transition: box-shadow .15s; }
+    .msg-card:hover { box-shadow: 0 2px 10px rgba(15,60,45,.08); }
+    .msg-card.unread { border-left: 5px solid var(--brand); background: #eef8f2; border-color: #cfe3d8; }
+    .msg-card .meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--mut); margin-bottom: 6px; }
+    .msg-card .meta b { color: var(--ink); font-size: 14px; }
+    .msg-card .body { font-size: 14px; white-space: pre-wrap; word-break: break-all; }
+    .msg-card .ops { margin-top: 8px; display: flex; gap: 8px; }
+    /* 按日期折叠 */
+    .day-head {
+      width: 100%; text-align: left; cursor: pointer; user-select: none;
+      display: flex; align-items: center; gap: 10px;
+      background: #e6f2ec; border: 1px solid #cfe3d8; border-radius: 9px;
+      padding: 10px 14px; margin: 14px 0 10px; font-size: 14px; font-weight: 700; color: var(--ink);
+    }
+    .day-head:first-child { margin-top: 0; }
+    .day-head .arrow { margin-left: auto; transition: transform .2s; font-size: 12px; color: var(--mut); }
+    .day-group.closed .arrow { transform: rotate(-90deg); }
+    .day-group.closed .day-body { display: none; }
+    .day-body { padding: 2px 4px 6px; }
+    .day-head .cnt { font-weight: 600; font-size: 12.5px; color: var(--brand); background: #fff; border-radius: 999px; padding: 1px 9px; }
+    .day-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
+    .day-head.read-day .dot { background: #b9cfc4; }
+    .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+    @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
+    .sec-title { font-size: 15px; font-weight: 600; margin: 18px 0 4px; padding-bottom: 6px;
+                 border-bottom: 1px dashed var(--line); color: #2e423a; }
+    details { margin-top: 8px; }
+    summary { cursor: pointer; font-size: 14px; font-weight: 600; padding: 6px 0; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .empty { color: #8fa099; font-size: 14px; text-align: center; padding: 30px 0; }
+    .tabs button .badge { display: inline-block; background: #e5484d; color: #fff; border-radius: 10px;
+                          padding: 0 6px; font-size: 11px; margin-left: 4px; }
+    .chat-layout { display: grid; grid-template-columns: 300px 1fr; gap: 14px; align-items: start; }
+    @media (max-width: 780px) { .chat-layout { grid-template-columns: 1fr; } }
+    .thread-list { max-height: 600px; overflow: auto; background: #f2f9f5; border-color: #cfe3d8; }
+    .thread-item { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+                   cursor: pointer; background: #fff; transition: all .12s; }
+    .thread-item:hover { border-color: var(--brand); box-shadow: 0 2px 8px rgba(11,110,79,.12); }
+    .thread-item.on { border-color: var(--brand); background: linear-gradient(120deg, #0b6e4f, #12886a);
+                      box-shadow: 0 4px 12px rgba(11,110,79,.28); }
+    .thread-item.on .t-top, .thread-item.on .t-top b { color: #fff; }
+    .thread-item.on .t-sub { color: rgba(255,255,255,.72); }
+    .thread-item.on .t-del { color: rgba(255,255,255,.65); }
+    .thread-item.on .t-del:hover { color: #fff; background: rgba(255,255,255,.18); }
+    .thread-item.on .dot { background: #ffd166; box-shadow: 0 0 0 3px rgba(255,209,102,.25); }
+    .thread-item .t-top { display: flex; justify-content: space-between; font-size: 13px; gap: 8px; align-items: center; }
+    .thread-item .t-top b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+    .thread-item .t-sub { font-size: 12px; color: var(--mut); margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .thread-item .t-del { flex: 0 0 auto; border: 0; background: none; color: #b0bfc0; font-size: 15px; line-height: 1;
+                          cursor: pointer; padding: 2px 5px; border-radius: 6px; }
+    .thread-item .t-del:hover { color: #e5484d; background: #fdeaea; }
+    .thread-item .dot { width: 8px; height: 8px; border-radius: 50%; background: #e5484d;
+                        display: inline-block; margin-left: 6px; box-shadow: 0 0 0 3px rgba(229,72,77,.15); }
+    .thread-head { font-size: 13px; color: #55655e; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+    .thread-head b { color: var(--brand); }
+    .thread-msgs { height: 380px; overflow: auto; padding: 14px 12px; border-radius: 12px; margin: 10px 0;
+                   background: #e6f1ea; border: 1px solid #d2e6da; }
+    .bubble-row { margin-bottom: 12px; display: flex; }
+    .bubble-row.admin { justify-content: flex-end; }
+    .bubble-b { max-width: 70%; padding: 9px 13px; border-radius: 12px 12px 12px 4px; background: #fff;
+                border: 1px solid #cfe0d7; font-size: 14px; white-space: pre-wrap; word-break: break-word;
+                box-shadow: 0 1px 3px rgba(15,60,45,.06); color: var(--ink); }
+    .bubble-row.admin .bubble-b { background: linear-gradient(135deg, var(--brand2), var(--brand)); color: #fff;
+                                  border: 0; border-radius: 12px 12px 4px 12px; }
+    .bubble-meta { font-size: 11px; color: #93a39c; margin-top: 3px; }
+    .bubble-row.admin .bubble-meta { text-align: right; color: #7fa395; }
+    .reply-box { display: flex; gap: 8px; align-items: flex-end; }
+    .reply-box textarea { min-height: 64px; }
+    ::-webkit-scrollbar { width: 9px; height: 9px; }
+    ::-webkit-scrollbar-thumb { background: #c4d4cb; border-radius: 6px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a9bfb2; }
+  </style>
+  <meta name="theme-color" content="#0b6e4f" />
+  <!-- 后台是独立 PWA：scope 限定在 admin-app/，添加到桌面后点开直接进后台 -->
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="../assets/img/admin-touch-icon.png" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="中天后台" />
+  <script src="../assets/js/push.js?v=2026110517" defer></script>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 登录视图 -->
+  <div id="view-login">
+    <div class="hero">
+      <h1>官网后台管理</h1>
+      <p class="sub">仅限管理员登录</p>
+    </div>
+    <div class="card" style="max-width:420px">
+      <label>邮箱</label>
+      <input id="login-email" type="email" autocomplete="username" />
+      <label>密码</label>
+      <input id="login-pass" type="password" autocomplete="current-password" />
+      <div class="row" style="margin-top:14px">
+        <button id="btn-login">登 录</button>
+      </div>
+      <div class="tip" id="login-tip"></div>
+      <div style="margin-top:18px;text-align:center">
+        <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 管理视图 -->
+  <div id="view-admin" class="hidden">
+    <div class="topbar hero">
+      <div>
+        <h1>官网后台管理</h1>
+        <p class="sub" id="whoami"></p>
+      </div>
+      <button class="ghost sm" id="btn-logout">退出登录</button>
+    </div>
+
+    <div class="tabs">
+      <button data-tab="msg" class="on">📋 客户留言</button>
+      <button data-tab="chat">💬 在线客服 <b id="chat-badge" class="badge hidden">0</b></button>
+      <button data-tab="content">✏️ 网站内容</button>
+    </div>
+
+    <!-- 留言 -->
+    <div id="tab-msg">
+      <div class="row"><button class="ghost sm" id="btn-refresh">刷新列表</button><button class="ghost sm" id="btn-export">导出 CSV</button><span class="tip" id="msg-tip"></span></div>
+      <div id="msg-list" style="margin-top:12px"></div>
+    </div>
+
+    <!-- 在线客服 -->
+    <div id="tab-chat" class="hidden">
+      <div class="chat-layout">
+        <div class="card thread-list">
+          <div class="row" style="justify-content:space-between;margin-bottom:8px">
+            <b style="font-size:14px">会话列表</b>
+            <span>
+              <button class="ghost sm" id="btn-readall">全部已读</button>
+              <button class="ghost sm" id="btn-threads">刷新</button>
+            </span>
+          </div>
+          <div id="threads"></div>
+        </div>
+        <div class="card thread-view">
+          <div id="thread-head" class="thread-head">选择左侧一个会话开始回复</div>
+          <div id="thread-msgs" class="thread-msgs"></div>
+          <div class="reply-box">
+            <textarea id="reply-text" placeholder="输入回复内容，Ctrl+Enter 发送"></textarea>
+            <button id="btn-reply">发送回复</button>
+          </div>
+          <div class="tip" id="thread-tip"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 内容 -->
+    <div id="tab-content" class="hidden">
+      <div class="card">
+        <div class="sec-title" style="margin-top:0">公司信息</div>
+        <div class="field-grid" id="company-fields"></div>
+        <div id="content-jsons"></div>
+        <div class="row" style="margin-top:18px">
+          <button id="btn-save">保存并发布到网站</button>
+          <span class="tip" id="content-tip"></span>
+        </div>
+        <p class="tip" style="color:#7a8794">保存后，网站所有页面在下次打开时自动显示新内容（浏览器缓存可用 Ctrl+F5 刷新）。</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="../assets/js/db-config.js?v=2026110516"></script>
+<script src="../assets/vendor/supabase.min.js?v=2026110516"></script>
+<script>
+(function () {
+  "use strict";
+  var cfg = window.SUPABASE_CONFIG || {};
+  var tipLogin = document.getElementById("login-tip");
+  var tipMsg = document.getElementById("msg-tip");
+  var tipContent = document.getElementById("content-tip");
+
+  if (!cfg.url || !cfg.anonKey) {
+    tipLogin.className = "tip err";
+    tipLogin.textContent = "尚未配置数据库：请先在 assets/js/db-config.js 里填入 Supabase 的 Project URL 和 anon key。";
+    document.getElementById("btn-login").disabled = true;
+    return;
+  }
+  var client = supabase.createClient(cfg.url, cfg.anonKey);
+  var currentUser = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function fmtTime(iso) { try { return new Date(iso).toLocaleString("zh-CN", { hour12: false }); } catch (e) { return iso; } }
+
+  /* ---------------- 登录 ---------------- */
+  $("btn-login").addEventListener("click", doLogin);
+  $("login-pass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+
+  function doLogin() {
+    var email = $("login-email").value.trim();
+    var pass = $("login-pass").value;
+    if (!email || !pass) { showTip(tipLogin, "请输入邮箱和密码。", true); return; }
+    $("btn-login").disabled = true;
+    showTip(tipLogin, "登录中…");
+    client.auth.signInWithPassword({ email: email, password: pass }).then(function (res) {
+      $("btn-login").disabled = false;
+      if (res.error) {
+        var m = String(res.error.message || "");
+        var isNet = /fetch|network|timeout|Failed to/i.test(m) || res.error.status === 0;
+        showTip(tipLogin, isNet ? "网络连接失败，请检查网络后重试（或切换网络）。" : "邮箱或密码错误。", true);
+        return;
+      }
+      enterAdmin(res.data.user);
+    });
+  }
+
+  client.auth.getSession().then(function (res) {
+    if (res.data && res.data.session && res.data.session.user) enterAdmin(res.data.session.user);
+  });
+
+  function enterAdmin(user) {
+    /* 权限校验：只有 app_metadata.role = admin 的账号可进入。
+       app_metadata 只能由服务端写入，前端无法伪造。
+       未打标记的账号（数据库还没执行 harden-rls.sql 时）放行但顶部告警，
+       数据库加固后这些账号会被 RLS 拦截，读不到任何数据。 */
+    var role = (user.app_metadata && user.app_metadata.role) || "";
+    if (role === "admin") { openAdmin(user); return; }
+    client.from("messages").select("id").limit(1).then(function (res) {
+      var err = res && res.error;
+      if (!err) { openAdmin(user); showSecurityWarn(); return; }
+      var code = String(err.code || "");
+      var msg = String(err.message || "");
+      if (code === "42501" || /permission denied/i.test(msg)) {
+        /* 数据库已加固，但该账号没有管理员标记 */
+        client.auth.signOut({ scope: "local" });
+        showTip(tipLogin, "该账号没有后台权限，请联系管理员开通。", true);
+      } else {
+        /* 网络异常：不踢出，给重试机会 */
+        showTip(tipLogin, "网络异常，无法验证权限，请检查网络后重新登录。", true);
+      }
+    }).catch(function () {
+      showTip(tipLogin, "网络异常，无法验证权限，请检查网络后重新登录。", true);
+    });
+  }
+
+  function showSecurityWarn() {
+    if (document.getElementById("sec-warn")) return;
+    var d = document.createElement("div");
+    d.id = "sec-warn";
+    d.style.cssText = "background:#c0392b;color:#fff;font-size:13px;padding:10px 16px;text-align:center;line-height:1.6";
+    d.innerHTML = "安全策略未升级：当前任何注册用户都可能读到留言与客服会话。请在 Supabase SQL Editor 执行 <b>admin/harden-rls.sql</b>，并关闭邮件注册。";
+    document.body.insertBefore(d, document.body.firstChild);
+  }
+
+  function openAdmin(user) {
+    currentUser = user;
+    $("view-login").classList.add("hidden");
+    $("view-admin").classList.remove("hidden");
+    $("whoami").textContent = "登录账号：" + (user.email || user.id);
+    loadMessages();
+    loadUnread();
+    initContentEditor();
+    /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
+    if (window.ZTPush) window.ZTPush.adminOnline();
+  }
+
+  $("btn-logout").addEventListener("click", function () {
+    /* 只清本地会话，不依赖网络；无论如何 1.2 秒后强制刷新，避免点了没反应 */
+    if (window.ZTPush) window.ZTPush.adminOffline();
+    try { client.auth.signOut({ scope: "local" }); } catch (e) {}
+    setTimeout(function () { location.href = "index.html?out=" + Date.now(); }, 300);
+  });
+
+  /* ---------------- 选项卡 ---------------- */
+  document.querySelectorAll(".tabs button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll(".tabs button").forEach(function (x) { x.classList.remove("on"); });
+      b.classList.add("on");
+      var tab = b.getAttribute("data-tab");
+      $("tab-msg").classList.toggle("hidden", tab !== "msg");
+      $("tab-chat").classList.toggle("hidden", tab !== "chat");
+      $("tab-content").classList.toggle("hidden", tab !== "content");
+      if (tab === "chat") { loadThreads(); startChatTimer(); } else { stopChatTimer(); }
+    });
+  });
+
+  /* ---------------- 留言管理 ---------------- */
+  $("btn-refresh").addEventListener("click", loadMessages);
+
+  function loadMessages() {
+    tipMsg.textContent = "加载中…";
+    client.from("messages").select("*").order("created_at", { ascending: false }).limit(200)
+      .then(function (res) {
+        if (res.error) { tipMsg.className = "tip err"; tipMsg.textContent = "读取失败：" + res.error.message; return; }
+        tipMsg.textContent = "共 " + res.data.length + " 条";
+        lastMsgs = res.data;
+        var box = $("msg-list");
+        if (!res.data.length) { box.innerHTML = '<div class="empty">还没有留言。客户在聊天框或联系页提交后会出现在这里。</div>'; return; }
+
+        /* 按日期分组折叠：默认最新一天展开，其余收起 */
+        var DAY = ["日", "一", "二", "三", "四", "五", "六"];
+        function dayKey(iso) { try { return new Date(iso).toISOString().slice(0, 10); } catch (e) { return "未知"; } }
+        function dayLabel(k) {
+          var d = new Date(k + "T12:00:00+08:00");
+          var today = new Date(); var yd = new Date(Date.now() - 864e5);
+          var same = function (a, b) { return a.getFullYear() + "-" + (a.getMonth() + 1) + "-" + a.getDate() === b.getFullYear() + "-" + (b.getMonth() + 1) + "-" + b.getDate(); };
+          var name = (d.getMonth() + 1) + "月" + d.getDate() + "日 周" + DAY[d.getDay()];
+          if (same(d, today)) return "今天 · " + name;
+          if (same(d, yd)) return "昨天 · " + name;
+          return d.getFullYear() + "年" + name;
+        }
+        var groups = {}, order = [];
+        res.data.forEach(function (m) {
+          var k = dayKey(m.created_at);
+          if (!groups[k]) { groups[k] = []; order.push(k); }
+          groups[k].push(m);
+        });
+        order.sort(); order.reverse();
+        box.innerHTML = order.map(function (k, idx) {
+          var list = groups[k];
+          var hasUnread = list.some(function (m) { return !m.is_read; });
+          var cards = list.map(function (m) {
+            return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
+              '<div class="meta"><b>' + esc(m.name) + '</b><span>📞 ' + esc(m.phone) + '</span>' +
+              '<span>' + esc(m.source || "web") + '</span><span>' + fmtTime(m.created_at) + '</span>' +
+              (m.is_read ? '<span>已读</span>' : '<span style="color:var(--brand);font-weight:600">未读</span>') + '</div>' +
+              '<div class="body">' + esc(m.content || "（无描述）") + '</div>' +
+              '<div class="ops">' +
+              '<button class="ghost sm" data-mark="' + m.id + '" data-read="' + (m.is_read ? "false" : "true") + '">' + (m.is_read ? "标为未读" : "标为已读") + '</button>' +
+              '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
+              '</div></div>';
+          }).join("");
+          return '<div class="day-group' + (idx === 0 ? "" : " closed") + '">' +
+            '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
+            '<span class="dot"></span>' + dayLabel(k) +
+            '<span class="cnt">' + list.length + ' 条</span>' +
+            (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+            '<span class="arrow">▼</span></button>' +
+            '<div class="day-body">' + cards + '</div></div>';
+        }).join("");
+      });
+  }
+
+  $("msg-list").addEventListener("click", function (e) {
+    var head = e.target.closest(".day-head");
+    if (head) { head.parentElement.classList.toggle("closed"); return; }    /* 折叠/展开某一天 */
+    var mark = e.target.getAttribute("data-mark");
+    var del = e.target.getAttribute("data-del");
+    if (mark) {
+      client.from("messages").update({ is_read: mark === "true" }).eq("id", mark).then(loadMessages);
+    } else if (del) {
+      if (!confirm("确定删除这条留言？删除后不可恢复。")) return;
+      client.from("messages").delete().eq("id", del).then(loadMessages);
+    }
+  });
+
+  /* ---------------- 留言导出 CSV ---------------- */
+  var lastMsgs = [];
+  $("btn-export").addEventListener("click", function () {
+    if (!lastMsgs.length) { showTip(tipMsg, "还没有可导出的留言。", true); return; }
+    var head = ["称呼", "电话", "内容", "来源", "是否已读", "提交时间"];
+    var rows = lastMsgs.map(function (m) {
+      return [m.name, m.phone, (m.content || "").replace(/[\r\n]+/g, " "), m.source || "", m.is_read ? "已读" : "未读", fmtTime(m.created_at)];
+    });
+    var csv = [head].concat(rows).map(function (r) {
+      return r.map(function (c) { return '"' + String(c == null ? "" : c).replace(/"/g, '""') + '"'; }).join(",");
+    }).join("\r\n");
+    var blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8" });
+    var a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "客户留言_" + new Date().toISOString().slice(0, 10) + ".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    showTip(tipMsg, "已导出 " + lastMsgs.length + " 条。", false);
+  });
+
+  /* ---------------- 在线客服 ---------------- */
+  var curThread = null;
+  var chatTimer = null;
+  var unreadMap = {};
+
+  $("btn-threads").addEventListener("click", loadThreads);
+
+  /* 全部标为已读：清零角标（聊天未读 + 留言未读） */
+  $("btn-readall").addEventListener("click", function () {
+    var b = $("btn-readall");
+    b.disabled = true;
+    var done = function () { b.disabled = false; loadUnread(); };
+    client.from("chat_messages").update({ is_read: true }).eq("role", "visitor").eq("is_read", false)
+      .then(function () { return client.from("messages").update({ is_read: true }).eq("is_read", false); })
+      .then(done, done);
+  });
+
+  /* 删除会话：先删消息（级联也会删），再删会话本身 */
+  function delThread(id) {
+    if (!confirm("确定删除这个会话吗？里面的所有聊天记录会一并删除，且无法恢复。")) return;
+    var wasCur = curThread === id;
+    client.from("chat_messages").delete().eq("thread_id", id)
+      .then(function (r1) {
+        if (r1.error) throw r1.error;
+        return client.from("chat_threads").delete().eq("id", id);
+      })
+      .then(function (r2) {
+        if (r2.error) throw r2.error;
+        if (wasCur) {
+          curThread = null;
+          $("thread-head").textContent = "会话对象：—";
+          $("thread-msgs").innerHTML = '<div class="empty">会话已删除。</div>';
+        }
+        loadThreads();
+      })
+      .catch(function (err) {
+        alert("删除失败：" + (err && err.message ? err.message : "未知错误") +
+          "\n\n如果提示与权限（policy/GRANT）有关，请先在 Supabase SQL Editor 运行 admin/grant-thread-delete.sql 一次。");
+        loadThreads();
+      });
+  }
+
+  function startChatTimer() {
+    if (chatTimer) return;
+    chatTimer = setInterval(function () {
+      loadThreads();
+      if (curThread) loadMessagesOf(curThread, true);
+    }, 8000);
+  }
+  function stopChatTimer() {
+    if (chatTimer) { clearInterval(chatTimer); chatTimer = null; }
+  }
+
+  function loadThreads() {
+    client.from("chat_threads").select("*").order("last_at", { ascending: false }).limit(50)
+      .then(function (res) {
+        if (res.error) { $("threads").innerHTML = '<div class="empty">读取失败：' + esc(res.error.message) + "</div>"; return; }
+        if (!res.data.length) { $("threads").innerHTML = '<div class="empty">还没有访客会话。<br>访客在网站聊天框发消息后会出现在这里。</div>'; return; }
+        $("threads").innerHTML = res.data.map(function (t) {
+          var n = unreadMap[t.id] || 0;
+          return '<div class="thread-item' + (curThread === t.id ? " on" : "") + '" data-thread="' + t.id + '">' +
+            '<div class="t-top"><b>' + esc(t.name || "访客 " + String(t.id).slice(0, 6)) + (n ? '<span class="dot"></span>' : "") + '</b>' +
+            '<span style="color:#98a5b1">' + fmtTime(t.last_at).slice(5) +
+            '<button class="t-del" data-del="' + t.id + '" title="删除此会话">✕</button></span></div>' +
+            '<div class="t-sub">' + esc(t.phone || "未留电话") + '</div></div>';
+        }).join("");
+        loadUnread();
+      });
+  }
+
+  function loadUnread() {
+    client.from("chat_messages").select("thread_id").eq("role", "visitor").eq("is_read", false)
+      .then(function (res) {
+        if (res.error || !res.data) return;
+        var m = {};
+        res.data.forEach(function (r) { m[r.thread_id] = (m[r.thread_id] || 0) + 1; });
+        unreadMap = m;
+        document.querySelectorAll(".thread-item").forEach(function (el2) {
+          var id = el2.getAttribute("data-thread");
+          var nm = el2.querySelector(".t-top b .dot");
+          if (m[id] && !nm) el2.querySelector(".t-top b").insertAdjacentHTML("beforeend", '<span class="dot"></span>');
+          if (!m[id] && nm) nm.remove();
+        });
+        /* 留言表的未读也计入角标与标题提醒 */
+        client.from("messages").select("id").eq("is_read", false).then(function (r2) {
+          var mu = (r2 && r2.data) ? r2.data.length : 0;
+          var total = res.data.length + mu;
+          var badge = $("chat-badge");
+          badge.textContent = total;
+          badge.classList.toggle("hidden", total === 0);
+          document.title = (total > 0 ? "(" + total + ") " : "") + "官网后台管理";
+        });
+      });
+  }
+
+  $("threads").addEventListener("click", function (e) {
+    var del = e.target.closest(".t-del");
+    if (del) { delThread(del.getAttribute("data-del")); return; }
+    var it = e.target.closest("[data-thread]");
+    if (!it) return;
+    curThread = it.getAttribute("data-thread");
+    document.querySelectorAll(".thread-item").forEach(function (x) { x.classList.remove("on"); });
+    it.classList.add("on");
+    loadMessagesOf(curThread, false);
+    client.from("chat_messages").update({ is_read: true }).eq("thread_id", curThread).eq("role", "visitor")
+      .then(function () { loadUnread(); });
+  });
+
+  function loadMessagesOf(threadId, quiet) {
+    client.from("chat_threads").select("*").eq("id", threadId).maybeSingle().then(function (tr) {
+      var t = (tr && tr.data) || {};
+      $("thread-head").innerHTML = "会话对象：<b>" + esc(t.name || "匿名访客") + "</b> · 📞 " +
+        esc(t.phone || "未留电话") + " · 开始于 " + fmtTime(t.created_at || "");
+    });
+
+    client.from("chat_messages").select("*").eq("thread_id", threadId).order("id").limit(300)
+      .then(function (res) {
+        if (res.error) { showTip($("thread-tip"), "读取消息失败：" + res.error.message, true); return; }
+        var box = $("thread-msgs");
+        var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
+        box.innerHTML = res.data.map(function (m) {
+          return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
+            '<div><div class="bubble-b">' + esc(m.content) + '</div>' +
+            '<div class="bubble-meta" style="text-align:right">' + fmtTime(m.created_at) + '</div></div></div>';
+        }).join("") || '<div class="empty">暂无消息</div>';
+        if (!quiet || atBottom) box.scrollTop = box.scrollHeight;
+      });
+  }
+
+  function sendReply() {
+    var ta = $("reply-text");
+    var text = ta.value.trim();
+    if (!curThread) { showTip($("thread-tip"), "请先在左侧选择一个会话。", true); return; }
+    if (!text) { showTip($("thread-tip"), "回复内容不能为空。", true); return; }
+    $("btn-reply").disabled = true;
+    client.from("chat_messages").insert([{ thread_id: curThread, role: "admin", content: text.slice(0, 2000) }])
+      .then(function (res) {
+        if (res.error) throw new Error(res.error.message);
+        return client.from("chat_threads").update({ last_at: new Date().toISOString() }).eq("id", curThread);
+      })
+      .then(function () {
+        ta.value = "";
+        showTip($("thread-tip"), "✅ 已发送，访客页面上 6 秒内可见。", false);
+        loadMessagesOf(curThread, false);
+      })
+      .catch(function (e) {
+        showTip($("thread-tip"), "发送失败：" + ((e && e.message) || "网络异常") + "，请重试。", true);
+      })
+      .then(function () { $("btn-reply").disabled = false; });
+  }
+
+  $("btn-reply").addEventListener("click", sendReply);
+  $("reply-text").addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(); }
+  });
+
+  /* ---------------- 内容编辑 ---------------- */
+  var COMPANY_FIELDS = [
+    ["name", "公司名称"], ["nameEn", "英文名"], ["mark", "Logo 方块字（1 字为佳）"],
+    ["slogan", "页脚一句话简介"], ["desc", "公司简介"], ["phone", "显示电话"],
+    ["phoneRaw", "拨号电话（无横线）"], ["mobile", "移动/备用电话"], ["email", "邮箱"],
+    ["address", "地址"], ["hours", "工作时间"], ["icp", "备案号（无则留空）"],
+    ["police", "公安备案（无则留空）"], ["copyright", "版权信息"]
+  ];
+  var JSON_SECTIONS = ["nav", "stats", "services", "advantages", "process", "news", "milestones", "team", "chat"];
+  var site = null;
+
+  function initContentEditor() {
+    if (site) return;
+    site = JSON.parse(JSON.stringify(window.SITE || {}));
+
+    /* 数据库里已有内容则覆盖本地默认 */
+    client.from("site_content").select("data").eq("key", "site").maybeSingle().then(function (res) {
+      if (res && res.data && res.data.data) {
+        deepMerge(site, res.data.data);
+      }
+      buildEditors();
+    });
+  }
+
+  function buildEditors() {
+    $("company-fields").innerHTML = COMPANY_FIELDS.map(function (f) {
+      return '<div><label>' + f[1] + ' <span style="color:#9aa7b3">(' + f[0] + ')</span></label>' +
+        '<input data-company="' + f[0] + '" value="' + esc(site.company && site.company[f[0]] || "") + '" /></div>';
+    }).join("");
+
+    $("content-jsons").innerHTML = JSON_SECTIONS.map(function (k) {
+      var label = { nav: "导航菜单", stats: "首页数据条", services: "服务项目", advantages: "优势列表",
+        process: "服务流程", news: "新闻列表", milestones: "发展历程", team: "团队", chat: "客服聊天框（含自动问答）" }[k];
+      return '<details><summary>' + label + '（JSON）</summary>' +
+        '<textarea data-json="' + k + '" class="small"></textarea></details>';
+    }).join("");
+
+    JSON_SECTIONS.forEach(function (k) {
+      var ta = document.querySelector('[data-json="' + k + '"]');
+      ta.value = JSON.stringify(site[k] || [], null, 2);
+      ta.addEventListener("input", function () { ta.style.borderColor = ""; });
+    });
+  }
+
+  $("btn-save").addEventListener("click", function () {
+    var btn = $("btn-save");
+    var company = Object.assign({}, site.company || {});
+    document.querySelectorAll("[data-company]").forEach(function (inp) {
+      company[inp.getAttribute("data-company")] = inp.value.trim();
+    });
+
+    var merged = Object.assign({}, site, { company: company });
+    for (var i = 0; i < JSON_SECTIONS.length; i++) {
+      var k = JSON_SECTIONS[i];
+      var ta = document.querySelector('[data-json="' + k + '"]');
+      try {
+        merged[k] = JSON.parse(ta.value);
+        ta.style.borderColor = "";
+      } catch (e) {
+        ta.style.borderColor = "var(--danger)";
+        showTip(tipContent, "「" + k + "」不是合法 JSON：请检查是否少了引号或逗号。", true);
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    showTip(tipContent, "保存中…");
+    client.from("site_content").upsert({
+      key: "site",
+      data: merged,
+      updated_by: (currentUser && currentUser.email) || "admin",
+      updated_at: new Date().toISOString()
+    }).then(function (res) {
+      btn.disabled = false;
+      if (res.error) { showTip(tipContent, "保存失败：" + res.error.message, true); return; }
+      showTip(tipContent, "✅ 已保存，网站内容已更新。", false);
+    });
+  });
+
+  /* ---------------- 工具 ---------------- */
+  function showTip(el, text, err) { el.className = "tip" + (err ? " err" : " ok"); el.textContent = text; }
+
+  function deepMerge(base, over) {
+    for (var k in over) {
+      if (!Object.prototype.hasOwnProperty.call(over, k)) continue;
+      var v = over[k];
+      if (Array.isArray(v)) base[k] = v;
+      else if (v && typeof v === "object" && base[k] && typeof base[k] === "object" && !Array.isArray(base[k])) deepMerge(base[k], v);
+      else if (v !== undefined && v !== null) base[k] = v;
+    }
+    return base;
+  }
+})();
+</script>
+</body>
+</html>

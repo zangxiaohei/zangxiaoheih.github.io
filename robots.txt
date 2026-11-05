@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /assets/data/
 Disallow: /admin.html
+Disallow: /admin-app/
 Disallow: /admin/
 
 Sitemap: https://zangxiaohei.github.io/zangxiaoheih.github.io/sitemap.xml

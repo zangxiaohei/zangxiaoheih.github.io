@@ -17,7 +17,8 @@
   var timer = null;
 
   /* ---------- 1. 注册 Service Worker ---------- */
-  navigator.serviceWorker.register("sw.js").catch(function () { /* 静默失败，不影响官网 */ });
+  var swPath = /\/admin-app\//.test(location.pathname) ? "../sw.js" : "sw.js";
+  navigator.serviceWorker.register(swPath).catch(function () { /* 静默失败，不影响官网 */ });
 
   function sbHeaders(extra) {
     var h = { "apikey": cfg.anonKey, "Authorization": "Bearer " + cfg.anonKey, "Content-Type": "application/json" };

@@ -19,7 +19,7 @@ const SB_KEY =
   "";
 
 // 点通知后打开的后台地址（本项目部署在子路径）
-const ADMIN_URL = "https://zangxiaohei.github.io/zangxiaoheih.github.io/admin.html";
+const ADMIN_URL = "https://zangxiaohei.github.io/zangxiaoheih.github.io/admin-app/index.html";
 
 function sbHeaders(extra: Record<string, string> = {}) {
   return { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, ...extra };

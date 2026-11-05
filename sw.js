@@ -83,7 +83,7 @@ self.addEventListener("push", function (e) {
       badge: "assets/img/icon-192.png",
       tag: data.tag || "zt-notify",
       renotify: true,
-      data: { url: data.url || "admin.html" }
+      data: { url: data.url || "admin-app/index.html" }
     })
   );
 });
@@ -91,7 +91,7 @@ self.addEventListener("push", function (e) {
 /* 点击通知：跳到对应页面（优先聚焦已打开的窗口） */
 self.addEventListener("notificationclick", function (e) {
   e.notification.close();
-  var target = (e.notification.data && e.notification.data.url) || "admin.html";
+  var target = (e.notification.data && e.notification.data.url) || "admin-app/index.html";
   e.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
       for (var i = 0; i < list.length; i++) {
