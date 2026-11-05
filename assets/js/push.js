@@ -54,7 +54,11 @@
     if (navigator.clearAppBadge) navigator.clearAppBadge().catch(function () {});
   }
 
-  /* ---------- 3. Web Push 订阅 ---------- */
+  /* ---------- 3. Web Push 订阅 ----------
+     返回 Promise：
+     "ok"           = 本机已订阅 + 服务器已登记（服务器才会给你发推送）
+     "browser-only" = 本机已订阅，但登记服务器失败（多为数据库没跑 push-notify.sql）
+     false          = 订阅失败（权限/VAPID/环境问题） */
   function urlB64ToUint8(b64) {
     var pad = "=".repeat((4 - (b64.length % 4)) % 4);
     var raw = atob((b64 + pad).replace(/-/g, "+").replace(/_/g, "/"));
@@ -63,36 +67,48 @@
     return out;
   }
 
+  /* 把订阅信息登记到数据库（push_subscribe RPC），服务器靠它知道往哪台设备推 */
+  function syncSub(sub) {
+    var j = sub.toJSON();
+    if (!j.endpoint || !j.keys) return Promise.resolve(false);
+    return fetch(cfg.url + "/rest/v1/rpc/push_subscribe", {
+      method: "POST",
+      headers: sbHeaders(),
+      body: JSON.stringify({
+        p_endpoint: j.endpoint,
+        p_p256dh: j.keys.p256dh,
+        p_auth: j.keys.auth,
+        p_ua: navigator.userAgent.slice(0, 300)
+      })
+    }).then(function (r) { return r.ok; }).catch(function () { return false; });
+  }
+
   function subscribePush(reg) {
     var vapid = cfg.vapidPublicKey;
-    if (!vapid) return;                                  // 未配置 VAPID 公钥则跳过
-    if (!("PushManager" in window)) return;
-    if (typeof Notification === "undefined") return;
+    if (!vapid) return Promise.resolve(false);            // 未配置 VAPID 公钥则跳过
+    if (!("PushManager" in window)) return Promise.resolve(false);
+    if (typeof Notification === "undefined") return Promise.resolve(false);
 
     var ask = Notification.permission === "default"
       ? Notification.requestPermission()
       : Promise.resolve(Notification.permission);
 
-    ask.then(function (perm) {
-      if (perm !== "granted") return;
-      reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapid) })
-        .then(function (sub) {
-          var j = sub.toJSON();
-          if (!j.endpoint || !j.keys) return;
-          return fetch(cfg.url + "/rest/v1/rpc/push_subscribe", {
-            method: "POST",
-            headers: sbHeaders(),
-            body: JSON.stringify({
-              p_endpoint: j.endpoint,
-              p_p256dh: j.keys.p256dh,
-              p_auth: j.keys.auth,
-              p_ua: navigator.userAgent.slice(0, 300)
-            })
-          });
-        })
-        .then(function () { updateBadge(); })
-        .catch(function () {});
-    }).catch(function () {});
+    return ask.then(function (perm) {
+      if (perm !== "granted") return false;
+      return reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlB64ToUint8(vapid) })
+        .then(function (sub) { return syncSub(sub).then(function (srvOk) { return srvOk ? "ok" : "browser-only"; }); })
+        .catch(function () { return false; });
+    }).catch(function () { return false; });
+  }
+
+  /* 幂等订阅：已有订阅就补登记服务器，没有才新建 */
+  function ensurePushSubscription() {
+    return navigator.serviceWorker.ready.then(function (reg) {
+      return reg.pushManager.getSubscription().then(function (existing) {
+        if (existing) return syncSub(existing).then(function (srvOk) { return srvOk ? "ok" : "browser-only"; });
+        return subscribePush(reg);
+      });
+    }).catch(function () { return false; });
   }
 
   /* ---------- 4. 供 admin.html 调用的开关 ---------- */
@@ -101,8 +117,10 @@
     adminOnline: function () {
       localStorage.setItem(ADMIN_MARK, "1");
       startPolling();
-      navigator.serviceWorker.ready.then(subscribePush).catch(function () {});
+      ensurePushSubscription().then(function () { updateBadge(); }).catch(function () {});
     },
+    /* 手动触发订阅（自检面板「立即订阅」按钮用）；返回 "ok" / "browser-only" / false */
+    subscribe: ensurePushSubscription,
     /* 退出登录时调用：清红点、停止轮询（订阅保留，服务器仍会推送，方便在桌面收到新留言提醒） */
     adminOffline: function () {
       localStorage.removeItem(ADMIN_MARK);
@@ -110,6 +128,9 @@
     }
   };
 
-  /* 页面加载时若已有管理员标记（例如从桌面图标打开官网），直接开始轮询 */
-  if (localStorage.getItem(ADMIN_MARK) === "1") startPolling();
+  /* 页面加载时若已有管理员标记（例如从桌面图标打开官网），直接开始轮询并补订阅 */
+  if (localStorage.getItem(ADMIN_MARK) === "1") {
+    startPolling();
+    ensurePushSubscription().then(function () { updateBadge(); }).catch(function () {});
+  }
 })();

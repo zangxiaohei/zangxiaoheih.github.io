@@ -177,7 +177,7 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-title" content="中天后台" />
-  <script src="../assets/js/push.js?v=2026110518" defer></script>
+  <script src="../assets/js/push.js?v=2026110522" defer></script>
 </head>
 <body>
 <div class="wrap">
@@ -479,7 +479,23 @@
 
     if (navigator.serviceWorker) {
       navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); })
-        .then(function (sub) { add("推送订阅", sub ? "本机已订阅" : "未订阅", !!sub); flush(); })
+        .then(function (sub) {
+          add("推送订阅", sub ? "本机已订阅" : "未订阅", !!sub); flush();
+          if (!sub && typeof Notification !== "undefined" && Notification.permission === "granted" && window.ZTPush && window.ZTPush.subscribe) {
+            var rb = document.createElement("button");
+            rb.textContent = "立即订阅推送";
+            rb.style.cssText = "width:100%;margin-top:10px;background:#0b6e4f;color:#fff;border:0;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
+            rb.onclick = function () {
+              rb.textContent = "订阅中…"; rb.disabled = true;
+              window.ZTPush.subscribe().then(function (res) {
+                if (res === "ok") { rb.textContent = "✓ 订阅成功，服务器已登记"; rb.style.background = "#0b6e4f"; }
+                else if (res === "browser-only") { rb.textContent = "本机已订阅，但服务器登记失败 → 请执行 admin/push-notify.sql"; rb.style.background = "#c0392b"; }
+                else { rb.textContent = "订阅失败：请确认用已安装的 App 打开、通知权限已允许，且 VAPID 公钥已配置"; rb.style.background = "#c0392b"; rb.disabled = false; }
+              });
+            };
+            box.querySelector("#diag-body").appendChild(rb);
+          }
+        })
         .catch(function () { add("推送订阅", "读取失败", false); flush(); });
     } else { add("推送订阅", "浏览器不支持", false); }
 
