@@ -204,7 +204,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611052230 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611052245 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -437,6 +437,8 @@
     loadMessages();
     loadUnread();
     initContentEditor();
+    /* 自动刷新：列表/会话每 12 秒静默更新，切回前台立即刷新，不用再手动下拉 */
+    startAuto();
     /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
     if (window.ZTPush) window.ZTPush.adminOnline();
   }
@@ -558,7 +560,7 @@
       $("tab-msg").classList.toggle("hidden", tab !== "msg");
       $("tab-chat").classList.toggle("hidden", tab !== "chat");
       $("tab-content").classList.toggle("hidden", tab !== "content");
-      if (tab === "chat") { loadThreads(); startChatTimer(); } else { stopChatTimer(); }
+      startAuto(); autoRefresh(true);
     });
   });
 
@@ -589,16 +591,74 @@
   }
 
   /* ---------------- 留言管理 ---------------- */
-  $("btn-refresh").addEventListener("click", loadMessages);
+  $("btn-refresh").addEventListener("click", function () { loadMessages(false); });
 
-  function loadMessages() {
-    tipMsg.textContent = "加载中…";
+  /* ---- 自动刷新：静默拉取，不闪、不跳、不重置折叠（12 秒一次，切到前台立即刷） ---- */
+  var autoTimer = null, autoBound = false, msgSig = "", thdSig = "";
+
+  function currentTab() {
+    var b = document.querySelector(".tabs button.on");
+    return b ? b.getAttribute("data-tab") : "msg";
+  }
+  function hhmmss() {
+    var d = new Date(), p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return p(d.getHours()) + ":" + p(d.getMinutes()) + ":" + p(d.getSeconds());
+  }
+  /* 折叠状态快照 / 回填：自动刷新时保持用户展开的层级，不被打回默认 */
+  function snapOpen(box) {
+    var map = {};
+    if (!box) return map;
+    box.querySelectorAll("[data-state-key]").forEach(function (g) {
+      map[g.getAttribute("data-state-key")] = !g.classList.contains("closed");
+    });
+    return map;
+  }
+  function applyOpen(box, map) {
+    if (!box) return;
+    box.querySelectorAll("[data-state-key]").forEach(function (g) {
+      var k = g.getAttribute("data-state-key");
+      if (k && Object.prototype.hasOwnProperty.call(map, k)) {
+        if (map[k]) g.classList.remove("closed"); else g.classList.add("closed");
+      }
+    });
+  }
+
+  function autoRefresh(force) {
+    if (!force && document.visibilityState !== "visible") return;
+    if (!client) return;
+    var t = currentTab();
+    if (t === "msg") loadMessages(true);
+    else if (t === "chat") { loadThreads(true); if (curThread) loadMessagesOf(curThread, true); }
+  }
+  function startAuto() {
+    if (autoTimer) return;
+    autoTimer = setInterval(function () { autoRefresh(false); }, 12000);
+    if (!autoBound) {
+      autoBound = true;
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") autoRefresh(true);
+      });
+      window.addEventListener("online", function () { autoRefresh(true); });
+      window.addEventListener("focus", function () { autoRefresh(true); });
+    }
+  }
+
+  function loadMessages(silent) {
+    if (!silent) tipMsg.textContent = "加载中…";
     client.from("messages").select("*").order("created_at", { ascending: false }).limit(200)
       .then(function (res) {
-        if (res.error) { tipMsg.className = "tip err"; tipMsg.textContent = "读取失败：" + res.error.message; return; }
-        tipMsg.textContent = "共 " + res.data.length + " 条";
+        if (res.error) { if (!silent) { tipMsg.className = "tip err"; tipMsg.textContent = "读取失败：" + res.error.message; } return; }
         lastMsgs = res.data;
+        /* 内容签名：只有真的变了才重绘，避免每次刷新闪烁、跳动 */
+        var sig = "n" + res.data.length + ":" + res.data.map(function (m) { return m.id + (m.is_read ? "r" : "u"); }).join(",");
+        var stamp = "共 " + res.data.length + " 条" + (silent ? " · " + hhmmss() + " 已自动更新" : "");
+        if (silent && sig === msgSig) { tipMsg.className = "tip"; tipMsg.textContent = stamp; return; }
+        msgSig = sig;
+        tipMsg.className = "tip";
+        tipMsg.textContent = stamp;
         var box = $("msg-list");
+        var openMap = silent ? snapOpen(box) : null;
+        var keepY = silent ? window.scrollY : 0;
         if (!res.data.length) { box.innerHTML = '<div class="empty">还没有留言。客户在聊天框或联系页提交后会出现在这里。</div>'; return; }
 
         /* 三级折叠：年 → 月 → 日。最新一年 / 最新一月 / 最新一天默认展开，其余收起 */
@@ -632,7 +692,7 @@
                   '<button class="danger sm" data-del="' + m.id + '">删除</button>' +
                   '</div></div>';
               }).join("");
-              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '">' +
+              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
                 '<span class="dot"></span>' + dayLabel(k) +
                 '<span class="cnt">' + list.length + ' 条</span>' +
@@ -642,7 +702,7 @@
             }).join("");
             var mCnt = days.reduce(function (a, k) { return a + tree[y][mo][k].length; }, 0);
             var mUnread = days.some(function (k) { return tree[y][mo][k].some(function (m) { return !m.is_read; }); });
-            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '">' +
+            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '" data-state-key="m:' + mo + '">' +
               '<button type="button" class="month-head">' + (mo === "未知" ? "未知月份" : parseInt(mo.slice(5), 10) + '月') +
               '<span class="cnt">' + mCnt + ' 条</span>' +
               (mUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
@@ -651,13 +711,14 @@
           }).join("");
           var yCnt = months.reduce(function (a, mo) { return a + Object.keys(tree[y][mo]).reduce(function (b, k) { return b + tree[y][mo][k].length; }, 0); }, 0);
           var yUnread = months.some(function (mo) { return Object.keys(tree[y][mo]).some(function (k) { return tree[y][mo][k].some(function (m) { return !m.is_read; }); }); });
-          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '">' +
+          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '" data-state-key="y:' + y + '">' +
             '<button type="button" class="year-head">' + (y === "未知" ? "未知年份" : y + '年') +
             '<span class="cnt">' + yCnt + ' 条</span>' +
             (yUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
             '<span class="arrow">▼</span></button>' +
             '<div class="y-body">' + mHtml + '</div></div>';
         }).join("");
+        if (openMap) { applyOpen(box, openMap); window.scrollTo(0, keepY); }
       });
   }
 
@@ -699,7 +760,7 @@
 
   /* ---------------- 在线客服 ---------------- */
   var curThread = null;
-  var chatTimer = null;
+  var chatSig = {};
   var unreadMap = {};
 
   $("btn-threads").addEventListener("click", loadThreads);
@@ -739,22 +800,19 @@
       });
   }
 
-  function startChatTimer() {
-    if (chatTimer) return;
-    chatTimer = setInterval(function () {
-      loadThreads();
-      if (curThread) loadMessagesOf(curThread, true);
-    }, 8000);
-  }
-  function stopChatTimer() {
-    if (chatTimer) { clearInterval(chatTimer); chatTimer = null; }
-  }
-
-  function loadThreads() {
+  /* 会话列表的定时刷新统一交给全局 autoRefresh（12 秒，静默、防闪烁） */
+  function loadThreads(silent) {
     client.from("chat_threads").select("*").order("last_at", { ascending: false }).limit(50)
       .then(function (res) {
-        if (res.error) { $("threads").innerHTML = '<div class="empty">读取失败：' + esc(res.error.message) + "</div>"; return; }
-        if (!res.data.length) { $("threads").innerHTML = '<div class="empty">还没有访客会话。<br>访客在网站聊天框发消息后会出现在这里。</div>'; return; }
+        if (res.error) { if (!silent) $("threads").innerHTML = '<div class="empty">读取失败：' + esc(res.error.message) + "</div>"; return; }
+        /* 内容签名：会话列表没变就不重绘（防闪烁、防折叠状态被重置） */
+        var sig = "n" + res.data.length + ":" + res.data.map(function (t) { return t.id + "@" + t.last_at + "#" + (unreadMap[t.id] || 0); }).join(",");
+        if (silent && sig === thdSig) return;
+        thdSig = sig;
+        var tbox = $("threads");
+        var openMap = silent ? snapOpen(tbox) : null;
+        var keepY = silent ? window.scrollY : 0;
+        if (!res.data.length) { tbox.innerHTML = '<div class="empty">还没有访客会话。<br>访客在网站聊天框发消息后会出现在这里。</div>'; return; }
         function threadCard(t) {
           var n = unreadMap[t.id] || 0;
           return '<div class="thread-item' + (curThread === t.id ? " on" : "") + '" data-thread="' + t.id + '">' +
@@ -776,14 +834,14 @@
           latest.m = ms[0];
           latest.d = Object.keys(tree[latest.y][latest.m]).sort().reverse()[0];
         }
-        $("threads").innerHTML = Object.keys(tree).sort().reverse().map(function (y) {
+        tbox.innerHTML = Object.keys(tree).sort().reverse().map(function (y) {
           var months = Object.keys(tree[y]).sort().reverse();
           var mHtml = months.map(function (mo) {
             var days = Object.keys(tree[y][mo]).sort().reverse();
             var dHtml = days.map(function (k) {
               var list = tree[y][mo][k];
               var hasUnread = list.some(function (t) { return (unreadMap[t.id] || 0) > 0; });
-              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '">' +
+              return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '">' +
                 '<span class="dot"></span>' + dayLabel(k) +
                 '<span class="cnt">' + list.length + ' 会话</span>' +
@@ -793,7 +851,7 @@
             }).join("");
             var mCnt = days.reduce(function (a, k) { return a + tree[y][mo][k].length; }, 0);
             var mUnread = days.some(function (k) { return tree[y][mo][k].some(function (t) { return (unreadMap[t.id] || 0) > 0; }); });
-            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '">' +
+            return '<div class="month-group' + (mo === latest.m ? "" : " closed") + '" data-state-key="m:' + mo + '">' +
               '<button type="button" class="month-head">' + (mo === "未知" ? "未知月份" : parseInt(mo.slice(5), 10) + '月') +
               '<span class="cnt">' + mCnt + ' 会话</span>' +
               (mUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
@@ -802,13 +860,14 @@
           }).join("");
           var yCnt = months.reduce(function (a, mo) { return a + Object.keys(tree[y][mo]).reduce(function (b, k) { return b + tree[y][mo][k].length; }, 0); }, 0);
           var yUnread = months.some(function (mo) { return Object.keys(tree[y][mo]).some(function (k) { return tree[y][mo][k].some(function (t) { return (unreadMap[t.id] || 0) > 0; }); }); });
-          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '">' +
+          return '<div class="year-group' + (y === latest.y ? "" : " closed") + '" data-state-key="y:' + y + '">' +
             '<button type="button" class="year-head">' + (y === "未知" ? "未知年份" : y + '年') +
             '<span class="cnt">' + yCnt + ' 会话</span>' +
             (yUnread ? '<span style="color:var(--brand);font-size:12px">有未读</span>' : '') +
             '<span class="arrow">▼</span></button>' +
             '<div class="y-body">' + mHtml + '</div></div>';
         }).join("");
+        if (openMap) { applyOpen(tbox, openMap); window.scrollTo(0, keepY); }
         loadUnread();
       });
   }
@@ -868,6 +927,10 @@
       .then(function (res) {
         if (res.error) { showTip($("thread-tip"), "读取消息失败：" + res.error.message, true); return; }
         var box = $("thread-msgs");
+        /* 静默刷新：消息没变就不重绘，避免每 12 秒闪一下 */
+        var sig = res.data.map(function (m) { return m.id + (m.role === "admin" ? "a" : "v"); }).join(",");
+        if (quiet && chatSig[threadId] === sig) return;
+        chatSig[threadId] = sig;
         var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
         box.innerHTML = res.data.map(function (m) {
           return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
