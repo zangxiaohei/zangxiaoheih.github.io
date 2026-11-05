@@ -48,7 +48,11 @@
       .eq("key", "site")
       .maybeSingle()
       .then(function (res) {
-        if (res && res.data && res.data.data) deepMerge(window.SITE, res.data.data);
+        if (res && res.data && res.data.data) {
+          deepMerge(window.SITE, res.data.data);
+          /* 英文模式：后台中文内容合并后，重新套用英文数据，避免覆盖 */
+          if (window.LANG === "en" && window.__i18nApplyData) window.__i18nApplyData();
+        }
       })
       .catch(function () { /* 数据库暂不可达时用本地默认内容 */ })
       .finally(function () { gateResolve(); });

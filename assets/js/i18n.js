@@ -43,6 +43,10 @@
     return over === undefined ? base : over;
   }
   if (window.SITE && window.SITE_EN) window.SITE = merge(window.SITE, window.SITE_EN);
+  /* 供 db.js 在合并后台内容后重新套用英文（否则后台中文内容会覆盖英文数据） */
+  window.__i18nApplyData = function () {
+    if (window.SITE && window.SITE_EN) window.SITE = merge(window.SITE, window.SITE_EN);
+  };
 
   /* ---------------- 3. 界面文案字典（中文原文 → English） ---------------- */
   var UI = {
@@ -289,6 +293,7 @@
 
   /* ---------------- 4. 应用翻译 ---------------- */
   var ZH = /[\u4e00-\u9fa5]/;
+  var applying = false;   /* 重入防护：自己触发的变更不再二次翻译，杜绝循环卡死 */
 
   function applyText(node) {
     var raw = node.nodeValue;
@@ -300,7 +305,9 @@
     var en = UI[t];
     var lead = raw.match(/^\s*/)[0];
     var tail = raw.match(/\s*$/)[0];
-    node.nodeValue = lead + en + tail;
+    var next = lead + en + tail;
+    /* 值相同不写入：杜绝 MutationObserver 自触发循环（防卡死） */
+    if (node.nodeValue !== next) node.nodeValue = next;
   }
 
   var ATTRS = ["placeholder", "aria-label", "title", "alt"];
@@ -312,25 +319,25 @@
       var v = el.getAttribute(a);
       if (!v || !ZH.test(v)) continue;
       var t = v.replace(/\s+/g, " ").trim();
-      if (Object.prototype.hasOwnProperty.call(UI, t)) el.setAttribute(a, UI[t]);
+      if (Object.prototype.hasOwnProperty.call(UI, t) && el.getAttribute(a) !== UI[t]) el.setAttribute(a, UI[t]);
     }
   }
 
   function apply(root) {
-    if (!root) return;
+    if (!root || applying) return;
     if (root.nodeType === 3) { applyText(root); return; }
     if (root.nodeType !== 1 && root.nodeType !== 9) return;
 
-    /* data-i18n 整段替换 */
+    /* data-i18n 整段替换（值相同不重写，防 MutationObserver 循环） */
     if (root.nodeType === 1 && root.hasAttribute && root.getAttribute("data-i18n")) {
       var key = root.getAttribute("data-i18n");
-      if (HTML[key]) root.innerHTML = HTML[key];
+      if (HTML[key] && root.innerHTML !== HTML[key]) root.innerHTML = HTML[key];
     }
     if (root.querySelectorAll) {
       var marked = root.querySelectorAll("[data-i18n]");
       for (var m = 0; m < marked.length; m++) {
         var k = marked[m].getAttribute("data-i18n");
-        if (HTML[k]) marked[m].innerHTML = HTML[k];
+        if (HTML[k] && marked[m].innerHTML !== HTML[k]) marked[m].innerHTML = HTML[k];
       }
       var all = root.querySelectorAll("*");
       for (var i = 0; i < all.length; i++) applyAttrs(all[i]);
@@ -372,31 +379,26 @@
   }
 
   function applyAll() {
-    apply(document.body);
-    if (document.title && ZH.test(document.title)) {
-      var t = document.title.replace(/\s+/g, " ").trim();
-      if (UI[t]) document.title = UI[t];
+    applying = true;
+    try {
+      apply(document.body);
+      if (document.title && ZH.test(document.title)) {
+        var t = document.title.replace(/\s+/g, " ").trim();
+        if (UI[t]) document.title = UI[t];
+      }
+      applySeo();
+    } finally {
+      applying = false;
     }
-    applySeo();
     document.documentElement.setAttribute("lang", "en");
     document.body.classList.add("lang-en");
   }
 
-  /* ---------------- 5. 动态内容监听（客服消息 / 接口渲染） ---------------- */
-  function observe() {
-    if (!window.MutationObserver) return;
-    var mo = new MutationObserver(function (muts) {
-      for (var i = 0; i < muts.length; i++) {
-        var mu = muts[i];
-        if (mu.type === "characterData") { applyText(mu.target); continue; }
-        for (var j = 0; j < mu.addedNodes.length; j++) {
-          var node = mu.addedNodes[j];
-          if (node.nodeType === 1 || node.nodeType === 3) apply(node);
-        }
-      }
-    });
-    mo.observe(document.body, { childList: true, subtree: true, characterData: true });
-  }
+  /* ---------------- 5. 动态内容 ----------------
+     不再用 MutationObserver 监听翻译：浏览器自带"网页翻译"会与本引擎
+     互相改写文本导致死循环卡死（页面无响应）。动态内容统一在渲染时用
+     L("中文","English") 直接出对应语言，无需事后翻译。 */
+  function observe() { /* 已废弃，保留空实现防止旧引用报错 */ }
 
   /* ---------------- 6. 切换按钮 ---------------- */
   function bindLang() {
