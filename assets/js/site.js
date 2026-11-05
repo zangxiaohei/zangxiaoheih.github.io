@@ -191,7 +191,7 @@
       '<button type="button" data-wechat aria-label="添加微信">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">' + QR_ICON + '</svg>' +
         '<span class="st-tip">添加微信</span>' +
-        '<span class="qr-pop"><img src="assets/img/wechat-qr.png?v=2026110426" alt="微信二维码">' +
+        '<span class="qr-pop"><img src="assets/img/wechat-qr.png?v=2026110427" alt="微信二维码">' +
         '<b>扫码添加顾问微信</b><i>或拨打 ' + (S.company.phone || "") + '</i></span></button>' +
       '<a href="contact.html" data-msg aria-label="留言咨询">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 9.6 9.6 0 01-3.4-.6L3 21l1.7-4.6A8.4 8.4 0 1121 11.5z"/></svg>' +
