@@ -120,6 +120,7 @@
     fab.classList.add("is-open");
     unread = 0;
     setBadge(0);
+    chatOpened = true;
     hideInvite();
     setTimeout(function () { input.focus(); }, 250);
     if (!body.childElementCount) {
@@ -145,15 +146,24 @@
     ) + "</div>";
   document.body.appendChild(invite);
   function hideInvite() { invite.classList.remove("show"); }
+  var chatOpened = false;   /* 打开过聊天窗后邀请永久停止 */
+  function popInvite(delay) {
+    setTimeout(function () {
+      if (!chatOpened && !panel.classList.contains("open")) invite.classList.add("show");
+    }, delay);
+  }
   invite.querySelector(".bubble").addEventListener("click", function (e) {
-    if (e.target.closest(".x")) { hideInvite(); return; }
+    if (e.target.closest(".x")) {
+      /* 关闭提醒 → 5秒后继续弹，直到访客打开聊天窗为止 */
+      hideInvite();
+      popInvite(5000);
+      return;
+    }
     hideInvite();
     open();
   });
   /* 页面打开3秒且没点开过聊天窗 → 弹出邀请 */
-  setTimeout(function () {
-    if (!panel.classList.contains("open")) invite.classList.add("show");
-  }, 3000);
+  popInvite(3000);
 
   fab.addEventListener("click", function () {
     panel.classList.contains("open") ? close() : open();
