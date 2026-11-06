@@ -5,6 +5,7 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Build;
@@ -51,10 +52,15 @@ public class BadgeService extends Service {
 
     /* 渠道 ID：老渠道 zt_badge 的 showBadge 是错的，且创建后不可修改，只能作废换新 */
     static final String CH_SVC = "zt_svc_v2";
-    static final String CH_UNREAD = "zt_unread_v3";
+    /**
+     * v4：v3 的声音是在 try 块里设的，一旦那次调用抛异常，渠道就以「无声」建成，
+     * 而渠道属性创建后再也改不了 —— 用户开了发声震动也永远不响。换新 ID 重建。
+     */
+    static final String CH_UNREAD = "zt_unread_v4";
 
     private static final int ID_SVC = 1001;      // 前台服务通知
     private static final int ID_UNREAD = 2001;   // 角标通知
+    private static final int ID_TEST = 3001;     // 自检用的测试通知
     /* 轮询节奏见 onStartCommand：前台 3 秒、后台 10 秒（1.5 版是固定 60 秒，用户实测要等 30 秒以上） */
 
     private static final String BASE = "https://ndjctekubqinrlyokmzp.supabase.co/rest/v1/";
@@ -129,10 +135,11 @@ public class BadgeService extends Service {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
-        /* 作废旧渠道：zt_badge 是 1.4 的错误配置；zt_unread_v2 是"普通重要度"，
-           要像微信那样**弹横幅**必须走 IMPORTANCE_HIGH 的新渠道（渠道属性创建后不可改） */
+        /* 作废旧渠道：zt_badge 是 1.4 的错误配置；zt_unread_v2 是"普通重要度"；
+           zt_unread_v3 的声音设置写在 try 里，可能以「无声」建成且无法再改 */
         try { nm.deleteNotificationChannel("zt_badge"); } catch (Throwable ignored) { }
         try { nm.deleteNotificationChannel("zt_unread_v2"); } catch (Throwable ignored) { }
+        try { nm.deleteNotificationChannel("zt_unread_v3"); } catch (Throwable ignored) { }
 
         NotificationChannel svc = new NotificationChannel(CH_SVC, "后台运行状态", NotificationManager.IMPORTANCE_MIN);
         svc.setDescription("保持后台监控未读消息的服务提示，不计入桌面角标");
@@ -142,19 +149,25 @@ public class BadgeService extends Service {
         svc.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
         nm.createNotificationChannel(svc);
 
-        NotificationChannel unread = new NotificationChannel(CH_UNREAD, "新消息（弹窗提醒）", NotificationManager.IMPORTANCE_HIGH);
+        NotificationChannel unread = new NotificationChannel(CH_UNREAD, "新消息（响铃震动）", NotificationManager.IMPORTANCE_HIGH);
         unread.setDescription("有新的客户留言或在线客服消息时弹出横幅、响铃震动，并在桌面图标显示未读数量");
         unread.setShowBadge(true);      // 关键：允许角标
         unread.enableVibration(true);
         unread.enableLights(true);
         unread.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
-        try {
-            unread.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
-                    new android.media.AudioAttributes.Builder()
-                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
-                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .build());
-        } catch (Throwable ignored) { }
+        /* 铃声单独取：取不到就干脆不设（走系统默认），千万别设成 null ——
+           设成 null 等于「静音渠道」，而且创建之后永远改不回来 */
+        Uri snd = null;
+        try { snd = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION); } catch (Throwable ignored) { }
+        if (snd != null) {
+            try {
+                unread.setSound(snd, new android.media.AudioAttributes.Builder()
+                        .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build());
+            } catch (Throwable ignored) { }
+        }
+        unread.setVibrationPattern(new long[]{0, 550, 250, 550});
         nm.createNotificationChannel(unread);
     }
 
@@ -199,6 +212,9 @@ public class BadgeService extends Service {
             /* 未读数变多 = 来了新消息 → 允许这次响铃/震动；数字没变则静默更新，避免反复吵 */
             boolean alert = total > lastAlertTotal;
             lastAlertTotal = total;
+            /* 关键：同一条通知「原地更新」在小米/澎湃上经常不出声也不震动（系统当成更新而非新消息）。
+               有新消息时先撤掉旧的再发新的，强制系统按"新通知"处理，声音和震动才会响。 */
+            if (alert && sPosted) nm.cancel(ID_UNREAD);
             nm.notify(ID_UNREAD, unreadNotification(total, msg, chat, alert));
             sPosted = true;
         } else {
@@ -269,6 +285,15 @@ public class BadgeService extends Service {
         if (Build.VERSION.SDK_INT >= 26) {
             b.setBadgeIconType(Notification.BADGE_ICON_SMALL);
         }
+        /* 双保险：Android 8 以下没有渠道概念，声音震动只能挂在通知本身；
+           8 以上由渠道决定，这里设了也会被系统忽略，不影响 */
+        if (alert) {
+            b.setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+            try {
+                b.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION));
+                b.setVibrate(new long[]{0, 550, 250, 550});
+            } catch (Throwable ignored) { }
+        }
         Notification n = b.build();
 
         /* 小米 MIUI / 澎湃OS：桌面数字读 extraNotification.setMessageCount，
@@ -328,6 +353,76 @@ public class BadgeService extends Service {
             i.putExtra("badge_count", total);
             sendBroadcast(i);
         } catch (Throwable ignored) { }
+    }
+
+    /* ---------------- 自检：立刻响一条，用来分辨「代码没发」还是「手机静音」 ---------------- */
+
+    /**
+     * 自检用：立即发一条高重要度通知（带声音 + 震动）。
+     * 如果这条也不响，就与角标逻辑无关了 —— 是手机静音/通知音量/勿扰/渠道权限的问题。
+     */
+    static void postTestAlert(Context ctx) {
+        try {
+            NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(ctx, CH_UNREAD)
+                    : new Notification.Builder(ctx);
+            b.setSmallIcon(R.drawable.ic_stat)
+                    .setContentTitle("测试 · 新消息提醒")
+                    .setContentText("这条没声音没震动，就是手机静音 / 通知音量为 0 / 渠道被静音")
+                    .setAutoCancel(true)
+                    .setCategory(Notification.CATEGORY_MESSAGE)
+                    .setNumber(3)
+                    .setWhen(System.currentTimeMillis())
+                    .setDefaults(Notification.DEFAULT_SOUND | Notification.DEFAULT_VIBRATE);
+            try {
+                b.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION));
+                b.setVibrate(new long[]{0, 550, 250, 550});
+            } catch (Throwable ignored) { }
+            nm.notify(ID_TEST, b.build());
+        } catch (Throwable ignored) { }
+    }
+
+    /**
+     * 更底层的自检：绕过通知系统，直接播放提示音 + 震动。
+     * 这一步响了、但上面那条通知不响 → 问题在通知渠道/权限；
+     * 这一步也不响 → 手机真的在静音/勿扰，或者通知音量为 0。
+     */
+    static String playTestSound(Context ctx) {
+        StringBuilder r = new StringBuilder();
+        try {
+            android.media.Ringtone rt = android.media.RingtoneManager.getRingtone(
+                    ctx, android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION));
+            if (rt == null) r.append("找不到提示音;");
+            else {
+                if (Build.VERSION.SDK_INT >= 21) {
+                    rt.setAudioAttributes(new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build());
+                }
+                rt.play();
+                r.append("已播放提示音;");
+            }
+        } catch (Throwable t) {
+            r.append("播放失败:").append(t.getClass().getSimpleName()).append(';');
+        }
+        try {
+            android.os.Vibrator v = (android.os.Vibrator) ctx.getSystemService(Context.VIBRATOR_SERVICE);
+            if (v == null || !v.hasVibrator()) r.append("本机无震动马达;");
+            else {
+                if (Build.VERSION.SDK_INT >= 26) {
+                    v.vibrate(android.os.VibrationEffect.createOneShot(600, android.os.VibrationEffect.DEFAULT_AMPLITUDE));
+                } else {
+                    v.vibrate(600);
+                }
+                r.append("已震动;");
+            }
+        } catch (Throwable t) {
+            r.append("震动失败:").append(t.getClass().getSimpleName()).append(';');
+        }
+        return r.toString();
     }
 
     /* ---------------- 网络 ---------------- */

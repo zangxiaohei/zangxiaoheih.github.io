@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061225";
+      var ZT_VER = "202611061420";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -232,7 +232,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061225 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061420 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -558,6 +558,22 @@
         : (nat.err ? "失败：" + nat.err : (nat.total === 0 ? "当前无未读（角标应为空）" : "尚未写入（等服务首次轮询）")),
         nat.posted || (!nat.err && nat.total === 0));
       if (nat.device) add("手机 / 桌面", nat.device + (nat.launcher ? " · " + nat.launcher : ""), null);
+
+      /* ---- 声音 / 震动 ----
+         这三个是「手机层面」的，任何一个不满足，通知都会「有但不响」，
+         而应用里的开关看起来全是打开的 —— 这是最容易被忽略的一层 */
+      var volUnknown = (typeof nat.notifVolume !== "number");
+      var volZero = !volUnknown && nat.notifVolume === 0;
+      add("手机铃声模式", nat.ringerMode === 0 ? "静音模式 → 所有通知都不会响"
+        : nat.ringerMode === 1 ? "仅震动 → 不会出声音" : "响铃模式", nat.ringerMode === 2);
+      add("通知音量", (volUnknown ? "读不到" : nat.notifVolume + " / " + nat.notifVolumeMax)
+        + (volZero ? " → 音量是 0，一定不响" : ""), !volZero);
+      if (typeof nat.dndFilter === "number") {
+        add("勿扰模式", nat.dndFilter === 1 ? "未开启" : "已开启（级别 " + nat.dndFilter + "）→ 通知会被压制",
+          nat.dndFilter === 1);
+      }
+      add("新消息铃声", nat.channelSound ? "渠道已配置铃声" : "渠道被建成静音 → 只能换新渠道（本版已换 v4）", !!nat.channelSound);
+      add("新消息震动", nat.channelVibrate ? "渠道已开启震动" : "渠道震动被关闭", !!nat.channelVibrate);
       if (nat.miui) {
         /* 自启动是「可选」，不强制：不开也能用，只是手机重启或被系统回收后要重新打开一次 App。
            不上红色，免得每次看自检都被吓一跳。 */
@@ -604,6 +620,30 @@
       sb.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
       sb.onclick = function () { try { window.ZTNative.openNotificationSettings(); } catch (e2) { } };
       extraBtns.push(nb); extraBtns.push(sb);
+
+      /* 三个排障按钮，按顺序点一遍就能定位「不响」是哪一层的问题 */
+      var st = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
+      var t1 = document.createElement("button");
+      t1.textContent = "① 发一条测试通知（有没有声音/震动）";
+      t1.style.cssText = st;
+      t1.onclick = function () {
+        try { window.ZTNative.testAlert(); } catch (e2) { }
+        t1.textContent = "已发送，看状态栏和有没有响…";
+        setTimeout(function () { t1.textContent = "① 发一条测试通知（有没有声音/震动）"; }, 5000);
+      };
+      var t2 = document.createElement("button");
+      t2.textContent = "② 直接放提示音 + 震动（绕过通知）";
+      t2.style.cssText = st;
+      t2.onclick = function () {
+        var r = "";
+        try { r = window.ZTNative.testSound() || ""; } catch (e2) { r = "调用失败"; }
+        t2.textContent = "② " + r.replace(/;+$/, "");
+      };
+      var t3 = document.createElement("button");
+      t3.textContent = "③ 打开「新消息」渠道设置（重要度调回“重要”）";
+      t3.style.cssText = st;
+      t3.onclick = function () { try { window.ZTNative.openChannelSettings(); } catch (e2) { } };
+      extraBtns.push(t1); extraBtns.push(t2); extraBtns.push(t3);
     } else if (inApp) {
       add("推送订阅", "App 内由原生服务轮询，无需网页订阅", true);
     } else if (navigator.serviceWorker) {

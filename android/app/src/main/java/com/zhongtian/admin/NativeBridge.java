@@ -42,11 +42,33 @@ public class NativeBridge {
                 o.put("channelExists", ch != null);
                 o.put("channelBadge", ch != null && ch.canShowBadge());
                 o.put("channelImportance", ch == null ? -1 : ch.getImportance());
+                /* 「开了声音震动却不响」的两个真凶就藏在这两行里：
+                   渠道的 sound 为 null（等于静音渠道，且创建后无法修改）、
+                   或渠道的震动被关掉 */
+                o.put("channelSound", ch != null && ch.getSound() != null);
+                o.put("channelVibrate", ch != null && ch.shouldVibrate());
             } else {
                 o.put("channelExists", true);
                 o.put("channelBadge", true);
                 o.put("channelImportance", 0);
+                o.put("channelSound", true);
+                o.put("channelVibrate", true);
             }
+            /* 手机整体状态：静音模式 / 勿扰模式 / 通知音量为 0 —— 这三样任何一个成立，
+               通知都会「有但不响」，而应用里的开关看起来全是打开的 */
+            try {
+                android.media.AudioManager am = (android.media.AudioManager) act.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    o.put("ringerMode", am.getRingerMode());   // 0 静音 / 1 震动 / 2 响铃
+                    o.put("notifVolume", am.getStreamVolume(android.media.AudioManager.STREAM_NOTIFICATION));
+                    o.put("notifVolumeMax", am.getStreamMaxVolume(android.media.AudioManager.STREAM_NOTIFICATION));
+                }
+            } catch (Throwable ignored) { }
+            try {
+                if (Build.VERSION.SDK_INT >= 23 && nm != null) {
+                    o.put("dndFilter", nm.getCurrentInterruptionFilter()); // 1=全部允许 2=仅优先 ... 4=完全静默
+                }
+            } catch (Throwable ignored) { }
             o.put("total", BadgeService.sTotal);
             o.put("msg", BadgeService.sMsg);
             o.put("chat", BadgeService.sChat);
@@ -90,6 +112,32 @@ public class NativeBridge {
             i.setAction(BadgeService.ACTION_SYNC);
             act.startService(i);
         } catch (Exception ignored) { }
+    }
+
+    /** 自检：立刻发一条带声音震动的通知（不动角标，纯测试） */
+    @JavascriptInterface
+    public void testAlert() {
+        BadgeService.postTestAlert(act);
+    }
+
+    /** 自检：绕过通知系统直接播放提示音 + 震动，用来分辨是"渠道坏了"还是"手机静音了" */
+    @JavascriptInterface
+    public String testSound() {
+        return BadgeService.playTestSound(act);
+    }
+
+    /** 跳到本应用的「新消息」渠道设置页，用户可以在这里把重要度改回「重要」 */
+    @JavascriptInterface
+    public void openChannelSettings() {
+        try {
+            Intent i = new Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS);
+            i.putExtra(Settings.EXTRA_APP_PACKAGE, act.getPackageName());
+            i.putExtra(Settings.EXTRA_CHANNEL_ID, BadgeService.CH_UNREAD);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            act.startActivity(i);
+        } catch (Throwable t) {
+            openNotificationSettings();
+        }
     }
 
     /** 跳到本应用的通知设置：用户能在这里打开「允许通知」和「桌面角标」 */
