@@ -97,11 +97,28 @@ public class BadgeService extends Service {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final SimpleDateFormat hm = new SimpleDateFormat("HH:mm", Locale.CHINA);
     private volatile String lastErr = "";
-    private int lastAlertTotal = 0;   // 上次"响过"的未读数，用于只在数字变大时提醒
+    /* 上次"响过"的未读数 + 响的时间。
+       ★ 必须落盘（SharedPreferences），不能只放内存：
+       进程被系统杀掉后这些值归零，而服务器上还留着没读的旧消息，
+       下一轮就会把「旧未读」当成「新消息」再响一遍 ——
+       息屏时进程被杀得频繁，表现就是「明明没新消息却一直响」。 */
+    private android.content.SharedPreferences sp;
+    private int lastAlertTotal = -1;   // -1 = 从来没响过（第一次运行只建立基线，不出声）
+    private long lastAlertAt = 0L;
+    private long alertWinStart = 0L;   // 防抖窗口起点
+    private int alertWinCount = 0;     // 防抖窗口内已响次数
+    private static final long ALERT_GAP = 60 * 1000L;        // 两次响铃至少隔 60 秒
+    private static final long ALERT_BURST_WIN = 10 * 60 * 1000L;
+    private static final int  ALERT_BURST_MAX = 5;           // 10 分钟最多响 5 次
 
     @Override
     public void onCreate() {
         super.onCreate();
+        sp = getSharedPreferences("zt_badge", MODE_PRIVATE);
+        lastAlertTotal = sp.getInt("last_total", -1);
+        lastAlertAt = sp.getLong("last_at", 0L);
+        alertWinStart = sp.getLong("alert_win", 0L);
+        alertWinCount = sp.getInt("alert_cnt", 0);
         ensureChannels();
         startForeground(ID_SVC, serviceNotification(-1, null));
         BootReceiver.schedule(this);   // 挂看门狗：被系统杀掉后自动恢复
@@ -110,6 +127,17 @@ public class BadgeService extends Service {
         try {
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
             if (pm != null && !pm.isInteractive()) holdWake();
+        } catch (Throwable ignored) { }
+    }
+
+    private void saveState() {
+        try {
+            if (sp != null) sp.edit()
+                    .putInt("last_total", lastAlertTotal)
+                    .putLong("last_at", lastAlertAt)
+                    .putLong("alert_win", alertWinStart)
+                    .putInt("alert_cnt", alertWinCount)
+                    .apply();
         } catch (Throwable ignored) { }
     }
 
@@ -259,6 +287,18 @@ public class BadgeService extends Service {
         });
     }
 
+    /** 这条角标通知现在还在系统通知栏里吗（进程重启后靠它判断要不要重发） */
+    private boolean hasUnreadNotification(NotificationManager nm) {
+        try {
+            android.service.notification.StatusBarNotification[] arr = nm.getActiveNotifications();
+            if (arr == null) return false;
+            for (android.service.notification.StatusBarNotification s : arr) {
+                if (s != null && s.getId() == ID_UNREAD) return true;
+            }
+        } catch (Throwable ignored) { }
+        return false;
+    }
+
     /** 把未读数落到角标通知上：有未读→发通知（触发角标），无未读→撤销（角标自动消失） */
     private void publish(int total, int msg, int chat) {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
@@ -269,16 +309,32 @@ public class BadgeService extends Service {
 
         boolean enabled = notificationsEnabled(nm);
         if (total > 0 && enabled) {
-            /* 未读数变多 = 来了新消息 → 允许这次响铃/震动；数字没变则静默更新，避免反复吵 */
-            boolean alert = total > lastAlertTotal;
-            lastAlertTotal = total;
-            /* 关键：同一条通知「原地更新」在小米/澎湃上经常不出声也不震动（系统当成更新而非新消息）。
-               有新消息时先撤掉旧的再发新的，强制系统按"新通知"处理，声音和震动才会响。 */
-            if (alert && sPosted) nm.cancel(ID_UNREAD);
-            nm.notify(ID_UNREAD, unreadNotification(total, msg, chat, alert));
+            /* 三个条件同时满足才响，缺一不可：
+               ① 有上一次的基线（首次运行只记录，不吵）
+               ② 未读数比上次大 —— 真的是来了新消息，不是重启后重读旧未读
+               ③ 距离上次响超过 60 秒 —— 网络抖动导致数字来回跳也不会连环响 */
+            long now = System.currentTimeMillis();
+            /* 防抖熔断：10 分钟里已经响过 5 次，说明未读数在来回跳（网络抖动 / 统计不稳），
+               不是真的来了 5 条消息。直接静默到窗口结束，别把手机变成闹钟。 */
+            if (now - alertWinStart > ALERT_BURST_WIN) { alertWinStart = now; alertWinCount = 0; }
+            boolean changed = (total != lastAlertTotal);
+            boolean alert = lastAlertTotal >= 0
+                    && total > lastAlertTotal
+                    && (now - lastAlertAt) > ALERT_GAP
+                    && alertWinCount < ALERT_BURST_MAX;
+            if (changed) lastAlertTotal = total;
+            if (alert) { lastAlertAt = now; alertWinCount++; }
+            if (changed || alert) saveState();
+
+            /* 通知还在、数字也没变 → 一个字节都不动。
+               进程被杀重启后，这条判断保证不会把同一条旧通知重新发一遍（重发会被当成新通知再响）。 */
+            if (alert || changed || !hasUnreadNotification(nm)) {
+                if (alert) nm.cancel(ID_UNREAD);   // 撤旧的，强制系统按"新通知"处理才会响
+                nm.notify(ID_UNREAD, unreadNotification(total, msg, chat, alert));
+            }
             sPosted = true;
         } else {
-            if (total == 0) lastAlertTotal = 0;
+            if (total == 0 && lastAlertTotal != 0) { lastAlertTotal = 0; saveState(); }
             nm.cancel(ID_UNREAD);
             sPosted = false;
         }
@@ -317,7 +373,7 @@ public class BadgeService extends Service {
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
                 .setPriority(Notification.PRIORITY_MIN);
-        /* 渠道 IMPORTANCE_MIN 本身就静音，无需 setSilent（原生 Builder 没有这个方法） */
+        /* 渠道 IMPORTANCE_MIN 本身就静音，不用再 setSilent */
         return b.build();
     }
 
@@ -353,6 +409,11 @@ public class BadgeService extends Service {
                 b.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION));
                 b.setVibrate(new long[]{0, 550, 250, 550});
             } catch (Throwable ignored) { }
+        } else if (Build.VERSION.SDK_INT >= 26) {
+            /* 不该响的这一路强制静音。
+               进程被杀重启后，系统有可能把重发的通知当成"新通知"，光靠 setOnlyAlertOnce 压不住；
+               setSilent 直接在通知层覆盖渠道的声音和震动，保证重启后不会莫名其妙响一声。 */
+            b.setSilent(true);
         }
         Notification n = b.build();
 
