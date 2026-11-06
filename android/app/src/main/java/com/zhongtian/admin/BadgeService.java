@@ -85,13 +85,29 @@ public class BadgeService extends Service {
     /** App 是否在前台：MainActivity 的 onResume/onPause 会改这个值，决定轮询快慢 */
     static volatile boolean sForeground = false;
     /* 息屏后手机会进入 Doze：CPU 休眠、网络被冻结，轮询线程直接停住 —— 这就是"息屏收不到"。
-       拿着 PARTIAL_WAKE_LOCK 才能让 10 秒一次的轮询在锁屏状态下继续跑 */
+       v1.13 起不再长时间死抱锁：每轮请求前拿一把 12 秒的短锁，请求完立刻放，
+       CPU 在两次轮询之间能真正睡下去（长持锁是手机报"异常耗电"的头号原因）。
+       极少数机型放锁后会睡得连定时器都停，检测到就自动回退成长持锁（stickyWake），宁可多耗电也不漏消息。 */
     private android.os.PowerManager.WakeLock wake;
     private boolean screenRxOn = false;
+    private boolean stickyWake = false;   // true = 这机器必须长持锁，自动检测后落盘
+    private int failStreak = 0;           // 连续请求失败次数，用于退避
+    private static final long WAKELOCK_BRIEF = 12 * 1000L;
     private final android.content.BroadcastReceiver screenRx = new android.content.BroadcastReceiver() {
         @Override public void onReceive(Context c, Intent i) {
-            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) holdWake();
-            else if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) dropWake();
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) {
+                /* 灭屏瞬间同步一次，之后按慢档走，不再长持锁 */
+                if (stickyWake) holdWake(2 * 60 * 60 * 1000L);
+                new Thread(new Runnable() {
+                    @Override public void run() { try { tick(); } catch (Throwable ignored) { } }
+                }).start();
+            } else if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) {
+                dropWake();
+                /* 亮屏立刻同步，不用等下一轮慢档 */
+                new Thread(new Runnable() {
+                    @Override public void run() { try { tick(); } catch (Throwable ignored) { } }
+                }).start();
+            }
         }
     };
     private final Handler ui = new Handler(Looper.getMainLooper());
@@ -123,10 +139,11 @@ public class BadgeService extends Service {
         startForeground(ID_SVC, serviceNotification(-1, null));
         BootReceiver.schedule(this);   // 挂看门狗：被系统杀掉后自动恢复
         registerScreenReceiver();
-        /* 息屏状态启动服务时立刻拿锁；屏幕亮着就不用（亮屏本来就醒着） */
+        stickyWake = sp.getBoolean("sticky_wake", false);
+        /* 息屏状态启动服务时：只有确认该机型必须长持锁才立刻拿锁，否则等轮询自己拿短锁 */
         try {
             android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
-            if (pm != null && !pm.isInteractive()) holdWake();
+            if (pm != null && !pm.isInteractive() && stickyWake) holdWake(2 * 60 * 60 * 1000L);
         } catch (Throwable ignored) { }
     }
 
@@ -156,8 +173,8 @@ public class BadgeService extends Service {
         } catch (Throwable ignored) { }
     }
 
-    /** 拿住一把「屏幕关了也让 CPU 醒着」的锁，2 小时自动过期，轮询里会续期 */
-    private void holdWake() {
+    /** 拿一把「屏幕关了也让 CPU 醒着」的锁；短锁模式只拿 12 秒，长锁模式（stickyWake）拿 2 小时并在每轮续期 */
+    private void holdWake(long ms) {
         try {
             if (wake == null) {
                 android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
@@ -165,7 +182,12 @@ public class BadgeService extends Service {
                 wake = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "zt:badge-poll");
                 wake.setReferenceCounted(false);
             }
-            if (!wake.isHeld()) wake.acquire(2 * 60 * 60 * 1000L);
+            if (wake.isHeld()) {
+                /* 长锁模式：每轮续期，避免 2 小时到期后掉锁 */
+                if (ms > WAKELOCK_BRIEF) { wake.release(); wake.acquire(ms); }
+                return;
+            }
+            wake.acquire(ms);
         } catch (Throwable ignored) { }
     }
 
@@ -200,20 +222,59 @@ public class BadgeService extends Service {
         }
         if (worker == null) {
             worker = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     while (alive) {
-                        /* 息屏时每轮续一次 WakeLock（2 小时过期），长时间锁屏也不会断 */
-                        try { if (!screenOn()) holdWake(); } catch (Throwable ignored) { }
+                        boolean sleeping = !screenOn();
+                        long t0 = android.os.SystemClock.elapsedRealtime();
+                        /* 只有息屏才需要锁。每轮只拿 12 秒，请求一完立刻放 ——
+                           两次轮询之间 CPU 能真正睡下去，这是省电的关键。
+                           stickyWake 是给"放锁就睡死"的机型留的后路 */
+                        if (sleeping) holdWake(stickyWake ? 2 * 60 * 60 * 1000L : WAKELOCK_BRIEF);
                         try { tick(); } catch (Throwable ignored) { }
-                        /* 自适应节奏：App 在前台 3 秒一查（接近即时），退到后台 10 秒一查省电 */
-                        long wait = sForeground ? 3 : 10;
-                        try { Thread.sleep(wait * 1000L); } catch (InterruptedException e) { return; }
+                        failStreak = lastErr.isEmpty() ? 0 : Math.min(6, failStreak + 1);
+                        if (sleeping && !stickyWake) dropWake();
+
+                        long want = nextDelay();
+                        sleepFor(want);
+
+                        /* 放锁后被系统睡得连定时器都停了（实际耗时远超预期）→ 自动回退成长持锁：
+                           宁可多耗一点电，也不能漏消息 */
+                        if (!stickyWake && sleeping && want > 0
+                                && android.os.SystemClock.elapsedRealtime() - t0 > want * 3 + 45000) {
+                            stickyWake = true;
+                            try { if (sp != null) sp.edit().putBoolean("sticky_wake", true).apply(); } catch (Throwable ignored) { }
+                        }
                     }
                 }
             }, "zt-badge-poll");
             worker.start();
         }
         return START_STICKY;
+    }
+
+    /** 轮询间隔：前台 3 秒 / 有未读 8 秒 / 息屏 20 秒 / 后台亮屏 15 秒；连续失败指数退避到 60 秒 */
+    private long nextDelay() {
+        long base;
+        if (sForeground) base = 3000L;
+        else if (sTotal > 0) base = 8000L;
+        else if (!screenOn()) base = 20000L;
+        else base = 15000L;
+        if (failStreak > 0) {
+            base = Math.min(base * (1L << Math.min(failStreak, 4)), 60000L);
+        }
+        return base;
+    }
+
+    /** 分段睡：用户回到前台就立刻结束等待，不用等慢档走完 */
+    private void sleepFor(long ms) {
+        long left = ms;
+        while (alive && left > 0) {
+            long step = Math.min(left, 2000L);
+            try { Thread.sleep(step); } catch (InterruptedException e) { return; }
+            left -= step;
+            if (sForeground) return;
+        }
     }
 
     /* ---------------- 渠道 ---------------- */
@@ -559,8 +620,8 @@ public class BadgeService extends Service {
             URL u = new URL(BASE + "rpc/" + fn);
             c = (HttpURLConnection) u.openConnection();
             c.setRequestMethod("POST");
-            c.setConnectTimeout(12000);
-            c.setReadTimeout(12000);
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(8000);
             c.setRequestProperty("apikey", KEY);
             c.setRequestProperty("Authorization", "Bearer " + KEY);
             c.setRequestProperty("Content-Type", "application/json");
@@ -588,8 +649,8 @@ public class BadgeService extends Service {
         try {
             URL u = new URL(BASE + path);
             c = (HttpURLConnection) u.openConnection();
-            c.setConnectTimeout(12000);
-            c.setReadTimeout(12000);
+            c.setConnectTimeout(8000);
+            c.setReadTimeout(8000);
             c.setRequestProperty("apikey", KEY);
             c.setRequestProperty("Authorization", "Bearer " + KEY);
             c.setRequestProperty("Accept", "application/json");
