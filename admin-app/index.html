@@ -155,15 +155,50 @@
                                   border: 0; border-radius: 12px 12px 4px 12px; }
     .bubble-meta { font-size: 11px; color: #93a39c; margin-top: 3px; }
     .bubble-row.admin .bubble-meta { text-align: right; color: #7fa395; }
-    .reply-box { display: flex; gap: 8px; align-items: flex-end; }
-    .reply-box textarea { min-height: 64px; }
-    .reply-tools { display: flex; gap: 4px; flex: 0 0 auto; }
-    .reply-tools button {
-      width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+    .reply-box { display: block; position: relative; }
+    .reply-box textarea { min-height: 64px; width: 100%; }
+    .rb-bar { display: flex; align-items: center; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+    .rb-bar button.tool {
+      width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line);
       background: #f7fbf9; color: var(--brand); font-size: 17px; cursor: pointer; line-height: 1;
     }
-    .reply-tools button:hover:not(:disabled) { background: #e8f5ee; }
-    .reply-tools button:disabled { opacity: .45; cursor: default; }
+    .rb-bar button.tool:hover:not(:disabled) { background: #e8f5ee; }
+    .rb-bar button.tool.on { background: #e8f5ee; border-color: var(--brand); }
+    .rb-bar button:disabled { opacity: .45; cursor: default; }
+    .rb-bar .rb-hint { font-size: 11.5px; color: #93a39c; margin-left: 6px; flex: 1 1 auto; min-width: 100px; }
+    .rb-bar #btn-reply { min-width: 84px; height: 38px; }
+    /* 表情 / 表情包面板 */
+    .ci-panel {
+      position: absolute; left: 0; right: 0; bottom: calc(100% + 6px); z-index: 30;
+      background: #fff; border: 1px solid var(--line); border-radius: 14px;
+      box-shadow: 0 14px 36px rgba(11, 27, 43, .18); padding: 6px;
+      max-height: 252px; display: flex; flex-direction: column;
+    }
+    .ci-panel[hidden] { display: none; }
+    .cp-tabs { display: flex; gap: 4px; padding: 2px 2px 6px; border-bottom: 1px solid var(--line); }
+    .cp-tabs button {
+      border: 0; background: none; cursor: pointer; font: inherit; font-size: 12.5px;
+      color: var(--mut); padding: 5px 12px; border-radius: 99px;
+    }
+    .cp-tabs button.on { background: #e8f5ee; color: var(--brand); font-weight: 700; }
+    .cp-body { overflow-y: auto; padding-top: 6px; }
+    .cp-body[hidden] { display: none !important; }
+    .cp-body[data-panel="emoji"]:not([hidden]) { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
+    .cp-body[data-panel="stk"]:not([hidden]) { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px 4px 4px; }
+    .cp-body[data-panel="emoji"] button {
+      border: 0; background: none; cursor: pointer; font-size: 21px; line-height: 1; padding: 5px 0; border-radius: 8px;
+    }
+    .cp-body[data-panel="emoji"] button:hover { background: #e8f5ee; }
+    .cp-stk { border: 0; background: none; padding: 0; cursor: pointer; border-radius: 11px; line-height: 0; }
+    .cp-stk:hover { transform: translateY(-2px) scale(1.05); }
+    .cp-stk img { width: 100%; height: auto; display: block; border-radius: 11px; }
+    #thread-msgs.drag-over, #reply-text.drag-over { box-shadow: inset 0 0 0 2px var(--brand); background: #e8f5ee; }
+    /* 表情包气泡 */
+    .bubble-b.is-stk { padding: 0; background: none !important; border: 0 !important; box-shadow: none !important; }
+    .att-stk-b { width: 108px; height: 108px; display: block; border-radius: 12px; }
+    /* 多图九宫格 */
+    .att-grid-b { display: grid; gap: 4px; width: 220px; grid-template-columns: repeat(2, 1fr); }
+    .att-grid-b .att-img-b { width: 100%; height: 100%; max-width: none; max-height: none; aspect-ratio: 1/1; object-fit: cover; }
     /* 附件气泡 */
     .bubble-b.has-att { padding: 6px; background: #fff; }
     .bubble-row.admin .bubble-b.has-att { background: rgba(255,255,255,.16); }
@@ -194,6 +229,11 @@
       .thread-list { max-height: none; }
       .bubble-b { max-width: 84%; font-size: 14.5px; }
       .bubble-b img.att-img-b { max-width: 62vw; max-height: 44vh; }
+      .att-grid-b { width: min(62vw, 220px); }
+      .att-stk-b { width: 92px; height: 92px; }
+      .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(5, 1fr); }
+      .cp-body[data-panel="emoji"] { grid-template-columns: repeat(8, 1fr); }
+      .rb-bar .rb-hint { display: none; }
       .reply-box { position: sticky; bottom: 0; background: #fff; padding-top: 6px; }
     }
     ::-webkit-scrollbar { width: 9px; height: 9px; }
@@ -230,7 +270,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061630";
+      var ZT_VER = "202611061820";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -386,12 +426,22 @@
             <span id="thread-head">选择左侧一个会话开始回复</span></div>
           <div id="thread-msgs" class="thread-msgs"></div>
           <div class="reply-box">
-            <textarea id="reply-text" placeholder="输入回复内容，Ctrl+Enter 发送"></textarea>
-            <div class="reply-tools">
-              <button type="button" id="btn-send-img" title="发送照片">🖼</button>
-              <button type="button" id="btn-send-file" title="发送文件">📎</button>
+            <textarea id="reply-text" placeholder="输入回复内容，Enter 换行；Ctrl+Enter 发送；可直接粘贴截图"></textarea>
+            <div class="rb-bar">
+              <button type="button" class="tool" id="btn-emoji" title="表情 / 表情包">😊</button>
+              <button type="button" class="tool" id="btn-send-img" title="发送照片">🖼</button>
+              <button type="button" class="tool" id="btn-send-file" title="发送文件">📎</button>
+              <span class="rb-hint">可粘贴截图（Ctrl+V）或把文件拖进聊天区</span>
+              <button id="btn-reply">发送</button>
             </div>
-            <button id="btn-reply">发送回复</button>
+            <div class="ci-panel" id="reply-panel" hidden>
+              <div class="cp-tabs">
+                <button type="button" data-tab="emoji" class="on">表情</button>
+                <button type="button" data-tab="stk">表情包</button>
+              </div>
+              <div class="cp-body" data-panel="emoji"></div>
+              <div class="cp-body" data-panel="stk" hidden></div>
+            </div>
             <input type="file" id="pick-img" accept="image/*" multiple hidden>
             <input type="file" id="pick-file" multiple hidden>
           </div>
@@ -1509,12 +1559,32 @@
       .then(function () { loadUnread(); });
   });
 
+  /* ---------------- 表情包：content 为 [[stk]]{"id":..}，图片是本地资源 ---------------- */
+  var STK_BASE = "../assets/img/stickers/";
+  var STICKERS = [
+    { id: "zai", t: "在的" }, { id: "shoudao", t: "收到" }, { id: "xiexie", t: "谢谢" },
+    { id: "shaodeng", t: "稍等" }, { id: "haode", t: "好的" }, { id: "dianzan", t: "点赞" },
+    { id: "qingwen", t: "请问" }, { id: "jiayou", t: "加油" }, { id: "meiwenti", t: "没问题" },
+    { id: "mashang", t: "马上办" }, { id: "xinku", t: "辛苦啦" }, { id: "zaijian", t: "再见" }
+  ];
+  var EMOJIS = ("😀 😃 😄 😁 😊 🙂 😉 😍 🤝 👍 👏 🙏 💪 🔥 ✨ 🎉 ✅ ❓ ❗ ⏰ 📞 📱 📧 📄 📎 📌 " +
+    "🏆 🎯 💡 📊 🌍 🏭 🔧 🧪 🧾 💰 🤔 😅 😢 🙌 👌 🆗 💬 👉 ⭐ 🌟 🚀 ⏳ 📅 📍 ✍️ 🖼").split(" ");
+  function stkUrl(id) {
+    return STK_BASE + String(id || "").replace(/[^a-z0-9_-]/gi, "") + ".svg";
+  }
+  function parseStk(content) {
+    var s = String(content || "");
+    if (s.indexOf("[[stk]]") !== 0) return null;
+    try { var o = JSON.parse(s.slice(7)); return (o && o.id) ? o : null; } catch (e) { return null; }
+  }
+
   /* ---------------- 聊天附件：消息 content 以 [[att]] 开头时后面是 JSON ---------------- */
   function parseAtt(content) {
     var s = String(content || "");
     if (s.indexOf("[[att]]") !== 0) return null;
     try {
       var o = JSON.parse(s.slice(7));
+      if (o && o.imgs && o.imgs.length) return { imgs: o.imgs };
       return (o && o.u) ? o : null;
     } catch (e) { return null; }
   }
@@ -1534,16 +1604,41 @@
     if (/^(zip|rar|7z)$/.test(ext)) return "ZIP";
     return "FILE";
   }
+  function isImgB(a) { return /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.u || ""); }
   function attMsgHtml(content) {
+    var st = parseStk(content);
+    if (st) {
+      return '<img class="att-stk-b" data-full="' + esc(stkUrl(st.id)) + '" src="' + esc(stkUrl(st.id)) +
+        '" alt="' + esc(st.t || "表情") + '" loading="lazy">';
+    }
     var a = parseAtt(content);
     if (!a) return esc(content);
-    var isImg = /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(a.u);
-    if (isImg) {
-      return '<img class="att-img-b" src="' + esc(a.u) + '" alt="' + esc(a.n || "图片") + '" loading="lazy">';
+    var list = a.imgs ? a.imgs : [a];
+    var imgs = list.filter(isImgB);
+    var files = list.filter(function (x) { return !isImgB(x); });
+    var html = "";
+
+    if (imgs.length === 1) {
+      html += '<img class="att-img-b" src="' + esc(imgs[0].u) + '" alt="' + esc(imgs[0].n || "图片") + '" loading="lazy">';
+    } else if (imgs.length > 1) {
+      html += '<div class="att-grid-b">' + imgs.slice(0, 4).map(function (g, i) {
+        return '<img class="att-img-b" src="' + esc(g.u) + '" alt="' + esc(g.n || "图片") + '" loading="lazy"' +
+          (i === 3 && imgs.length > 4 ? ' style="opacity:.85"' : "") + '>';
+      }).join("") + "</div>" +
+        (imgs.length > 4 ? '<div class="bubble-meta">共 ' + imgs.length + ' 张，点开可逐张查看</div>' : "");
     }
-    return '<a class="att-file-card" href="' + esc(a.u) + '" target="_blank" rel="noopener" download="' + esc(a.n || "file") + '">' +
-      '<span class="af-ic">' + fileTag(a.n || a.u) + '</span>' +
-      '<span><b>' + esc(a.n || "文件") + '</b><small>' + humanSize(a.s) + '</small></span></a>';
+    files.forEach(function (f) {
+      html += '<a class="att-file-card" href="' + esc(f.u) + '" target="_blank" rel="noopener" download="' + esc(f.n || "file") + '">' +
+        '<span class="af-ic">' + fileTag(f.n || f.u) + '</span>' +
+        '<span><b>' + esc(f.n || "文件") + '</b><small>' + humanSize(f.s) + '</small></span></a>';
+    });
+    return html;
+  }
+  /* 气泡要加的类：附件 / 表情包 / 普通文本 */
+  function bubbleCls(content) {
+    if (parseStk(content)) return " is-stk";
+    if (parseAtt(content)) return " has-att";
+    return "";
   }
 
   /* 图片压缩：长边 1600、JPEG 0.82 */
@@ -1621,10 +1716,97 @@
   }
 
   function setReplyBusy(on) {
-    ["btn-reply", "btn-send-img", "btn-send-file"].forEach(function (id) {
+    ["btn-reply", "btn-emoji", "btn-send-img", "btn-send-file"].forEach(function (id) {
       var b = $(id); if (b) b.disabled = !!on;
     });
   }
+
+  /* ---------------- 表情 / 表情包面板 ---------------- */
+  var rbPanel = $("reply-panel");
+  function buildPanel() {
+    rbPanel.querySelector('[data-panel="emoji"]').innerHTML = EMOJIS.map(function (e) {
+      return '<button type="button" data-emoji="' + e + '">' + e + "</button>";
+    }).join("");
+    rbPanel.querySelector('[data-panel="stk"]').innerHTML = STICKERS.map(function (s) {
+      return '<button type="button" class="cp-stk" data-stk="' + s.id + '" title="' + esc(s.t) + '">' +
+        '<img src="' + esc(stkUrl(s.id)) + '" alt="' + esc(s.t) + '" loading="lazy"></button>';
+    }).join("");
+  }
+  function switchTab(tab) {
+    rbPanel.querySelectorAll(".cp-tabs button").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+    });
+    rbPanel.querySelectorAll(".cp-body").forEach(function (b) {
+      b.hidden = b.getAttribute("data-panel") !== tab;
+    });
+  }
+  function togglePanel(force) {
+    var show = force === undefined ? rbPanel.hidden : force;
+    if (show && !rbPanel.dataset.built) { buildPanel(); rbPanel.dataset.built = "1"; }
+    rbPanel.hidden = !show;
+    $("btn-emoji").classList.toggle("on", !!show);
+  }
+  function insertAtCursor(str) {
+    var ta = $("reply-text");
+    var s = ta.selectionStart || 0, en = ta.selectionEnd || 0, v = ta.value;
+    ta.value = v.slice(0, s) + str + v.slice(en);
+    try { ta.setSelectionRange(s + str.length, s + str.length); } catch (e) { }
+    ta.focus();
+  }
+  function sendSticker(id) {
+    var st = null;
+    for (var i = 0; i < STICKERS.length; i++) if (STICKERS[i].id === id) st = STICKERS[i];
+    if (!st) return;
+    if (!curThread) { showTip($("thread-tip"), "请先在左侧选择一个会话。", true); return; }
+    togglePanel(false);
+    sendContent("[[stk]]" + JSON.stringify({ id: st.id, t: st.t }))
+      .then(function () {
+        showTip($("thread-tip"), "✅ 表情包已发送", false);
+        loadMessagesOf(curThread, false);
+      })
+      .catch(function (e) {
+        showTip($("thread-tip"), "发送失败：" + ((e && e.message) || "网络异常"), true);
+      });
+  }
+  $("btn-emoji").addEventListener("click", function () { togglePanel(); });
+  rbPanel.querySelector(".cp-tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tab]");
+    if (b) switchTab(b.getAttribute("data-tab"));
+  });
+  rbPanel.addEventListener("click", function (e) {
+    var sk = e.target.closest("[data-stk]");
+    if (sk) { sendSticker(sk.getAttribute("data-stk")); return; }
+    var em = e.target.closest("[data-emoji]");
+    if (em) insertAtCursor(em.getAttribute("data-emoji"));
+  });
+  document.addEventListener("click", function (e) {
+    if (rbPanel.hidden) return;
+    if (rbPanel.contains(e.target) || (e.target.closest && e.target.closest("#btn-emoji"))) return;
+    togglePanel(false);
+  });
+
+  /* 粘贴截图 / 拖拽文件直接发出去 */
+  $("reply-text").addEventListener("paste", function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    var imgs = [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//.test(items[i].type || "")) {
+        var f = items[i].getAsFile();
+        if (f) imgs.push(f);
+      }
+    }
+    if (imgs.length) { e.preventDefault(); sendAdminFiles(imgs); }
+  });
+  ["thread-msgs", "reply-text"].forEach(function (id) {
+    var box = $(id);
+    box.addEventListener("dragover", function (e) { e.preventDefault(); box.classList.add("drag-over"); });
+    box.addEventListener("dragleave", function () { box.classList.remove("drag-over"); });
+    box.addEventListener("drop", function (e) {
+      e.preventDefault();
+      box.classList.remove("drag-over");
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) sendAdminFiles(e.dataTransfer.files);
+    });
+  });
 
   /* 发一条消息（文本或附件） */
   function sendContent(content) {
@@ -1659,9 +1841,8 @@
         }
         var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
         box.innerHTML = res.data.map(function (m) {
-          var att = parseAtt(m.content);
           return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
-            '<div><div class="bubble-b' + (att ? " has-att" : "") + '">' + attMsgHtml(m.content) + '</div>' +
+            '<div><div class="bubble-b' + bubbleCls(m.content) + '">' + attMsgHtml(m.content) + '</div>' +
             '<div class="bubble-meta" style="text-align:right">' + fmtTime(m.created_at) + '</div></div></div>';
         }).join("") || '<div class="empty">暂无消息</div>';
         if (!quiet || atBottom) box.scrollTop = box.scrollHeight;
@@ -1702,7 +1883,7 @@
     loadThreads(true);
   });
   $("thread-msgs").addEventListener("click", function (e) {
-    var img = e.target.closest("img.att-img-b");
+    var img = e.target.closest("img.att-img-b, img.att-stk-b");
     if (!img) return;
     $("ad-viewer").querySelector("img").src = img.getAttribute("src");
     $("ad-viewer").classList.add("show");

@@ -69,15 +69,20 @@
     '  <div class="chat-input">' +
     '    <div class="ci-main">' +
     '      <textarea rows="1" placeholder="' + L("输入您的问题…", "Type your message…") + '" maxlength="2000"></textarea>' +
-    '      <button class="ci-send" aria-label="发送">' + ICON_SEND + '</button>' +
+    '      <button class="ci-send" aria-label="发送"><span>' + L("发送", "Send") + '</span></button>' +
     '    </div>' +
     '    <div class="ci-bar">' +
-    '      <button type="button" data-act="emoji" title="' + L("表情", "Emoji") + '" aria-label="表情">' + ICON_EMOJI + '</button>' +
+    '      <button type="button" data-act="emoji" title="' + L("表情 / 表情包", "Emoji / stickers") + '" aria-label="表情">' + ICON_EMOJI + '</button>' +
     '      <button type="button" data-act="img" title="' + L("发送照片", "Send photo") + '" aria-label="发照片">' + ICON_IMG + '</button>' +
     '      <button type="button" data-act="file" title="' + L("发送文件", "Send file") + '" aria-label="发文件">' + ICON_CLIP + '</button>' +
     '      <span class="ci-hint">' + L("照片 / 文件 / 粘贴截图", "Photo / file / paste") + '</span>' +
     '    </div>' +
-    '    <div class="ci-emoji" hidden></div>' +
+    '    <div class="ci-panel" hidden>' +
+    '      <div class="cp-tabs"><button type="button" data-tab="emoji" class="on">' + L("表情", "Emoji") + '</button>' +
+    '        <button type="button" data-tab="stk">' + L("表情包", "Stickers") + '</button></div>' +
+    '      <div class="cp-body" data-panel="emoji"></div>' +
+    '      <div class="cp-body" data-panel="stk" hidden></div>' +
+    '    </div>' +
     '    <input type="file" class="ci-pick" accept="image/*" multiple hidden>' +
     '    <input type="file" class="ci-pick-all" multiple hidden>' +
     '  </div>' +
@@ -202,6 +207,7 @@
     lastId = 0;
     humanReplied = false;
     pending = [];
+    lastStamp = 0;
     body.innerHTML = "";
     botSay(HELLO);
     renderChips();
@@ -223,17 +229,35 @@
     });
     setTimeout(function () { body.scrollTop = body.scrollHeight; }, 120);
   }
-  function addMsg(html, me) {
+  /* 时间分隔条：首次进会话 / 隔了 5 分钟才出现，不打断阅读 */
+  var lastStamp = 0;
+  function hhmm(d) {
+    function p(n) { return (n < 10 ? "0" : "") + n; }
+    return p(d.getHours()) + ":" + p(d.getMinutes());
+  }
+  function addStamp(text) {
+    var s = document.createElement("div");
+    s.className = "chat-stamp";
+    s.textContent = text;
+    body.appendChild(s);
+  }
+  function addMsg(html, me, cls) {
+    var now = Date.now();
+    if (!lastStamp) addStamp(L("开始沟通 · " + hhmm(new Date(now)), "Chat started · " + hhmm(new Date(now))));
+    else if (now - lastStamp > 5 * 60000) addStamp(hhmm(new Date(now)));
+    lastStamp = now;
+
     var m = document.createElement("div");
-    m.className = "msg" + (me ? " me" : "");
+    m.className = "msg" + (me ? " me" : "") + (cls ? " " + cls : "");
     m.innerHTML = (me ? "" : '<span class="b-av">' + (C.mark || "客") + '</span>') +
       '<span class="bubble">' + html + '</span>';
     body.appendChild(m);
     stick();
     return m;
   }
-  function botSay(html) { addMsg(html, false); }
-  function meSay(text) { addMsg(msgHtml(text), true); }
+  function botSay(html, cls) { addMsg(html, false, cls); }
+  function meSay(text) { addMsg(msgHtml(text), true, clsOf(text)); }
+  function clsOf(c) { return parseStk(c) ? "stk" : (parseAtt(c) ? "att" : ""); }
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
@@ -241,18 +265,50 @@
     });
   }
 
+  /* ---------------- 表情包 ----------------
+     消息 content 以 [[stk]] 开头时后面是 {"id":"zai"}，渲染成本地打包的表情图，
+     不占用存储、秒开；网站和后台两端都认这个格式。 */
+  var STICKER_BASE = (function () {
+    var ss = document.getElementsByTagName("script");
+    for (var i = 0; i < ss.length; i++) {
+      var src = ss[i].src || "";
+      if (/assets\/js\/chat\.js/.test(src)) return src.replace(/assets\/js\/chat\.js.*$/, "assets/img/stickers/");
+    }
+    return "assets/img/stickers/";
+  })();
+  var STICKERS = [
+    { id: "zai", t: "在的" }, { id: "shoudao", t: "收到" }, { id: "xiexie", t: "谢谢" },
+    { id: "shaodeng", t: "稍等" }, { id: "haode", t: "好的" }, { id: "dianzan", t: "点赞" },
+    { id: "qingwen", t: "请问" }, { id: "jiayou", t: "加油" }, { id: "meiwenti", t: "没问题" },
+    { id: "mashang", t: "马上办" }, { id: "xinku", t: "辛苦啦" }, { id: "zaijian", t: "再见" }
+  ];
+  function stkUrl(id) {
+    return STICKER_BASE + String(id || "").replace(/[^a-z0-9_-]/gi, "") + ".svg";
+  }
+  function parseStk(content) {
+    var s = String(content || "");
+    if (s.indexOf("[[stk]]") !== 0) return null;
+    try {
+      var o = JSON.parse(s.slice(7));
+      return (o && o.id) ? o : null;
+    } catch (e) { return null; }
+  }
+
   /* ---------------- 附件消息（图片 / 文件） ----------------
      约定：消息 content 以 [[att]] 开头时，后面跟一段 JSON：
        {"u":"公开链接","n":"文件名","s":字节数,"t":"MIME"}
+       {"imgs":[{...},{...}]}                          一次发的多张图片
      纯文本消息完全不受影响，老消息照常显示。 */
   function parseAtt(content) {
     var s = String(content || "");
     if (s.indexOf("[[att]]") !== 0) return null;
     try {
       var o = JSON.parse(s.slice(7));
+      if (o && o.imgs && o.imgs.length) return { imgs: o.imgs };
       return (o && o.u) ? o : null;
     } catch (e) { return null; }
   }
+  function attItems(a) { return (a && a.imgs) ? a.imgs : [a]; }
   function humanSize(n) {
     n = +n || 0;
     if (n <= 0) return "";
@@ -270,19 +326,41 @@
     if (/^(png|jpe?g|gif|webp)$/.test(ext)) return "IMG";
     return "FILE";
   }
+  function isImg(a) {
+    return /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(a.u || "");
+  }
   function attHtml(a) {
-    var isImg = /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(a.u);
-    if (isImg) {
-      return '<a class="att-img" href="' + escapeHtml(a.u) + '" target="_blank" rel="noopener">' +
-        '<img src="' + escapeHtml(a.u) + '" alt="' + escapeHtml(a.n || "图片") + '" loading="lazy"></a>';
+    var list = attItems(a);
+    var imgs = list.filter(isImg);
+    var files = list.filter(function (x) { return !isImg(x); });
+    var html = "";
+
+    if (imgs.length === 1) {
+      html += '<a class="att-img" href="' + escapeHtml(imgs[0].u) + '" target="_blank" rel="noopener">' +
+        '<img src="' + escapeHtml(imgs[0].u) + '" alt="' + escapeHtml(imgs[0].n || "图片") + '" loading="lazy"></a>';
+    } else if (imgs.length > 1) {
+      html += '<div class="att-grid n' + Math.min(imgs.length, 4) + '">' + imgs.slice(0, 4).map(function (g, i) {
+        return '<a class="att-img" href="' + escapeHtml(g.u) + '" target="_blank" rel="noopener">' +
+          '<img src="' + escapeHtml(g.u) + '" alt="' + escapeHtml(g.n || "图片") + '" loading="lazy">' +
+          (i === 3 && imgs.length > 4 ? '<i class="att-more">+' + (imgs.length - 4) + '</i>' : "") + '</a>';
+      }).join("") + '</div>';
     }
-    return '<a class="att-file" href="' + escapeHtml(a.u) + '" target="_blank" rel="noopener" download="' +
-      escapeHtml(a.n || "file") + '">' +
-      '<span class="af-ic">' + fileTag(a.n || a.u) + '</span>' +
-      '<span class="af-tx"><b>' + escapeHtml(a.n || "文件") + '</b><small>' + humanSize(a.s) + '</small></span>' +
-      '<span class="af-dl">↓</span></a>';
+
+    files.forEach(function (f) {
+      html += '<a class="att-file" href="' + escapeHtml(f.u) + '" target="_blank" rel="noopener" download="' +
+        escapeHtml(f.n || "file") + '">' +
+        '<span class="af-ic">' + fileTag(f.n || f.u) + '</span>' +
+        '<span class="af-tx"><b>' + escapeHtml(f.n || "文件") + '</b><small>' + humanSize(f.s) + '</small></span>' +
+        '<span class="af-dl">↓</span></a>';
+    });
+    return html;
   }
   function msgHtml(content) {
+    var st = parseStk(content);
+    if (st) {
+      return '<span class="att-stk"><img src="' + escapeHtml(stkUrl(st.id)) + '" alt="' +
+        escapeHtml(st.t || "表情") + '" loading="lazy"></span>';
+    }
     var a = parseAtt(content);
     if (a) return attHtml(a);
     return escapeHtml(content).replace(/\n/g, "<br>");
@@ -337,7 +415,7 @@
         lastId = m.id;
         if (m.role === "admin") {
           typing(false);
-          botSay(msgHtml(m.content));
+          botSay(msgHtml(m.content), clsOf(m.content));
           humanReplied = true; /* 人工已接入，后续不再自动回复 */
           /* 聊天窗关着时收到客服回复 → 未读角标+1 */
           if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
@@ -361,7 +439,7 @@
   /* ---------------- 附件上传 / 表情 ---------------- */
   var pickImg = el.querySelector(".ci-pick");
   var pickAll = el.querySelector(".ci-pick-all");
-  var emojiBox = el.querySelector(".ci-emoji");
+  var emojiBox = el.querySelector(".ci-panel");
   var barHint = el.querySelector(".ci-hint");
   var MAX_FILE = 10 * 1048576;
   var MAX_SIDE = 1600;
@@ -423,50 +501,86 @@
       return;
     }
     if (uploading) { botSay(L("上一个附件还在上传，请稍等。", "Still uploading, please wait.")); return; }
-    if (list.length > 4) list = list.slice(0, 4);
+    if (list.length > 6) list = list.slice(0, 6);
+
+    var imgs = list.filter(function (f) { return /^image\//.test(f.type || ""); });
+    var others = list.filter(function (f) { return !/^image\//.test(f.type || ""); });
+
     uploading = true;
     setBarBusy(true);
-    var i = 0;
 
-    (function next() {
-      if (i >= list.length) { uploading = false; setBarBusy(false); return; }
-      var f = list[i++];
-      if (f.size > MAX_FILE) {
-        botSay(L("「" + f.name + "」超过 10MB，没有发送。", "\"" + f.name + "\" is over 10MB, not sent."));
-        return next();
-      }
-      var ph = addMsg('<span class="att-up">' + L("正在上传", "Uploading") + " " + escapeHtml(f.name) + "…</span>", true);
-      compressImage(f).then(function (out) {
-        return window.DB.uploadChatFile(out, VK);
-      }).then(function (r) {
-        var content = "[[att]]" + JSON.stringify({ u: r.url, n: f.name, s: f.size, t: f.type || "" });
-        if (ph) ph.remove();
-        meSay(content);
-        pending.push(content);
-        return window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: content })
-          .then(function (res) {
-            if (res && res.error) throw res.error;
-            var d = res && res.data;
-            if (d && d.ok === false) {
-              if (d.error === "limit") { enterLimited(); return; }
-              throw new Error(d.error || "send");
-            }
-          })
-          .catch(function () {
-            clearPending(content);
-            botSay(L("附件已经传上去了，但消息没发出去，请刷新后再试一次。",
-                     "Uploaded but the message failed. Please refresh and retry."));
-          });
-      }).catch(function (e) {
-        if (ph) ph.remove();
-        var m = String((e && (e.message || e.error_description)) || e || "");
-        botSay(/bucket|not found/i.test(m)
-          ? L("附件功能还没启用：请先让管理员打开「发图片/文件」配置页跑一次 SQL。",
-              "File sending is not enabled yet: an admin needs to run the storage setup once.")
-          : L("上传失败：" + (m || "网络异常") + "，请重试或直接发文字。",
-              "Upload failed: " + (m || "network error") + ". Please retry."));
-      }).then(next);
+    /* 一次选的图片合成一条消息（九宫格），文件各发一条 */
+    var jobs = [];
+    if (imgs.length) jobs.push({ imgs: true, files: imgs });
+    others.forEach(function (f) { jobs.push({ imgs: false, files: [f] }); });
+
+    var qi = 0, done = 0;
+    var total = list.length;
+    var ph = addMsg('<span class="att-up">' + L("正在上传", "Uploading") + ' <b class="up-n">0/' + total + '</b></span>', true);
+
+    function finish() {
+      uploading = false;
+      setBarBusy(false);
+      if (ph) { ph.remove(); ph = null; }
+    }
+
+    (function nextJob() {
+      if (qi >= jobs.length) { finish(); return; }
+      var job = jobs[qi++];
+      var got = [], bad = 0;
+
+      (function step() {
+        if (!job.files.length) {
+          if (got.length) sendOne(job.imgs ? { imgs: got } : got[0]);
+          return nextJob();
+        }
+        var f = job.files.shift();
+        if (f.size > MAX_FILE) {
+          botSay(L("「" + f.name + "」超过 10MB，没有发送。", "\"" + f.name + "\" is over 10MB, not sent."));
+          bad++;
+          return step();
+        }
+        compressImage(f).then(function (out) {
+          return window.DB.uploadChatFile(out, VK);
+        }).then(function (r) {
+          got.push({ u: r.url, n: f.name, s: f.size, t: f.type || "" });
+        }).catch(function (e) {
+          bad++;
+          var m = String((e && (e.message || e.error_description)) || e || "");
+          botSay(/bucket|not found/i.test(m)
+            ? L("附件功能还没启用：请先让管理员打开「发图片/文件」配置页跑一次 SQL。",
+                "File sending is not enabled yet: an admin needs to run the storage setup once.")
+            : L("上传失败：" + (m || "网络异常") + "，请重试或直接发文字。",
+                "Upload failed: " + (m || "network error") + ". Please retry."));
+        }).then(function () {
+          done++;
+          var n = ph && ph.querySelector(".up-n");
+          if (n) n.textContent = done + "/" + total;
+          step();
+        });
+      })();
     })();
+
+    /* 上传完成 → 先本地显示，再写库；pending 用于服务端回显去重 */
+    function sendOne(payload) {
+      var content = "[[att]]" + JSON.stringify(payload);
+      meSay(content);
+      pending.push(content);
+      window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: content })
+        .then(function (res) {
+          if (res && res.error) throw res.error;
+          var d = res && res.data;
+          if (d && d.ok === false) {
+            if (d.error === "limit") { enterLimited(); return; }
+            throw new Error(d.error || "send");
+          }
+        })
+        .catch(function () {
+          clearPending(content);
+          botSay(L("附件已经传上去了，但消息没发出去，请刷新后再试一次。",
+                   "Uploaded but the message failed. Please refresh and retry."));
+        });
+    }
   }
 
   el.querySelector('[data-act="img"]').addEventListener("click", function () { pickImg.click(); });
@@ -474,7 +588,7 @@
   pickImg.addEventListener("change", function () { sendAttachments(this.files); this.value = ""; });
   pickAll.addEventListener("change", function () { sendAttachments(this.files); this.value = ""; });
 
-  /* 表情面板：内置 emoji，不依赖外部图片，打开就在 */
+  /* 表情面板：两个页签 —— 表情（文字 emoji，插到输入框）/ 表情包（图片，直接发出） */
   var EMOJIS = ("😀 😃 😄 😁 😊 🙂 😉 😍 🤝 👍 👏 🙏 💪 🔥 ✨ 🎉 ✅ ❓ ❗ ⏰ 📞 📱 📧 📄 📎 📌 " +
     "🏆 🎯 💡 📊 🌍 🏭 🔧 🧪 🧾 💰 🤔 😅 😢 🙌 👌 🆗 💬 👉 ⭐ 🌟 🚀 ⏳ 📅 📍 ✍️ 🖼").split(" ");
   function insertAtCursor(str) {
@@ -486,18 +600,71 @@
     input.focus();
     autoGrow();
   }
-  function toggleEmoji(force) {
+  function buildPanel() {
+    var emoBody = emojiBox.querySelector('[data-panel="emoji"]');
+    var stkBody = emojiBox.querySelector('[data-panel="stk"]');
+    emoBody.innerHTML = EMOJIS.map(function (e) { return '<button type="button" data-emoji="' + e + '">' + e + "</button>"; }).join("");
+    stkBody.innerHTML = STICKERS.map(function (s) {
+      return '<button type="button" class="cp-stk" data-stk="' + s.id + '" title="' + escapeHtml(s.t) + '">' +
+        '<img src="' + escapeHtml(stkUrl(s.id)) + '" alt="' + escapeHtml(s.t) + '" loading="lazy"></button>';
+    }).join("");
+  }
+  function toggleEmoji(force, tab) {
     var show = force === undefined ? emojiBox.hidden : force;
+    if (show && !emojiBox.dataset.built) { buildPanel(); emojiBox.dataset.built = "1"; }
     emojiBox.hidden = !show;
-    if (show && !emojiBox.childElementCount) {
-      emojiBox.innerHTML = EMOJIS.map(function (e) { return '<button type="button">' + e + "</button>"; }).join("");
-    }
+    el.querySelector('[data-act="emoji"]').classList.toggle("on", !!show);
+    if (show && tab) switchTab(tab);
+  }
+  function switchTab(tab) {
+    emojiBox.querySelectorAll(".cp-tabs button").forEach(function (b) {
+      b.classList.toggle("on", b.getAttribute("data-tab") === tab);
+    });
+    emojiBox.querySelectorAll(".cp-body").forEach(function (b) {
+      b.hidden = b.getAttribute("data-panel") !== tab;
+    });
+    emojiBox.scrollTop = 0;
   }
   el.querySelector('[data-act="emoji"]').addEventListener("click", function () { toggleEmoji(); });
-  emojiBox.addEventListener("click", function (e) {
-    var b = e.target.closest("button");
-    if (b) insertAtCursor(b.textContent);
+  emojiBox.querySelector(".cp-tabs").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-tab]");
+    if (b) switchTab(b.getAttribute("data-tab"));
   });
+  emojiBox.addEventListener("click", function (e) {
+    var sk = e.target.closest("[data-stk]");
+    if (sk) { sendSticker(sk.getAttribute("data-stk")); return; }
+    var b = e.target.closest("[data-emoji]");
+    if (b) insertAtCursor(b.getAttribute("data-emoji"));
+  });
+
+  /* 点面板以外的地方收起表情面板 */
+  document.addEventListener("click", function (e) {
+    if (emojiBox.hidden) return;
+    if (emojiBox.contains(e.target) || (e.target.closest && e.target.closest('[data-act="emoji"]'))) return;
+    toggleEmoji(false);
+  });
+
+  /* 发表情包：content 只存 id，图片是本地资源，不占存储、打开即显示 */
+  function sendSticker(id) {
+    var st = null;
+    for (var i = 0; i < STICKERS.length; i++) if (STICKERS[i].id === id) st = STICKERS[i];
+    if (!st) return;
+    var content = "[[stk]]" + JSON.stringify({ id: st.id, t: st.t });
+    meSay(content);
+    toggleEmoji(false);
+    if (!dbOn()) return;
+    pending.push(content);
+    window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: content })
+      .then(function (res) {
+        if (res && res.error) throw res.error;
+        var d = res && res.data;
+        if (d && d.ok === false && d.error === "limit") enterLimited();
+      })
+      .catch(function () {
+        clearPending(content);
+        botSay(L("表情没发出去，请检查网络后重试。", "Sticker failed to send. Please check your network."));
+      });
+  }
 
   /* 粘贴截图 / 拖拽文件 */
   input.addEventListener("paste", function (e) {

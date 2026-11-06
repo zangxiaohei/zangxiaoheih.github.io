@@ -3,6 +3,7 @@ package com.zhongtian.admin;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -76,10 +77,19 @@ public class MainActivity extends Activity {
                 if (fileCallback != null) fileCallback.onReceiveValue(null);
                 fileCallback = cb;
                 try {
+                    /* 按网页的 accept 走：选图片时直接打开图库，并允许多选（聊天里一次发多张） */
+                    String type = "*/*";
+                    String[] accept = params.getAcceptTypes();
+                    if (accept != null) {
+                        for (String a : accept) {
+                            if (a != null && a.startsWith("image/")) { type = "image/*"; break; }
+                        }
+                    }
                     Intent i = new Intent(Intent.ACTION_GET_CONTENT);
                     i.addCategory(Intent.CATEGORY_OPENABLE);
-                    i.setType("*/*");
-                    startActivityForResult(Intent.createChooser(i, "选择文件"), REQ_FILE);
+                    i.setType(type);
+                    i.putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true);
+                    startActivityForResult(Intent.createChooser(i, type.startsWith("image/") ? "选择图片" : "选择文件"), REQ_FILE);
                     return true;
                 } catch (Exception e) {
                     fileCallback = null;
@@ -188,8 +198,14 @@ public class MainActivity extends Activity {
         if (req == REQ_FILE) {
             if (fileCallback != null) {
                 Uri[] out = null;
-                if (res == RESULT_OK && data != null && data.getData() != null) {
-                    out = new Uri[]{data.getData()};
+                if (res == RESULT_OK && data != null) {
+                    ClipData clip = data.getClipData();
+                    if (clip != null && clip.getItemCount() > 0) {
+                        out = new Uri[clip.getItemCount()];
+                        for (int i = 0; i < clip.getItemCount(); i++) out[i] = clip.getItemAt(i).getUri();
+                    } else if (data.getData() != null) {
+                        out = new Uri[]{data.getData()};
+                    }
                 }
                 fileCallback.onReceiveValue(out);
                 fileCallback = null;

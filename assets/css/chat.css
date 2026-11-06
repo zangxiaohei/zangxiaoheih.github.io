@@ -142,47 +142,91 @@
 }
 .chat-input textarea:focus { outline: none; border-color: var(--accent); background: #fff; }
 .chat-input .ci-send {
-  width: 40px; height: 40px; border-radius: 50%; border: 0; cursor: pointer;
+  min-width: 60px; height: 38px; padding: 0 16px; border-radius: 19px; border: 0; cursor: pointer;
   background: var(--accent); color: #fff; display: grid; place-items: center; flex-shrink: 0;
+  font: inherit; font-size: 14px; font-weight: 700; letter-spacing: .5px;
+  transition: background .18s, transform .18s;
 }
 .chat-input .ci-send:hover { background: #00947c; }
+.chat-input .ci-send:active { transform: scale(.96); }
 .chat-input .ci-send svg { width: 18px; height: 18px; }
 
-.ci-bar { display: flex; align-items: center; gap: 2px; padding-left: 2px; }
+.ci-bar {
+  display: flex; align-items: center; gap: 2px; padding-left: 2px;
+}
 .ci-bar button {
   width: 34px; height: 34px; border: 0; border-radius: 10px; background: none; cursor: pointer;
   color: var(--muted); display: grid; place-items: center; padding: 0;
+  transition: background .18s, color .18s;
 }
 .ci-bar button:hover:not(:disabled) { background: var(--soft); color: var(--brand); }
+.ci-bar button.on { background: var(--soft); color: var(--accent); }
 .ci-bar button:disabled { opacity: .4; cursor: default; }
 .ci-bar button svg { width: 19px; height: 19px; }
 .ci-bar .ci-hint { font-size: 11.5px; color: #9aa8b5; margin-left: 6px; }
 
-/* 表情面板 */
-.ci-emoji {
+/* 表情 / 表情包面板 */
+.ci-panel {
   position: absolute; left: 8px; right: 8px; bottom: calc(100% - 4px);
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
-  box-shadow: 0 12px 30px rgba(11, 27, 43, .16);
-  padding: 8px; display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px;
-  max-height: 168px; overflow-y: auto; z-index: 3;
+  box-shadow: 0 14px 36px rgba(11, 27, 43, .18);
+  padding: 6px; z-index: 4; max-height: 268px; display: flex; flex-direction: column;
 }
-.ci-emoji[hidden] { display: none; }
-.ci-emoji button {
-  border: 0; background: none; cursor: pointer; font-size: 20px; line-height: 1;
+.ci-panel[hidden] { display: none; }
+.cp-tabs { display: flex; gap: 4px; padding: 2px 2px 6px; border-bottom: 1px solid var(--line); flex: 0 0 auto; }
+.cp-tabs button {
+  border: 0; background: none; cursor: pointer; font: inherit; font-size: 12.5px;
+  color: var(--muted); padding: 5px 12px; border-radius: 99px;
+}
+.cp-tabs button.on { background: var(--soft); color: var(--brand); font-weight: 700; }
+.cp-body { overflow-y: auto; padding-top: 6px; }
+.cp-body[hidden] { display: none !important; }
+.cp-body[data-panel="emoji"]:not([hidden]) { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
+.cp-body[data-panel="stk"]:not([hidden]) { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px 4px 4px; }
+.cp-body[data-panel="emoji"] button {
+  border: 0; background: none; cursor: pointer; font-size: 21px; line-height: 1;
   padding: 5px 0; border-radius: 8px;
 }
-.ci-emoji button:hover { background: var(--soft); }
+.cp-body[data-panel="emoji"] button:hover { background: var(--soft); }
+.cp-stk {
+  border: 0; background: none; padding: 0; cursor: pointer; border-radius: 11px;
+  line-height: 0; transition: transform .15s;
+}
+.cp-stk:hover { transform: translateY(-2px) scale(1.05); }
+.cp-stk img { width: 100%; height: auto; display: block; border-radius: 11px; }
+
+/* 时间分隔条 */
+.chat-stamp {
+  text-align: center; font-size: 11.5px; color: #9aa8b5;
+  margin: 2px 0 12px; letter-spacing: .2px;
+}
 
 /* 附件：图片气泡 / 文件卡片 */
-.msg .bubble:has(.att-img) { padding: 6px; background: #fff; border-color: var(--line); }
-.msg.me .bubble:has(.att-img) { background: #eaf7f2; border: 1px solid #d3ece1; }
-.att-img { display: block; line-height: 0; }
+.msg.att .bubble { padding: 6px; background: #fff; border: 1px solid var(--line); }
+.msg.me.att .bubble { background: #eaf7f2; border: 1px solid #d3ece1; }
+.att-img { display: block; line-height: 0; border-radius: 10px; overflow: hidden; }
 .att-img img {
-  max-width: 210px; max-height: 210px; width: auto; height: auto;
+  max-width: 212px; max-height: 212px; width: auto; height: auto;
   border-radius: 10px; display: block; object-fit: cover; cursor: zoom-in;
 }
+/* 多图：九宫格 */
+.att-grid { display: grid; gap: 4px; width: 216px; grid-template-columns: repeat(2, 1fr); }
+.att-grid .att-img { position: relative; aspect-ratio: 1 / 1; overflow: hidden; }
+.att-grid.n3 .att-img:first-child { grid-row: span 2; aspect-ratio: 1 / 2; }
+.att-grid .att-img img { width: 100%; height: 100%; max-width: none; max-height: none; object-fit: cover; }
+.att-more {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background: rgba(11, 27, 43, .55); color: #fff; font-size: 18px; font-style: normal; font-weight: 700;
+}
 .att-up { color: var(--muted); font-size: 13px; }
+.att-up b { color: var(--brand); }
 .msg.me .att-up { color: rgba(255, 255, 255, .82); }
+.msg.me .att-up b { color: #fff; }
+
+/* 表情包消息：去掉气泡底 */
+.msg.stk .bubble { padding: 0; background: none; border: 0; box-shadow: none; }
+.att-stk { display: block; }
+.att-stk img { width: 116px; height: 116px; display: block; border-radius: 14px; }
 
 .att-file {
   display: flex; align-items: center; gap: 10px; max-width: 240px;
@@ -273,11 +317,16 @@
   .chat-body { padding: 12px 10px 6px; }
   .msg .bubble { max-width: 86%; padding: 10px 12px; font-size: 13.8px; }
   .att-img img { max-width: 62vw; max-height: 46vh; }
+  .att-grid { width: min(62vw, 216px); }
+  .att-stk img { width: 96px; height: 96px; }
   .att-file { max-width: 60vw; }
   .att-file .af-tx b { max-width: 34vw; }
-  .ci-emoji { grid-template-columns: repeat(8, 1fr); max-height: 190px; }
+  .cp-body[data-panel="emoji"] { grid-template-columns: repeat(8, 1fr); }
+  .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(5, 1fr); }
+  .ci-panel { max-height: 252px; }
   .chat-input { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
   .ci-bar button { width: 38px; height: 38px; }
+  .chat-input .ci-send { min-width: 56px; height: 40px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-fab, .chat-panel { transition: none; }
