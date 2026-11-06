@@ -44,6 +44,12 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setMediaPlaybackRequiresUserGesture(false);
         s.setCacheMode(WebSettings.LOAD_DEFAULT);
+        /* 给 UA 打标记：网页端据此判断"我在 App 里跑"，自检面板才能显示原生角标状态，
+           而不是拿浏览器的 Notification API 误报"不支持" */
+        s.setUserAgentString(s.getUserAgentString() + " ZhongtianAdmin/" + getVersionName());
+
+        /* 网页 ↔ 原生桥：读通知权限/角标渠道状态、立刻同步、跳系统通知设置 */
+        web.addJavascriptInterface(new NativeBridge(this), "ZTNative");
 
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -98,6 +104,14 @@ public class MainActivity extends Activity {
     public void onRequestPermissionsResult(int code, String[] perms, int[] results) {
         super.onRequestPermissionsResult(code, perms, results);
         if (code == REQ_NOTIFY) startBadgeService();
+    }
+
+    String getVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "1.5";
+        }
     }
 
     private void startBadgeService() {

@@ -10,8 +10,8 @@ android {
         applicationId "com.zhongtian.admin"
         minSdk 26
         targetSdk 34
-        versionCode 5
-        versionName "1.4"
+        versionCode 6
+        versionName "1.5"
     }
 
     /* 固定签名：所有构建（debug/release）用同一个密钥库，
@@ -41,8 +41,8 @@ android {
     }
 }
 
-// ShortcutBadger：适配小米/华为/荣耀/OPPO/vivo/三星等厂商桌面的私有角标接口
-// （国产桌面不认标准通知的 setNumber，必须调各家 API 才亮角标）
+// v1.5 起不再依赖 ShortcutBadger：它维护的是 2014–2017 年 ROM 的反射表，
+// 在 MIUI 12+/HarmonyOS/ColorOS 上早已全部失效。改为官方通知角标（唯一有效路径）
+// + 自己实现的厂商私有通道兜底（见 BadgeService.applyVendorBadge）。
 dependencies {
-    implementation 'me.leolin:ShortcutBadger:1.1.22@aar'
 }

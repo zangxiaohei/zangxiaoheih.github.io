@@ -187,7 +187,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611060925";
+      var ZT_VER = "202611061005";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -228,7 +228,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611060925 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061005 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -536,17 +536,49 @@
     /* 安卓 App 的 WebView UA 带 "; wv)" 标记——在 App 里跑时，通知和角标由原生服务负责，
        网页推送/网页通知权限本来就不该有，不能标红吓人 */
     var inApp = /\bwv\b/.test(navigator.userAgent) || /ZhongtianAdmin/i.test(navigator.userAgent);
+    /* App 内直接读手机端真实状态（通知总开关 / 角标渠道 / 原生写入结果），比浏览器 API 可信 */
+    var nat = null;
+    try { if (window.ZTNative && window.ZTNative.badgeStatus) nat = JSON.parse(window.ZTNative.badgeStatus()); } catch (err) { nat = null; }
     var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true || inApp;
-    add("运行方式", standalone ? (inApp ? "中天后台 App 内" : "桌面 App 独立窗口") : "浏览器标签内", standalone);
+    add("运行方式", standalone ? (inApp ? "中天后台 App 内" + (nat && nat.version ? " v" + nat.version : "") : "桌面 App 独立窗口") : "浏览器标签内", standalone);
     add("角标接口", navigator.setAppBadge ? "支持" : (inApp ? "由 App 原生服务写入" : "不支持（此浏览器无 Badging API）"), true);
     var perm = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
-    add("通知权限", inApp ? "App 原生通知已接管（无需网页权限）"
-      : perm === "granted" ? "已允许" : perm === "denied" ? "已拒绝，需去系统设置改" : perm === "default" ? "未询问" : "不支持",
-      true);
+    if (nat) {
+      add("通知权限", nat.notifyEnabled ? "已开启" : "已关闭 → 角标一定不显示，点下面按钮打开", !!nat.notifyEnabled);
+      add("桌面角标渠道", nat.channelBadge ? "允许角标（重要度 " + nat.channelImportance + "）" : "渠道已关角标 → 点下面按钮打开", !!nat.channelBadge);
+      add("原生角标写入", nat.posted ? "已发角标通知 · " + nat.total + " 条"
+        : (nat.err ? "失败：" + nat.err : (nat.total === 0 ? "当前无未读（角标应为空）" : "尚未写入（等服务首次轮询）")),
+        nat.posted || (!nat.err && nat.total === 0));
+      if (nat.device) add("手机 / 桌面", nat.device + (nat.launcher ? " · " + nat.launcher : ""), null);
+    } else {
+      add("通知权限", inApp ? "App 原生通知已接管（无需网页权限）"
+        : perm === "granted" ? "已允许" : perm === "denied" ? "已拒绝，需去系统设置改" : perm === "default" ? "未询问" : "不支持",
+        true);
+    }
     var mark = localStorage.getItem("zt_admin_mark") === "1";
     add("本机管理员标记", mark ? "已开启" : "未开启（请登录一次后台）", mark);
 
-    if (inApp) {
+    if (nat) {
+      add("推送订阅", "App 内由原生服务轮询（每 60 秒），无需网页订阅", true);
+      var nb = document.createElement("button");
+      nb.textContent = "立即同步未读并写角标";
+      nb.style.cssText = "width:100%;margin-top:8px;background:#0b6e4f;color:#fff;border:0;border-radius:10px;padding:11px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit";
+      nb.onclick = function () {
+        nb.textContent = "已通知原生服务，4 秒后自动刷新自检结果…";
+        nb.disabled = true;
+        try { window.ZTNative.syncNow(); } catch (e2) { }
+        setTimeout(function () {
+          var w2 = document.getElementById("diag-wrap");
+          if (w2) w2.remove();
+          try { ztDiag(); } catch (e3) { }
+        }, 4000);
+      };
+      var sb = document.createElement("button");
+      sb.textContent = "打开系统通知设置（开通知 / 开桌面角标）";
+      sb.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
+      sb.onclick = function () { try { window.ZTNative.openNotificationSettings(); } catch (e2) { } };
+      extraBtns.push(nb); extraBtns.push(sb);
+    } else if (inApp) {
       add("推送订阅", "App 内由原生服务轮询，无需网页订阅", true);
     } else if (navigator.serviceWorker) {
       navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); })
