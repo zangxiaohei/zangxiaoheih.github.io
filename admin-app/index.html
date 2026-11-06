@@ -209,7 +209,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611060038 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611060918 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -514,15 +514,22 @@
       extraBtns.forEach(function (b) { body.appendChild(b); });
     }
 
-    var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-    add("运行方式", standalone ? "桌面 App 独立窗口" : "浏览器标签内", standalone);
-    add("角标接口", navigator.setAppBadge ? "支持" : "不支持（此浏览器无 Badging API）", !!navigator.setAppBadge);
+    /* 安卓 App 的 WebView UA 带 "; wv)" 标记——在 App 里跑时，通知和角标由原生服务负责，
+       网页推送/网页通知权限本来就不该有，不能标红吓人 */
+    var inApp = /\bwv\b/.test(navigator.userAgent) || /ZhongtianAdmin/i.test(navigator.userAgent);
+    var standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true || inApp;
+    add("运行方式", standalone ? (inApp ? "中天后台 App 内" : "桌面 App 独立窗口") : "浏览器标签内", standalone);
+    add("角标接口", navigator.setAppBadge ? "支持" : (inApp ? "由 App 原生服务写入" : "不支持（此浏览器无 Badging API）"), true);
     var perm = (typeof Notification !== "undefined") ? Notification.permission : "unsupported";
-    add("通知权限", perm === "granted" ? "已允许" : perm === "denied" ? "已拒绝，需去系统设置改" : perm === "default" ? "未询问" : "不支持", perm === "granted");
+    add("通知权限", inApp ? "App 原生通知已接管（无需网页权限）"
+      : perm === "granted" ? "已允许" : perm === "denied" ? "已拒绝，需去系统设置改" : perm === "default" ? "未询问" : "不支持",
+      true);
     var mark = localStorage.getItem("zt_admin_mark") === "1";
     add("本机管理员标记", mark ? "已开启" : "未开启（请登录一次后台）", mark);
 
-    if (navigator.serviceWorker) {
+    if (inApp) {
+      add("推送订阅", "App 内由原生服务轮询，无需网页订阅", true);
+    } else if (navigator.serviceWorker) {
       navigator.serviceWorker.ready.then(function (reg) { return reg.pushManager.getSubscription(); })
         .then(function (sub) {
           add("推送订阅", sub ? "本机已订阅" : (window.__ztPushErr ? "未订阅 · " + window.__ztPushErr : "未订阅"), !!sub); flush();
