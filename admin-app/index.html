@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061527";
+      var ZT_VER = "202611061556";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -318,6 +318,7 @@
       <button data-tab="msg" class="on">📋 客户留言</button>
       <button data-tab="chat">💬 在线客服 <b id="chat-badge" class="badge hidden">0</b></button>
       <button data-tab="content">✏️ 网站内容</button>
+      <button data-tab="login">🔐 谁在用</button>
     </div>
 
     <!-- 留言 -->
@@ -363,6 +364,13 @@
         </div>
         <p class="tip" style="color:#7a8794">保存后，网站所有页面在下次打开时自动显示新内容（浏览器缓存可用 Ctrl+F5 刷新）。</p>
       </div>
+    </div>
+
+    <!-- 谁在用：登录记录 -->
+    <div id="tab-login" class="hidden">
+      <div class="row"><button class="ghost sm" id="btn-login-refresh">刷新记录</button><span class="tip" id="login-log-tip"></span></div>
+      <div id="login-summary" style="margin-top:12px"></div>
+      <div id="login-list" style="margin-top:10px"></div>
     </div>
 
     <!-- 退出登录：从顶部移到页面最下方，避免误触 -->
@@ -472,6 +480,29 @@
   $("btn-login").addEventListener("click", doLogin);
   $("login-pass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
 
+  /* 登录记录：谁在什么时候、用什么设备、从哪个 IP 登进来的。
+     成功和失败都记一条；「第一次出现的 IP」和「密码错误」服务端会当场推微信。
+     城市只是锦上添花 —— 2 秒拿不到就只记 IP，绝不能因为查归属地把登录卡住。 */
+  function reportLogin(email, ok) {
+    if (!client) return;
+    var ua = navigator.userAgent;
+    var sent = false;
+    function send(city) {
+      if (sent) return;
+      sent = true;
+      try {
+        client.rpc("zt_log_login", { p_email: email, p_ok: !!ok, p_ua: ua, p_city: city || "" });
+      } catch (e) {}
+    }
+    var t = setTimeout(function () { send(""); }, 2000);
+    try {
+      fetch("https://ipapi.co/json/")
+        .then(function (r) { return r.json(); })
+        .then(function (j) { clearTimeout(t); send([j.city, j.region].filter(Boolean).join(" ")); })
+        .catch(function () { clearTimeout(t); send(""); });
+    } catch (e) { clearTimeout(t); send(""); }
+  }
+
   function doLogin() {
     var email = $("login-email").value.trim();
     var pass = $("login-pass").value;
@@ -484,10 +515,13 @@
         var m = String(res.error.message || "");
         var isNet = /fetch|network|timeout|Failed to/i.test(m) || res.error.status === 0;
         showTip(tipLogin, isNet ? "网络连接失败，请检查网络后重试（或切换网络）。" : "邮箱或密码错误。", true);
+        /* 网络问题不算「有人试密码」，只有真的认证失败才记 */
+        if (!isNet) reportLogin(email, false);
         return;
       }
       /* 手动登录成功：解除"刚退出"保护 */
       try { localStorage.removeItem("zt_logout_at"); } catch (e) {}
+      reportLogin(email, true);
       enterAdmin(res.data.user);
     });
   }
@@ -951,9 +985,79 @@
       $("tab-msg").classList.toggle("hidden", tab !== "msg");
       $("tab-chat").classList.toggle("hidden", tab !== "chat");
       $("tab-content").classList.toggle("hidden", tab !== "content");
+      $("tab-login").classList.toggle("hidden", tab !== "login");
+      if (tab === "login") loadLoginLog(true);
       startAuto(); autoRefresh(true);
     });
   });
+
+  /* ---------------- 谁在用（登录记录） ---------------- */
+  $("btn-login-refresh").addEventListener("click", function () { loadLoginLog(true); });
+
+  function loadLoginLog(manual) {
+    var tip = $("login-log-tip"), box = $("login-list"), sum = $("login-summary");
+    if (!client) return;
+    if (manual) tip.textContent = "读取中…";
+    client.from("admin_login_log")
+      .select("id,email,ok,ip,device,city,is_new,logged_at")
+      .order("logged_at", { ascending: false })
+      .limit(80)
+      .then(function (res) {
+        if (res.error) {
+          tip.textContent = "";
+          box.innerHTML = '<div class="card"><p class="tip" style="margin:0">还读不到记录。先打开 <a href="login-watch.html" style="color:#0b6e4f;font-weight:700">安装页面</a>，点一下按钮复制 SQL，粘贴到 Supabase 跑一次就好了。</p></div>';
+          sum.innerHTML = "";
+          return;
+        }
+        tip.textContent = "";
+        var rows = res.data || [];
+        renderLoginSum(sum, rows);
+        renderLoginList(box, rows);
+      });
+  }
+
+  function renderLoginSum(sum, rows) {
+    var week = Date.now() - 7 * 864e5, recent = [], ips = {}, bad = 0;
+    rows.forEach(function (r) {
+      if (new Date(r.logged_at).getTime() < week) return;
+      recent.push(r);
+      ips[r.ip || "?"] = 1;
+      if (r.ok === false) bad++;
+    });
+    var nIp = Object.keys(ips).length;
+    function block(label, val, danger) {
+      return '<div><div class="tip" style="margin:0">' + label + '</div><b style="font-size:20px;' +
+        (danger ? "color:#c0392b" : "color:#0b6e4f") + '">' + val + '</b></div>';
+    }
+    sum.innerHTML = '<div class="card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">' +
+      block("最近 7 天登录", recent.length, false) +
+      block("不同 IP", nIp, nIp > 2) +
+      block("密码错误", bad, bad > 0) +
+      '</div>';
+  }
+
+  function renderLoginList(box, rows) {
+    if (!rows.length) {
+      box.innerHTML = '<div class="card"><p class="tip" style="margin:0">还没有记录。换个手机或换张流量卡登录一次，这里马上会多一条，微信也会收到提醒。</p></div>';
+      return;
+    }
+    var html = "";
+    rows.forEach(function (r) {
+      var tag;
+      if (r.ok === false) {
+        tag = '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:1px 7px;font-size:12px">密码错误</span>';
+      } else if (r.is_new) {
+        tag = '<span style="background:#fff4e5;color:#a35b00;border-radius:6px;padding:1px 7px;font-size:12px">新 IP · 已微信提醒</span>';
+      } else {
+        tag = '<span style="background:#eef7f2;color:#0b6e4f;border-radius:6px;padding:1px 7px;font-size:12px">正常</span>';
+      }
+      html += '<div class="msg-card">' +
+        '<div class="meta"><b>' + esc(r.device || "未知设备") + '</b>' + tag + '<span>' + fmtTime(r.logged_at) + '</span></div>' +
+        '<div class="body">IP：' + esc(r.ip || "-") + (r.city ? " · " + esc(r.city) : "") +
+        '<br>账号：' + esc(r.email || "-") + '</div></div>';
+    });
+    box.innerHTML = html;
+  }
 
   /* ---- 日期分组辅助：留言 / 会话共用（按本机时区，凌晨消息不再算错天） ---- */
   function dkey(d) {

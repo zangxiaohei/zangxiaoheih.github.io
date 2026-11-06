@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>谁在什么时候登录了你的后台</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 16px 14px 40px;
+    font: 16px/1.75 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f8f6; color: #1f3229; }
+  .card { background: #fff; border-radius: 16px; padding: 18px 16px;
+    box-shadow: 0 2px 14px rgba(11,110,79,.07); margin-bottom: 14px; }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #0b6e4f; }
+  h2 { font-size: 15.5px; margin: 0 0 10px; color: #0b6e4f; }
+  p { margin: 0 0 10px; font-size: 14.5px; color: #3d5348; }
+  .sub { font-size: 13.5px; color: #7c9188; margin: 0 0 14px; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; font-size: 14.5px; color: #3d5348; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f2a20; color: #d7f0e5; border-radius: 12px;
+    padding: 12px; overflow-x: auto; margin: 10px 0 12px;
+    white-space: pre; -webkit-overflow-scrolling: touch;
+    font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; max-height: 300px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px;
+    padding: 14px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+    background: #0b6e4f; color: #fff; font-family: inherit; margin-top: 10px;
+    text-align: center; text-decoration: none; }
+  .btn:active { transform: scale(.99); }
+  .btn.ghost { background: #eef7f2; color: #0b6e4f; border: 1.5px solid #cfe6da;
+    font-weight: 600; font-size: 14px; }
+  .ok { color: #0b6e4f; font-weight: 700; }
+  .bad { color: #c0392b; font-weight: 700; }
+  .note { background: #f6fbf8; border-left: 3px solid #7fd1b0;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; color: #4a6156; margin-top: 10px; }
+  .warn { background: #fff8e6; border: 1px solid #ffe2a8; border-radius: 10px;
+    padding: 10px 12px; font-size: 13.5px; color: #7a5a12; margin-top: 10px; }
+  .k { background: #eef2f0; border-radius: 5px; padding: 1px 6px; font-size: 13px; color: #2f4a3d; }
+  a { color: #0b6e4f; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>谁在什么时候登录了你的后台</h1>
+  <p class="sub">记录 + 微信当场提醒，安卓 / 苹果 / 电脑都一样生效。</p>
+  <p>配好之后，每一次登录都会留一条记录：<b>时间、账号、设备型号、浏览器、IP、城市</b>。</p>
+  <p style="margin:0">下面两种情况会当场推到你微信：<b>① 第一次出现的 IP（换了手机或换了网络）② 密码输错</b>。你自己平时在同一台手机上登录，只记录、不打扰。</p>
+</div>
+
+<div class="card">
+  <h2>第 1 步：复制这段 SQL</h2>
+  <button class="btn" id="gen">复制建表 SQL</button>
+  <pre id="sql">（点上面的按钮）</pre>
+  <div class="note">全篇没有 <code>$</code> 符号、没有变量声明，复制粘贴不会被吃掉字符。之前的报错就是粘贴丢字符造成的，这段是照那个教训写的。</div>
+</div>
+
+<div class="card">
+  <h2>第 2 步：到 Supabase 执行一次</h2>
+  <ol>
+    <li>点下面按钮打开 SQL 编辑器</li>
+    <li><b>先 Ctrl+A 全选删掉里面的旧内容</b>，再粘贴、点 <span class="k">Run</span></li>
+    <li>成功标志：出现一行 <span class="ok">记录表 1 / 上报函数 1 / 提醒触发器 1 / 推送通道 微信已配置</span></li>
+    <li>如果「推送通道」显示未配置，先去做 <a href="wechat-notify.html">微信秒收消息</a> 那一步</li>
+  </ol>
+  <a class="btn ghost" href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener">打开 Supabase SQL 编辑器 →</a>
+</div>
+
+<div class="card">
+  <h2>第 3 步：验货</h2>
+  <ol>
+    <li>回到后台，点上面第 4 个页签 <span class="k">🔐 谁在用</span></li>
+    <li>应该能看到刚才这次登录（当前设备 + 当前 IP）</li>
+    <li>用另一台手机开流量登录一次 → <b>几秒内微信会弹「有人登录了你的后台」</b>，并标注「第一次出现的 IP」</li>
+    <li>故意输错一次密码 → 微信弹「后台登录失败（密码错误）」</li>
+  </ol>
+  <div class="note">第一次一定是「新 IP」——因为表刚建、还没有历史记录。之后就只记新的了。</div>
+</div>
+
+<div class="card">
+  <h2>几个说明</h2>
+  <ol>
+    <li><b>IP 是服务端取的</b>，也就是 Supabase 看到的真实来源，不是浏览器自己报的，改不了</li>
+    <li><b>城市</b>是尽力而为：查归属地要 2 秒，超时就只记 IP，不会卡住登录</li>
+    <li><b>记录保留 180 天</b>，SQL 每次跑都会顺手清掉更早的</li>
+    <li><b>只有登录后的管理员能看这些记录</b>，匿名访客读不到（行级权限已锁）</li>
+  </ol>
+  <div class="warn">这个功能只能告诉你「有人从哪台设备、哪个网络登录过」，看不到对方屏幕和摄像头 —— 浏览器和手机系统都不允许，任何网站都做不到。真是账号被登，最有效的动作还是立刻改密码。</div>
+</div>
+
+<script>
+  var SQL = `-- ============================================================
+-- 后台登录监控：谁在什么时候、用什么设备、从哪个 IP 登录了后台
+--
+-- 效果：
+--   1. 每次登录（成功或失败）都记一条：时间 / 账号 / 设备 / IP / 城市
+--   2. 第一次出现的 IP、或密码错误 → 微信当场推送提醒
+--   3. 老设备老 IP 的日常登录只记录、不打扰
+--
+-- 用法：整段复制粘贴到 Supabase SQL Editor，点 Run。
+--      不要手动修改任何字符（尤其成对的单引号）。
+-- 全篇没有美元符号，也没有变量声明。
+-- ============================================================
+
+create extension if not exists pg_net;
+
+create table if not exists public.admin_login_log (
+  id        bigserial primary key,
+  email     text,
+  ok        boolean default true,
+  ip        text,
+  ua        text,
+  device    text,
+  city      text,
+  is_new    boolean default false,
+  logged_at timestamptz default now()
+);
+
+create index if not exists idx_login_at on public.admin_login_log (logged_at desc);
+create index if not exists idx_login_ip on public.admin_login_log (ip);
+
+alter table public.admin_login_log enable row level security;
+
+drop policy if exists p_login_read on public.admin_login_log;
+create policy p_login_read on public.admin_login_log
+  for select to authenticated using (true);
+
+
+drop function if exists public.zt_log_login(text, boolean, text, text);
+
+create function public.zt_log_login(p_email text, p_ok boolean, p_ua text, p_city text)
+returns boolean
+language plpgsql security definer set search_path = public
+as '
+begin
+  insert into public.admin_login_log (email, ok, ip, ua, device, city, is_new)
+  select
+    left(coalesce(p_email, ''''), 120),
+    coalesce(p_ok, true),
+    s.ip,
+    s.ua,
+    s.dev,
+    nullif(left(coalesce(p_city, ''''), 60), ''''),
+    not exists (select 1 from public.admin_login_log a where a.ip = s.ip)
+  from (
+    select
+      coalesce(nullif(trim(split_part(
+        coalesce(nullif(current_setting(''request.headers'', true), ''''), ''{}'')::json->>''x-forwarded-for'',
+        '','', 1)), ''''), ''unknown'') as ip,
+      left(coalesce(p_ua, ''''), 300) as ua,
+      (case
+         when coalesce(p_ua, '''') ~* ''iphone|ipad|ipod'' then ''iPhone/iPad''
+         when coalesce(p_ua, '''') ~* ''android'' then ''安卓''
+         when coalesce(p_ua, '''') ~* ''windows'' then ''Windows''
+         when coalesce(p_ua, '''') ~* ''mac os|macintosh'' then ''Mac''
+         when coalesce(p_ua, '''') ~* ''linux'' then ''Linux''
+         else ''未知设备''
+       end) || '' · '' ||
+      (case
+         when coalesce(p_ua, '''') ~* ''micromessenger'' then ''微信''
+         when coalesce(p_ua, '''') ~* ''zhongtianadmin'' then ''App''
+         when coalesce(p_ua, '''') ~* ''edg/'' then ''Edge''
+         when coalesce(p_ua, '''') ~* ''firefox'' then ''Firefox''
+         when coalesce(p_ua, '''') ~* ''chrome|crios'' then ''Chrome''
+         when coalesce(p_ua, '''') ~* ''safari'' then ''Safari''
+         else ''浏览器''
+       end) as dev
+  ) s;
+  return true;
+exception when others then
+  return false;
+end;
+';
+
+grant execute on function public.zt_log_login(text, boolean, text, text) to anon, authenticated;
+
+
+drop trigger if exists trg_zt_login_notify on public.admin_login_log;
+drop function if exists public.zt_login_notify();
+
+create function public.zt_login_notify() returns trigger
+language plpgsql security definer set search_path = public
+as '
+begin
+  if (new.ok = false) or (new.is_new = true) then
+    perform net.http_post(
+      url := ''https://www.pushplus.plus/send'',
+      body := jsonb_build_object(
+        ''token'',   (select pushplus_token from public.app_secrets where id = 1),
+        ''title'',   case when new.ok then ''有人登录了你的后台'' else ''后台登录失败（密码错误）'' end,
+        ''content'', concat(
+          ''<b>'', case when new.ok then ''登录成功'' else ''登录失败'' end, ''</b><br>'',
+          ''账号：'', coalesce(new.email, ''-''), ''<br>'',
+          ''设备：'', coalesce(new.device, ''-''), ''<br>'',
+          ''IP：'', coalesce(new.ip, ''-''), coalesce('' '' || new.city, ''''), ''<br>'',
+          ''时间：'', to_char(new.logged_at at time zone ''Asia/Shanghai'', ''YYYY-MM-DD HH24:MI:SS''), ''<br>'',
+          case when new.is_new then ''<br><b>这是第一次出现的 IP</b>'' else '''' end
+        ),
+        ''template'', ''html''
+      ),
+      headers := jsonb_build_object(''Content-Type'', ''application/json''),
+      timeout_milliseconds := 5000
+    );
+  end if;
+  return new;
+exception when others then
+  return new;
+end;
+';
+
+create trigger trg_zt_login_notify
+after insert on public.admin_login_log
+for each row execute function public.zt_login_notify();
+
+
+-- 只保留最近 180 天，避免表越滚越大
+delete from public.admin_login_log where logged_at < now() - interval '180 days';
+
+
+select
+  (select count(*) from information_schema.tables
+     where table_schema = 'public' and table_name = 'admin_login_log') as 记录表,
+  (select count(*) from pg_proc where proname = 'zt_log_login')             as 上报函数,
+  (select count(*) from pg_trigger where tgname = 'trg_zt_login_notify')    as 提醒触发器,
+  (select case when length(coalesce(pushplus_token, '')) > 8
+               then '微信已配置' else '微信未配置（只记录不推送）' end
+     from public.app_secrets where id = 1)                                  as 推送通道;`;
+
+  function $(id) { return document.getElementById(id); }
+
+  function copyText(t, ok, fail) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(ok).catch(fail);
+    } else { fail(); }
+  }
+  function fallback(t) {
+    var ta = document.createElement("textarea");
+    ta.value = t;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    var r = false;
+    try { r = document.execCommand("copy"); } catch (e) { r = false; }
+    document.body.removeChild(ta);
+    return r;
+  }
+
+  $("gen").addEventListener("click", function () {
+    var btn = $("gen");
+    $("sql").textContent = SQL;
+    function done() {
+      btn.textContent = "已复制，去 Supabase 粘贴";
+      btn.style.background = "#12886a";
+      setTimeout(function () { btn.textContent = "复制建表 SQL"; btn.style.background = "#0b6e4f"; }, 2600);
+    }
+    copyText(SQL, done, function () {
+      if (fallback(SQL)) done();
+      else { btn.textContent = "复制失败，请长按下面这段手动复制"; btn.style.background = "#c0392b"; }
+    });
+  });
+</script>
+</body>
+</html>
