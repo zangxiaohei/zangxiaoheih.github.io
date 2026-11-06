@@ -491,7 +491,9 @@
       if (sent) return;
       sent = true;
       try {
-        client.rpc("zt_log_login", { p_email: email, p_ok: !!ok, p_ua: ua, p_city: city || "" });
+        /* 表还没建的时候这个 RPC 会 404 —— 吞掉，不能让上报失败影响登录 */
+        var q = client.rpc("zt_log_login", { p_email: email, p_ok: !!ok, p_ua: ua, p_city: city || "" });
+        if (q && q.catch) q.catch(function () {});
       } catch (e) {}
     }
     var t = setTimeout(function () { send(""); }, 2000);
