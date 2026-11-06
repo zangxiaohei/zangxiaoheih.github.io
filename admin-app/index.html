@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061530";
+      var ZT_VER = "202611061527";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -230,7 +230,7 @@
         bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#0b6e4f;color:#fff;font-size:13.5px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.18);font-family:inherit";
         var txt = document.createElement("div");
         txt.style.cssText = "flex:1;line-height:1.45";
-        txt.textContent = "发现新版本 " + v.versionName + "（当前 " + cur + "），点右边可直接更新";
+        txt.textContent = "发现新版本 " + v.versionName + "，点右边直接更新（数据不丢、不用卸载）";
         var btn = document.createElement("button");
         btn.textContent = "立即更新";
         btn.style.cssText = "background:#fff;color:#0b6e4f;border:0;border-radius:8px;padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap";
