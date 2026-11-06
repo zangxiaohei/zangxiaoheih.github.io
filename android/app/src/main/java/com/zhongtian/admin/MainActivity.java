@@ -99,23 +99,26 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * 小米/红米默认禁止应用后台自启，不开启的话服务几分钟就被杀掉，消息和角标全收不到。
-     * 首次打开（或检测到未允许且距上次提醒超过 6 小时）弹一次，给直达系统设置的按钮。
+     * 自启动是「可选」项，不强制。
+     * 开启的好处：手机重启 / 被系统回收后能自己回来，不用管。
+     * 不开也行：只要 App 还在后台就能收消息；代价是重启手机或被清后台后要手动打开一次。
+     * 用户明确点过「不再提醒」后永久不再弹，需要时还能从醒示自检里进去开。
      */
     private void maybePromptAutostart() {
         if (!NativeBridge.isMiui()) return;
         SharedPreferences sp = getSharedPreferences("zt", MODE_PRIVATE);
-        boolean asked = sp.getBoolean("autostart_asked", false);
-        int state = NativeBridge.autoStartState(this);
-        if (state == 1) return;                       // 已允许，不打扰
-        if (asked && System.currentTimeMillis() - sp.getLong("autostart_at", 0) < 6 * 3600 * 1000L) return;
+        if (sp.getBoolean("autostart_noask", false)) return;    // 用户说过不想开，就别再问
+        if (NativeBridge.autoStartState(this) == 1) return;     // 已经允许了
+        if (sp.getBoolean("autostart_asked", false)) return;    // 问过一次就够
         sp.edit().putBoolean("autostart_asked", true)
           .putLong("autostart_at", System.currentTimeMillis()).apply();
 
         new AlertDialog.Builder(this)
-            .setTitle("开启「自启动」，否则收不到消息")
-            .setMessage("小米/红米默认会杀掉后台应用。不开自启动，退到桌面几分钟后监控就停了，留言和角标都收不到。\n\n还建议：省电策略设为「无限制」；最近任务里下拉锁定本应用。")
-            .setPositiveButton("去开自启动", new DialogInterface.OnClickListener() {
+            .setTitle("要不要开启「自启动」？（可选）")
+            .setMessage("不开也能用：只要 App 还活着，新消息照样进来（退到桌面后 10 秒内）。\n\n"
+                    + "不开的唯一代价：手机重启后，或被系统清掉后，需要你手动打开一次 App 才会继续收。\n\n"
+                    + "不想开就点「不再提醒」，以后不再打扰你。")
+            .setPositiveButton("去开启", new DialogInterface.OnClickListener() {
                 @Override public void onClick(DialogInterface d, int w) {
                     if (!NativeBridge.jumpAutostart(MainActivity.this)) {
                         try {
@@ -128,7 +131,11 @@ public class MainActivity extends Activity {
             .setNeutralButton("省电设置", new DialogInterface.OnClickListener() {
                 @Override public void onClick(DialogInterface d, int w) { NativeBridge.jumpBattery(MainActivity.this); }
             })
-            .setNegativeButton("知道了", null)
+            .setNegativeButton("不再提醒", new DialogInterface.OnClickListener() {
+                @Override public void onClick(DialogInterface d, int w) {
+                    getSharedPreferences("zt", MODE_PRIVATE).edit().putBoolean("autostart_noask", true).apply();
+                }
+            })
             .show();
     }
 

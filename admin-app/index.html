@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061130";
+      var ZT_VER = "202611061120";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -232,7 +232,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061130 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061120 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -559,20 +559,22 @@
         nat.posted || (!nat.err && nat.total === 0));
       if (nat.device) add("手机 / 桌面", nat.device + (nat.launcher ? " · " + nat.launcher : ""), null);
       if (nat.miui) {
-        add("自启动", nat.autostart === 1 ? "已允许"
-          : nat.autostart === 0 ? "被禁止 → 退到桌面会被杀，收不到消息"
-          : "未检测到，请手动确认已开启", nat.autostart === 1);
-        add("省电策略", nat.batteryUnrestricted ? "无限制（已放行）" : "受系统限制，可能被休眠", !!nat.batteryUnrestricted);
-        var ab = document.createElement("button");
-        ab.textContent = "去开自启动（小米：应用管理 → 自启动）";
-        ab.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
-        ab.onclick = function () { try { window.ZTNative.openAutoStartSettings(); } catch (e2) { } };
-        extraBtns.push(ab);
+        /* 自启动是「可选」，不强制：不开也能用，只是手机重启或被系统回收后要重新打开一次 App。
+           不上红色，免得每次看自检都被吓一跳。 */
+        add("省电策略（比自启动更关键）", nat.batteryUnrestricted ? "无限制（已放行）" : "受系统限制，可能被休眠", !!nat.batteryUnrestricted);
+        add("自启动（可选，不影响打开时收消息）", nat.autostart === 1 ? "已允许"
+          : nat.autostart === 0 ? "未开启 · 重启手机后需手动打开 App"
+          : "未检测到，可忽略", null);
         var bb = document.createElement("button");
-        bb.textContent = "省电策略设为「无限制」";
-        bb.style.cssText = ab.style.cssText;
+        bb.textContent = "省电策略设为「无限制」（建议点这个）";
+        bb.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
         bb.onclick = function () { try { window.ZTNative.openBatterySettings(); } catch (e2) { } };
         extraBtns.push(bb);
+        var ab = document.createElement("button");
+        ab.textContent = "去开自启动（不想开可以不开）";
+        ab.style.cssText = bb.style.cssText;
+        ab.onclick = function () { try { window.ZTNative.openAutoStartSettings(); } catch (e2) { } };
+        extraBtns.push(ab);
       }
     } else {
       add("通知权限", inApp ? "App 原生通知已接管（无需网页权限）"
