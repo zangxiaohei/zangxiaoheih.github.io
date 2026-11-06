@@ -120,6 +120,31 @@ public class NativeBridge {
         BadgeService.postTestAlert(act);
     }
 
+    /* ---------------- App 内自动更新 ---------------- */
+
+    /** 当前安装包的 versionCode（网页拿它跟线上 version.json 比大小） */
+    @JavascriptInterface
+    public int getVersionCode() {
+        try {
+            return act.getPackageManager().getPackageInfo(act.getPackageName(), 0).versionCode;
+        } catch (Throwable t) {
+            return 0;
+        }
+    }
+
+    /**
+     * 下载并安装新版本。返回 downloading / need-permission / failed，网页据此给提示。
+     * 签名固定，安装就是覆盖升级，不用卸载、数据不丢。
+     */
+    @JavascriptInterface
+    public String installUpdate(String url, int newVersionCode) {
+        try {
+            return Updater.start(act, url, newVersionCode);
+        } catch (Throwable t) {
+            return "failed";
+        }
+    }
+
     /** 自检：绕过通知系统直接播放提示音 + 震动，用来分辨是"渠道坏了"还是"手机静音了" */
     @JavascriptInterface
     public String testSound() {

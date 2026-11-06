@@ -78,12 +78,23 @@ jobs:
           cp android/app/build/outputs/apk/debug/zhongtian-admin.apk apk/zhongtian-admin.apk
           ls -lh apk/
 
+      # App 内自动更新读的就是这个文件：网页/原生拿它跟本机 versionCode 比大小
+      - name: 生成版本描述 apk/version.json
+        run: |
+          CODE=$(grep -oE 'versionCode[[:space:]]+[0-9]+' android/app/build.gradle | head -1 | grep -oE '[0-9]+')
+          NAME=$(grep -oE 'versionName[[:space:]]+"[^"]+"' android/app/build.gradle | head -1 | sed 's/.*"\(.*\)"/\1/')
+          SIZE=$(stat -c%s apk/zhongtian-admin.apk)
+          SHA=$(sha256sum apk/zhongtian-admin.apk | cut -d' ' -f1)
+          printf '{\n  "versionCode": %s,\n  "versionName": "%s",\n  "size": %s,\n  "sha256": "%s",\n  "builtAt": "%s",\n  "url": "https://zangxiaohei.github.io/zangxiaoheih.github.io/apk/zhongtian-admin.apk"\n}\n' \
+            "$CODE" "$NAME" "$SIZE" "$SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > apk/version.json
+          cat apk/version.json
+
       - name: 提交 APK 到仓库
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -f apk/zhongtian-admin.apk
-          git diff --cached --quiet || git commit -m "更新安卓安装包 apk/zhongtian-admin.apk"
+          git add -f apk/zhongtian-admin.apk apk/version.json
+          git diff --cached --quiet || git commit -m "更新安卓安装包 apk/zhongtian-admin.apk + version.json"
           git push
 
       # 注意：GITHUB_TOKEN 的 push 不会触发其他工作流，

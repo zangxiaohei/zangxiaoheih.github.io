@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061500";
+      var ZT_VER = "202611061530";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -204,6 +204,73 @@
           })
           .catch(function () { });
       }, 5000);
+    })();
+  </script>
+
+  <script>
+    /* App 内自动更新：比对 apk/version.json 与本机 versionCode，有新版本就在顶部挂一条提示，
+       点一下由原生下载并呼起系统安装器（签名固定 → 覆盖升级，不用卸载、数据不丢） */
+    (function () {
+      if (!window.ZTNative || !window.ZTNative.getVersionCode) return;
+      var APK_URL = "../apk/zhongtian-admin.apk";
+      var META_URL = "../apk/version.json";
+      var cur = 0;
+      try { cur = window.ZTNative.getVersionCode() || 0; } catch (e) { return; }
+      if (!cur) return;
+
+      function closeBar(bar, pad) {
+        try { bar.parentNode.removeChild(bar); } catch (e) { }
+        document.body.style.paddingTop = pad || "";
+      }
+
+      function show(v) {
+        if (document.getElementById("zt-update-bar")) return;
+        var bar = document.createElement("div");
+        bar.id = "zt-update-bar";
+        bar.style.cssText = "position:fixed;left:0;right:0;top:0;z-index:99999;background:#0b6e4f;color:#fff;font-size:13.5px;padding:10px 12px;display:flex;align-items:center;gap:10px;box-shadow:0 2px 10px rgba(0,0,0,.18);font-family:inherit";
+        var txt = document.createElement("div");
+        txt.style.cssText = "flex:1;line-height:1.45";
+        txt.textContent = "发现新版本 " + v.versionName + "（当前 " + cur + "），点右边可直接更新";
+        var btn = document.createElement("button");
+        btn.textContent = "立即更新";
+        btn.style.cssText = "background:#fff;color:#0b6e4f;border:0;border-radius:8px;padding:8px 14px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap";
+        btn.onclick = function () {
+          var r = "";
+          try { r = window.ZTNative.installUpdate(v.url || APK_URL, v.versionCode) || ""; } catch (e) { r = "failed"; }
+          if (r === "need-permission") {
+            btn.textContent = "允许后回来再点";
+            txt.textContent = "已跳到「安装未知应用」开关，打开后回来再点一次更新";
+          } else if (r === "downloading") {
+            btn.textContent = "下载中…"; btn.disabled = true;
+            txt.textContent = "正在下载 " + v.versionName + "，完成后会弹安装界面，点「安装」即可覆盖升级";
+          } else {
+            location.href = APK_URL;
+          }
+        };
+        var x = document.createElement("button");
+        x.textContent = "×";
+        x.style.cssText = "background:transparent;color:#cfe6da;border:0;font-size:20px;line-height:1;cursor:pointer;padding:0 2px";
+        x.onclick = function () { closeBar(bar, ""); };
+        bar.appendChild(txt); bar.appendChild(btn); bar.appendChild(x);
+        document.body.appendChild(bar);
+        /* 顶栏是 fixed，给页面留出高度，避免盖住头部按钮 */
+        document.body.style.paddingTop = bar.offsetHeight + "px";
+      }
+
+      function check(silent) {
+        return fetch(META_URL + "?t=" + Date.now(), { cache: "no-store" })
+          .then(function (r) { return r.ok ? r.json() : null; })
+          .then(function (j) {
+            if (!j || !j.versionCode) return null;
+            if (j.versionCode > cur) { show(j); return j; }
+            return null;
+          })
+          .catch(function () { return null; });
+      }
+
+      setTimeout(function () { check(true); }, 2500);
+      setTimeout(function () { check(true); }, 30000);
+      window.__ztCheckUpdate = check;
     })();
   </script>
 </head>
@@ -232,7 +299,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061500 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061530 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -652,6 +719,20 @@
       t3.style.cssText = st;
       t3.onclick = function () { try { window.ZTNative.openChannelSettings(); } catch (e2) { } };
       extraBtns.push(t1); extraBtns.push(t2); extraBtns.push(t3);
+
+      /* 手动检查 App 新版本（自动检查在页面加载 2.5 秒后也会跑一次） */
+      var ub = document.createElement("button");
+      ub.textContent = "检查 App 新版本";
+      ub.style.cssText = st;
+      ub.onclick = function () {
+        ub.textContent = "检查中…";
+        if (!window.__ztCheckUpdate) { ub.textContent = "此版本不支持，请手动更新一次"; return; }
+        window.__ztCheckUpdate().then(function (j) {
+          ub.textContent = j ? "已发现 " + j.versionName + "，看页面顶部" : "已是最新版本";
+          setTimeout(function () { ub.textContent = "检查 App 新版本"; }, 6000);
+        });
+      };
+      extraBtns.push(ub);
     } else if (inApp) {
       add("推送订阅", "App 内由原生服务轮询，无需网页订阅", true);
     } else if (navigator.serviceWorker) {
