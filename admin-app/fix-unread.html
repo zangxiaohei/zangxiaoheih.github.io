@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>修复角标：给 App 开通未读数统计</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px 14px 40px;
+    font: 16px/1.75 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f8f6; color: #1f3229;
+  }
+  .card {
+    background: #fff; border-radius: 16px; padding: 18px 16px;
+    box-shadow: 0 2px 14px rgba(11,110,79,.07); margin-bottom: 14px;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #0b6e4f; }
+  h2 { font-size: 15.5px; margin: 0 0 10px; color: #0b6e4f; }
+  p { margin: 0 0 10px; font-size: 14.5px; color: #3d5348; }
+  .sub { font-size: 13.5px; color: #7c9188; margin: 0 0 14px; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; font-size: 14.5px; color: #3d5348; }
+  code, pre {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px; line-height: 1.6;
+  }
+  pre {
+    background: #0f2a20; color: #d7f0e5; border-radius: 12px;
+    padding: 12px; overflow-x: auto; margin: 10px 0 12px;
+    white-space: pre; -webkit-overflow-scrolling: touch;
+  }
+  .btn {
+    display: block; width: 100%; border: 0; border-radius: 12px;
+    padding: 14px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+    background: #0b6e4f; color: #fff; font-family: inherit;
+  }
+  .btn:active { transform: scale(.99); }
+  .btn.ghost {
+    background: #eef7f2; color: #0b6e4f; border: 1.5px solid #cfe6da;
+    font-weight: 600; font-size: 14px; margin-top: 10px;
+  }
+  .ok { color: #0b6e4f; font-weight: 700; }
+  .bad { color: #c0392b; font-weight: 700; }
+  .note {
+    background: #f6fbf8; border-left: 3px solid #7fd1b0;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; color: #4a6156;
+  }
+  .k {
+    background: #eef2f0; border-radius: 5px; padding: 1px 6px;
+    font-size: 13px; color: #2f4a3d;
+  }
+  a { color: #0b6e4f; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>修复安卓角标（只差这一步）</h1>
+  <p class="sub">手机上的开关已经全开对了。现在的问题是：App 用匿名身份读不到「在线客服」的未读条数，它以为 0 条，所以不发角标通知。</p>
+  <p>给数据库加一个统计函数就好了，<b>不用重装 App</b>，60 秒内自动生效。</p>
+</div>
+
+<div class="card">
+  <h2>第 1 步：复制这段 SQL</h2>
+  <pre id="sql">create or replace function public.app_unread_total()
+returns int
+language sql
+security definer
+set search_path = public
+as 'select (select count(*)::int from public.messages where is_read = false)
+         + (select count(*)::int from public.chat_messages where is_read = false and role = ''visitor'')';
+
+grant execute on function public.app_unread_total() to anon, authenticated;
+
+select public.app_unread_total() as total_unread;</pre>
+  <button class="btn" id="copy">一键复制</button>
+  <div class="note" style="margin-top:12px">这段里没有 <code>$</code> 符号，复制粘贴不会像上次那样被吃掉字符。</div>
+</div>
+
+<div class="card">
+  <h2>第 2 步：到 Supabase 执行</h2>
+  <ol>
+    <li>点下面的按钮打开 SQL 编辑器（已登录 Supabase 的话直接进）</li>
+    <li>把复制的 SQL 粘到输入框，点右下角 <span class="k">Run</span></li>
+    <li>成功标志：下面出现一行结果，<b>total_unread = 2</b>（或你当前实际未读数）</li>
+  </ol>
+  <a class="btn ghost" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px"
+     href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener">
+    打开 Supabase SQL 编辑器 →
+  </a>
+</div>
+
+<div class="card">
+  <h2>第 3 步：回 App 验证</h2>
+  <ol>
+    <li>打开「中天后台」→ 右上角 <span class="k">🔔 提醒自检</span></li>
+    <li>点 <span class="k">立即同步未读并写角标</span></li>
+    <li>看「原生角标写入」这一行：应该变成 <span class="ok">已发角标通知 · 2 条</span></li>
+    <li>回桌面看图标：右上角应出现数字 <b>2</b></li>
+  </ol>
+  <div class="note">如果「原生角标写入」显示失败原因，把那张截图发过来，那行字就是服务端返回的真实报错，一看就能定位。</div>
+</div>
+
+<script>
+  document.getElementById("copy").addEventListener("click", function () {
+    var btn = this;
+    var text = document.getElementById("sql").textContent;
+    function done() {
+      btn.textContent = "✓ 已复制，去 Supabase 粘贴";
+      btn.style.background = "#0a8f66";
+      setTimeout(function () { btn.textContent = "一键复制"; btn.style.background = "#0b6e4f"; }, 2600);
+    }
+    function fallback() {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+      document.body.appendChild(ta);
+      ta.focus(); ta.select();
+      try { document.execCommand("copy"); done(); } catch (e) { btn.textContent = "复制失败，请长按上面代码手动全选复制"; }
+      document.body.removeChild(ta);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done).catch(fallback);
+    } else { fallback(); }
+  });
+</script>
+
+</body>
+</html>
