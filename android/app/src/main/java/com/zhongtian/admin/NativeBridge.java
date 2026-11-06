@@ -36,7 +36,7 @@ public class NativeBridge {
             if (Build.VERSION.SDK_INT >= 26 && nm != null) {
                 NotificationChannel ch = nm.getNotificationChannel(BadgeService.CH_UNREAD);
                 o.put("channelExists", ch != null);
-                o.put("channelBadge", ch != null && ch.getShowBadge());
+                o.put("channelBadge", ch != null && ch.canShowBadge());
                 o.put("channelImportance", ch == null ? -1 : ch.getImportance());
             } else {
                 o.put("channelExists", true);

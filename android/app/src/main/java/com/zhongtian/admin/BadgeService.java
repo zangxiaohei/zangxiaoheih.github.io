@@ -203,7 +203,7 @@ public class BadgeService extends Service {
                 .setOnlyAlertOnce(true)
                 .setShowWhen(false)
                 .setPriority(Notification.PRIORITY_MIN);
-        if (Build.VERSION.SDK_INT >= 26) b.setSilent(true);
+        /* 渠道 IMPORTANCE_MIN 本身就静音，无需 setSilent（原生 Builder 没有这个方法） */
         return b.build();
     }
 
