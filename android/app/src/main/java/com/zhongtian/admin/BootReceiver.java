@@ -28,7 +28,13 @@ public class BootReceiver extends BroadcastReceiver {
         schedule(ctx);
     }
 
-    /** 装一次看门狗闹钟；重复调用只是覆盖同一个 PendingIntent，不会堆积 */
+    /**
+     * 装一次看门狗闹钟；重复调用只是覆盖同一个 PendingIntent，不会堆积。
+     *
+     * 用 setAndAllowWhileIdle 而不是 setInexactRepeating：息屏进 Doze 之后，
+     * 普通闹钟会被推迟到"维护窗口"（可能几十分钟），而 allow-while-idle 的闹钟
+     * 在 Doze 里也会照常触发 —— 这是服务被冻结后能自己醒过来的关键。
+     */
     static void schedule(Context ctx) {
         try {
             AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
@@ -37,9 +43,12 @@ public class BootReceiver extends BroadcastReceiver {
             int flags = PendingIntent.FLAG_UPDATE_CURRENT;
             if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
             PendingIntent pi = PendingIntent.getBroadcast(ctx, 100, i, flags);
-            am.setInexactRepeating(AlarmManager.RTC_WAKEUP,
-                    System.currentTimeMillis() + 10 * 60 * 1000L,
-                    15 * 60 * 1000L, pi);
+            long next = System.currentTimeMillis() + 5 * 60 * 1000L;
+            if (Build.VERSION.SDK_INT >= 23) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next, pi);
+            } else {
+                am.set(AlarmManager.RTC_WAKEUP, next, pi);
+            }
         } catch (Exception ignored) { }
     }
 }

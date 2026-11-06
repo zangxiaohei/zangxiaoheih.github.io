@@ -177,6 +177,24 @@ public class NativeBridge {
         if (!jumpBattery(act)) openAppSettings();
     }
 
+    /**
+     * 一键申请「忽略电池优化」。
+     * 这是息屏还能收消息的关键：被系统列入电池优化名单后，息屏进 Doze 会冻结网络和 CPU，
+     * 后台轮询直接停住 —— 通知、角标全都不会来。
+     */
+    @JavascriptInterface
+    public void requestIgnoreBattery() {
+        try {
+            if (Build.VERSION.SDK_INT >= 23) {
+                Intent i = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                i.setData(Uri.parse("package:" + act.getPackageName()));
+                act.startActivity(i);
+                return;
+            }
+        } catch (Throwable ignored) { }
+        openBatterySettings();
+    }
+
     static boolean jumpBattery(Context ctx) {
         try {
             Intent i = new Intent();

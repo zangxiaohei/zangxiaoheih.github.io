@@ -7,6 +7,7 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -83,6 +84,16 @@ public class BadgeService extends Service {
     private volatile boolean alive = true;
     /** App 是否在前台：MainActivity 的 onResume/onPause 会改这个值，决定轮询快慢 */
     static volatile boolean sForeground = false;
+    /* 息屏后手机会进入 Doze：CPU 休眠、网络被冻结，轮询线程直接停住 —— 这就是"息屏收不到"。
+       拿着 PARTIAL_WAKE_LOCK 才能让 10 秒一次的轮询在锁屏状态下继续跑 */
+    private android.os.PowerManager.WakeLock wake;
+    private boolean screenRxOn = false;
+    private final android.content.BroadcastReceiver screenRx = new android.content.BroadcastReceiver() {
+        @Override public void onReceive(Context c, Intent i) {
+            if (Intent.ACTION_SCREEN_OFF.equals(i.getAction())) holdWake();
+            else if (Intent.ACTION_SCREEN_ON.equals(i.getAction())) dropWake();
+        }
+    };
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final SimpleDateFormat hm = new SimpleDateFormat("HH:mm", Locale.CHINA);
     private volatile String lastErr = "";
@@ -93,7 +104,54 @@ public class BadgeService extends Service {
         super.onCreate();
         ensureChannels();
         startForeground(ID_SVC, serviceNotification(-1, null));
-        BootReceiver.schedule(this);   // 挂看门狗：被系统杀掉后 15 分钟内自动恢复
+        BootReceiver.schedule(this);   // 挂看门狗：被系统杀掉后自动恢复
+        registerScreenReceiver();
+        /* 息屏状态启动服务时立刻拿锁；屏幕亮着就不用（亮屏本来就醒着） */
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && !pm.isInteractive()) holdWake();
+        } catch (Throwable ignored) { }
+    }
+
+    /* ---------------- 息屏保活：WakeLock ---------------- */
+
+    private void registerScreenReceiver() {
+        if (screenRxOn) return;
+        try {
+            IntentFilter f = new IntentFilter();
+            f.addAction(Intent.ACTION_SCREEN_OFF);
+            f.addAction(Intent.ACTION_SCREEN_ON);
+            f.addAction(Intent.ACTION_USER_PRESENT);
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(screenRx, f, Context.RECEIVER_NOT_EXPORTED);
+            else registerReceiver(screenRx, f);
+            screenRxOn = true;
+        } catch (Throwable ignored) { }
+    }
+
+    /** 拿住一把「屏幕关了也让 CPU 醒着」的锁，2 小时自动过期，轮询里会续期 */
+    private void holdWake() {
+        try {
+            if (wake == null) {
+                android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+                if (pm == null) return;
+                wake = pm.newWakeLock(android.os.PowerManager.PARTIAL_WAKE_LOCK, "zt:badge-poll");
+                wake.setReferenceCounted(false);
+            }
+            if (!wake.isHeld()) wake.acquire(2 * 60 * 60 * 1000L);
+        } catch (Throwable ignored) { }
+    }
+
+    private void dropWake() {
+        try { if (wake != null && wake.isHeld()) wake.release(); } catch (Throwable ignored) { }
+    }
+
+    private boolean screenOn() {
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            return pm == null || pm.isInteractive();
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     @Override
@@ -116,6 +174,8 @@ public class BadgeService extends Service {
             worker = new Thread(new Runnable() {
                 @Override public void run() {
                     while (alive) {
+                        /* 息屏时每轮续一次 WakeLock（2 小时过期），长时间锁屏也不会断 */
+                        try { if (!screenOn()) holdWake(); } catch (Throwable ignored) { }
                         try { tick(); } catch (Throwable ignored) { }
                         /* 自适应节奏：App 在前台 3 秒一查（接近即时），退到后台 10 秒一查省电 */
                         long wait = sForeground ? 3 : 10;
@@ -501,6 +561,9 @@ public class BadgeService extends Service {
     public void onDestroy() {
         alive = false;
         if (worker != null) { worker.interrupt(); worker = null; }
+        try { if (screenRxOn) unregisterReceiver(screenRx); } catch (Throwable ignored) { }
+        screenRxOn = false;
+        dropWake();   // 服务销毁必须放锁，否则会一直耗电
         super.onDestroy();
     }
 

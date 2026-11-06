@@ -8,6 +8,9 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 息屏后系统会进 Doze：冻结网络和 CPU，轮询就停了。申请「忽略电池优化」才能继续收 -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 
     <!-- 厂商桌面角标私有通道所需的声明（不具备时为权限拒绝，不影响通知角标） -->
     <uses-permission android:name="com.huawei.android.launcher.permission.CHANGE_BADGE" />
