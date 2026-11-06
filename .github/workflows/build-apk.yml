@@ -12,10 +12,12 @@ permissions:
   pages: write
   id-token: write
 
-# 与 deploy-pages 同一组串行，避免同时发布互相取消
+# 与 deploy-pages 同一组串行，避免同时发布互相取消；
+# 这里绝不能用 cancel-in-progress: true —— 同一次推送里 deploy-pages 先起跑，
+# 会把正在编译的 APK 任务直接掐死（曾经因此拿不到新包）
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:

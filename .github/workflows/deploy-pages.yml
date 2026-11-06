@@ -3,6 +3,11 @@ name: deploy-pages
 on:
   push:
     branches: [main]
+    # 只改安卓工程的推送不归这里管：build-apk 会内置打包+部署（含新 APK）。
+    # 若这里也跑一次，两个工作流会抢同一个 pages 并发组，互相取消。
+    paths-ignore:
+      - "android/**"
+      - "apk/**"
   workflow_dispatch:
 
 permissions:
@@ -12,7 +17,9 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  # 必须排队而不是取消：同一次推送里 build-apk 也要部署 Pages，
+  # cancel-in-progress: true 会把正在编译的 APK 任务直接掐死
+  cancel-in-progress: false
 
 jobs:
   deploy:
