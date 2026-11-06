@@ -25,6 +25,7 @@
   var ICON_QR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg>';
   var ICON_FORM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7l-4-4z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></svg>';
   var ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 007 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>';
+  var ICON_STK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V6a3 3 0 00-3-3H6a3 3 0 00-3 3v12a3 3 0 003 3h6"/><path d="M21 12l-9 9"/><path d="M9.2 13.6a4 4 0 005.6 0"/><path d="M9.5 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>';
   var ICON_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
   var ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.2-8.2a3.4 3.4 0 014.8 4.8l-8.1 8.1a1.8 1.8 0 01-2.5-2.5l7.3-7.3"/></svg>';
 
@@ -67,15 +68,16 @@
     '  <div class="chat-body"></div>' +
     '  <div class="chat-chips"></div>' +
     '  <div class="chat-input">' +
-    '    <div class="ci-main">' +
-    '      <textarea rows="1" placeholder="' + L("输入您的问题…", "Type your message…") + '" maxlength="2000"></textarea>' +
-    '      <button class="ci-send" aria-label="发送"><span>' + L("发送", "Send") + '</span></button>' +
-    '    </div>' +
     '    <div class="ci-bar">' +
-    '      <button type="button" data-act="emoji" title="' + L("表情 / 表情包", "Emoji / stickers") + '" aria-label="表情">' + ICON_EMOJI + '</button>' +
+    '      <button type="button" data-act="emoji" title="' + L("表情", "Emoji") + '" aria-label="表情">' + ICON_EMOJI + '</button>' +
+    '      <button type="button" data-act="stk" title="' + L("表情包", "Stickers") + '" aria-label="表情包">' + ICON_STK + '</button>' +
     '      <button type="button" data-act="img" title="' + L("发送照片", "Send photo") + '" aria-label="发照片">' + ICON_IMG + '</button>' +
     '      <button type="button" data-act="file" title="' + L("发送文件", "Send file") + '" aria-label="发文件">' + ICON_CLIP + '</button>' +
     '      <span class="ci-hint">' + L("照片 / 文件 / 粘贴截图", "Photo / file / paste") + '</span>' +
+    '    </div>' +
+    '    <div class="ci-main">' +
+    '      <textarea rows="1" placeholder="' + L("输入您的问题…", "Type your message…") + '" maxlength="2000"></textarea>' +
+    '      <button class="ci-send" aria-label="发送"><span>' + L("发送", "Send") + '</span></button>' +
     '    </div>' +
     '    <div class="ci-panel" hidden>' +
     '      <div class="cp-tabs"><button type="button" data-tab="emoji" class="on">' + L("表情", "Emoji") + '</button>' +
@@ -609,14 +611,24 @@
         '<img src="' + escapeHtml(stkUrl(s.id)) + '" alt="' + escapeHtml(s.t) + '" loading="lazy"></button>';
     }).join("");
   }
+  function syncBarState() {
+    var on = emojiBox.hidden ? "" : curTab;
+    var be = el.querySelector('[data-act="emoji"]');
+    var bs = el.querySelector('[data-act="stk"]');
+    if (be) be.classList.toggle("on", on === "emoji");
+    if (bs) bs.classList.toggle("on", on === "stk");
+  }
   function toggleEmoji(force, tab) {
     var show = force === undefined ? emojiBox.hidden : force;
     if (show && !emojiBox.dataset.built) { buildPanel(); emojiBox.dataset.built = "1"; }
+    if (tab) curTab = tab;
     emojiBox.hidden = !show;
-    el.querySelector('[data-act="emoji"]').classList.toggle("on", !!show);
-    if (show && tab) switchTab(tab);
+    if (show) switchTab(curTab);
+    syncBarState();
   }
+  var curTab = "emoji";
   function switchTab(tab) {
+    curTab = tab;
     emojiBox.querySelectorAll(".cp-tabs button").forEach(function (b) {
       b.classList.toggle("on", b.getAttribute("data-tab") === tab);
     });
@@ -624,8 +636,15 @@
       b.hidden = b.getAttribute("data-panel") !== tab;
     });
     emojiBox.scrollTop = 0;
+    syncBarState();
   }
-  el.querySelector('[data-act="emoji"]').addEventListener("click", function () { toggleEmoji(); });
+  /* 点同一个按钮关面板；点另一个按钮直接切页签，不关 */
+  function openTab(tab) {
+    if (!emojiBox.hidden && curTab === tab) { toggleEmoji(false); return; }
+    toggleEmoji(true, tab);
+  }
+  el.querySelector('[data-act="emoji"]').addEventListener("click", function () { openTab("emoji"); });
+  el.querySelector('[data-act="stk"]').addEventListener("click", function () { openTab("stk"); });
   emojiBox.querySelector(".cp-tabs").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-tab]");
     if (b) switchTab(b.getAttribute("data-tab"));
@@ -640,7 +659,7 @@
   /* 点面板以外的地方收起表情面板 */
   document.addEventListener("click", function (e) {
     if (emojiBox.hidden) return;
-    if (emojiBox.contains(e.target) || (e.target.closest && e.target.closest('[data-act="emoji"]'))) return;
+    if (emojiBox.contains(e.target) || (e.target.closest && e.target.closest('[data-act="emoji"],[data-act="stk"]'))) return;
     toggleEmoji(false);
   });
 

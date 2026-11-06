@@ -127,9 +127,9 @@
 .chat-tools button + button { border-left: 1px solid var(--line); }
 .chat-tools button:hover { color: var(--brand); background: var(--soft); }
 .chat-tools svg { width: 18px; height: 18px; }
-/* 输入区：上排输入框+发送，下排工具（表情 / 照片 / 文件） */
+/* 输入区：上排工具（表情 / 表情包 / 照片 / 文件），下排输入框+发送 */
 .chat-input {
-  display: flex; flex-direction: column; gap: 6px;
+  display: flex; flex-direction: column; gap: 8px;
   padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px));
   border-top: 1px solid var(--line); background: #fff; flex-shrink: 0; position: relative;
 }
@@ -152,7 +152,7 @@
 .chat-input .ci-send svg { width: 18px; height: 18px; }
 
 .ci-bar {
-  display: flex; align-items: center; gap: 2px; padding-left: 2px;
+  display: flex; align-items: center; gap: 6px; padding-left: 2px;
 }
 .ci-bar button {
   width: 34px; height: 34px; border: 0; border-radius: 10px; background: none; cursor: pointer;
@@ -162,12 +162,12 @@
 .ci-bar button:hover:not(:disabled) { background: var(--soft); color: var(--brand); }
 .ci-bar button.on { background: var(--soft); color: var(--accent); }
 .ci-bar button:disabled { opacity: .4; cursor: default; }
-.ci-bar button svg { width: 19px; height: 19px; }
-.ci-bar .ci-hint { font-size: 11.5px; color: #9aa8b5; margin-left: 6px; }
+.ci-bar button svg { width: 22px; height: 22px; display: block; }
+.ci-bar .ci-hint { font-size: 11.5px; color: #9aa8b5; margin-left: 4px; }
 
 /* 表情 / 表情包面板 */
 .ci-panel {
-  position: absolute; left: 8px; right: 8px; bottom: calc(100% - 4px);
+  position: absolute; left: 8px; right: 8px; bottom: calc(100% + 6px);
   background: #fff; border: 1px solid var(--line); border-radius: 14px;
   box-shadow: 0 14px 36px rgba(11, 27, 43, .18);
   padding: 6px; z-index: 4; max-height: 268px; display: flex; flex-direction: column;
@@ -179,7 +179,7 @@
   color: var(--muted); padding: 5px 12px; border-radius: 99px;
 }
 .cp-tabs button.on { background: var(--soft); color: var(--brand); font-weight: 700; }
-.cp-body { overflow-y: auto; padding-top: 6px; }
+.cp-body { overflow-y: auto; padding: 6px 0 8px; }
 .cp-body[hidden] { display: none !important; }
 .cp-body[data-panel="emoji"]:not([hidden]) { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
 .cp-body[data-panel="stk"]:not([hidden]) { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px 4px 4px; }
@@ -322,7 +322,7 @@
   .att-file { max-width: 60vw; }
   .att-file .af-tx b { max-width: 34vw; }
   .cp-body[data-panel="emoji"] { grid-template-columns: repeat(8, 1fr); }
-  .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(5, 1fr); }
+  .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(6, 1fr); gap: 5px; }
   .ci-panel { max-height: 252px; }
   .chat-input { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
   .ci-bar button { width: 38px; height: 38px; }

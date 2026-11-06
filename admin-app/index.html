@@ -195,7 +195,7 @@
       color: var(--mut); padding: 5px 12px; border-radius: 99px;
     }
     .cp-tabs button.on { background: #e8f5ee; color: var(--brand); font-weight: 700; }
-    .cp-body { overflow-y: auto; padding-top: 6px; }
+    .cp-body { overflow-y: auto; padding: 6px 0 8px; }
     .cp-body[hidden] { display: none !important; }
     .cp-body[data-panel="emoji"]:not([hidden]) { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
     .cp-body[data-panel="stk"]:not([hidden]) { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; padding: 8px 4px 4px; }
@@ -292,7 +292,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061735";
+      var ZT_VER = "202611061750";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -1841,8 +1841,18 @@
         showTip($("thread-tip"), "发送失败：" + ((e && e.message) || "网络异常"), true);
       });
   }
-  $("btn-emoji").addEventListener("click", function () { togglePanel(rbPanel.hidden, "emoji"); });
-  $("btn-stk").addEventListener("click", function () { togglePanel(rbPanel.hidden, "stk"); });
+  /* 点同一个按钮关面板；点另一个按钮直接切页签，不关 */
+  function openToolPanel(tab) {
+    if (!rbPanel.hidden) {
+      var cur = rbPanel.querySelector(".cp-tabs button.on");
+      var curTab = cur ? (cur.getAttribute("data-tab") || "") : "";
+      if (curTab === tab) { togglePanel(false); return; }
+      switchTab(tab); syncToolState(); return;
+    }
+    togglePanel(true, tab);
+  }
+  $("btn-emoji").addEventListener("click", function () { openToolPanel("emoji"); });
+  $("btn-stk").addEventListener("click", function () { openToolPanel("stk"); });
   rbPanel.querySelector(".cp-tabs").addEventListener("click", function (e) {
     var b = e.target.closest("button[data-tab]");
     if (b) { switchTab(b.getAttribute("data-tab")); syncToolState(); }
