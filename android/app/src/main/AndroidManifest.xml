@@ -13,6 +13,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 聊天里「拍照」直接调系统相机：只用到 ACTION_IMAGE_CAPTURE，不需要预览/录像 -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
     <!-- App 内自动更新：下载新版本后呼起系统安装器 -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <!-- 息屏后系统会进 Doze：冻结网络和 CPU，轮询就停了。申请「忽略电池优化」才能继续收 -->

@@ -292,7 +292,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061750";
+      var ZT_VER = "202611061810";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -459,8 +459,11 @@
               <button type="button" class="tool" id="btn-stk" title="表情包" aria-label="表情包">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V6a3 3 0 00-3-3H6a3 3 0 00-3 3v12a3 3 0 003 3h6"/><path d="M21 12l-9 9"/><path d="M9.2 13.6a4 4 0 005.6 0"/><path d="M9.5 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>
               </button>
-              <button type="button" class="tool" id="btn-send-img" title="发送照片" aria-label="发送照片">
+              <button type="button" class="tool" id="btn-send-img" title="从相册选照片" aria-label="发送照片">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>
+              </button>
+              <button type="button" class="tool" id="btn-camera" title="拍照发送" aria-label="拍照">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.7a2 2 0 001.7-1l.5-.8a1 1 0 01.8-.5h3.6a1 1 0 01.8.5l.5.8a2 2 0 001.7 1h1.7A2.5 2.5 0 0121 8.5v8A2.5 2.5 0 0118.5 19h-13A2.5 2.5 0 013 16.5z"/><circle cx="12" cy="12.5" r="3.6"/></svg>
               </button>
               <button type="button" class="tool" id="btn-send-file" title="发送文件" aria-label="发送文件">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.2-8.2a3.4 3.4 0 014.8 4.8l-8.1 8.1a1.8 1.8 0 01-2.5-2.5l7.3-7.3"/></svg>
@@ -480,6 +483,7 @@
               <div class="cp-body" data-panel="stk" hidden></div>
             </div>
             <input type="file" id="pick-img" accept="image/*" multiple hidden>
+            <input type="file" id="pick-cam" accept="image/*" capture="environment" hidden>
             <input type="file" id="pick-file" multiple hidden>
           </div>
           <div class="chat-viewer" id="ad-viewer"><img alt="预览"><button class="x" id="ad-viewer-x">✕</button></div>
@@ -504,6 +508,16 @@
 
     <!-- 谁在用：登录记录 -->
     <div id="tab-login" class="hidden">
+      <a href="who.html" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-bottom:12px">
+        <span style="width:40px;height:40px;border-radius:12px;background:#eef7f2;color:#0b6e4f;display:grid;place-items:center;flex:0 0 auto">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>
+        </span>
+        <span style="flex:1">
+          <b style="font-size:15px;color:#0b6e4f">在线看板 · 现在谁在用</b>
+          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁在看网站、谁在用后台，设备 / 页面 / IP 实时刷新</span>
+        </span>
+        <span style="color:#0b6e4f;font-size:19px">›</span>
+      </a>
       <div class="row"><button class="ghost sm" id="btn-login-refresh">刷新记录</button><span class="tip" id="login-log-tip"></span></div>
       <div id="login-summary" style="margin-top:12px"></div>
       <div id="login-list" style="margin-top:10px"></div>
@@ -763,6 +777,42 @@
     initRealtime();
     /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
     if (window.ZTPush) window.ZTPush.adminOnline();
+    /* 在线看板：让 who.html 看到这台设备正在用后台 */
+    startAdminPresence();
+  }
+
+  /* ---------------- 在线看板：本设备心跳（配置见 admin/presence.sql） ---------------- */
+  var presenceTimer = null, presenceDead = false;
+  function adminPing() {
+    if (!client || presenceDead || document.hidden) return;
+    var id = null;
+    try { id = localStorage.getItem("zt_dev"); } catch (e) {}
+    if (!id) {
+      id = "adm-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36).slice(-4);
+      try { localStorage.setItem("zt_dev", id); } catch (e) {}
+    }
+    var tz = "";
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+    client.rpc("zt_presence_ping", {
+      p_id: id,
+      p_kind: "admin",
+      p_name: (currentUser && currentUser.email) || "",
+      p_page: location.pathname,
+      p_ref: "",
+      p_ua: navigator.userAgent,
+      p_screen: screen.width + "x" + screen.height,
+      p_tz: tz,
+      p_lang: navigator.language || ""
+    }).then(function (res) {
+      /* 表不存在（还没跑 admin/presence.sql）→ 停掉，别每 45 秒报一次错 */
+      if (res && res.error) presenceDead = true;
+    }).catch(function () { presenceDead = true; });
+  }
+  function startAdminPresence() {
+    if (presenceTimer) return;
+    adminPing();
+    presenceTimer = setInterval(adminPing, 45000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) adminPing(); });
   }
 
   /* ---------------- 提醒自检：一眼看出红点/通知卡在哪 ---------------- */
@@ -1779,7 +1829,7 @@
   }
 
   function setReplyBusy(on) {
-    ["btn-reply", "btn-emoji", "btn-stk", "btn-send-img", "btn-send-file"].forEach(function (id) {
+    ["btn-reply", "btn-emoji", "btn-stk", "btn-send-img", "btn-camera", "btn-send-file"].forEach(function (id) {
       var b = $(id); if (b) b.disabled = !!on;
     });
   }
@@ -1965,8 +2015,11 @@
 
   /* 图片 / 文件 / 预览 / 手机端返回列表 */
   $("btn-send-img").addEventListener("click", function () { $("pick-img").click(); });
+  /* 拍照：带 capture 的 input 在手机浏览器直接开相机；在 App 壳里由原生判断 isCaptureEnabled 转系统相机 */
+  $("btn-camera").addEventListener("click", function () { $("pick-cam").click(); });
   $("btn-send-file").addEventListener("click", function () { $("pick-file").click(); });
   $("pick-img").addEventListener("change", function () { sendAdminFiles(this.files); this.value = ""; });
+  $("pick-cam").addEventListener("change", function () { sendAdminFiles(this.files); this.value = ""; });
   $("pick-file").addEventListener("change", function () { sendAdminFiles(this.files); this.value = ""; });
   $("btn-back-list").addEventListener("click", function () {
     var lay = document.querySelector(".chat-layout");

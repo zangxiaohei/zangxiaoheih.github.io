@@ -431,8 +431,7 @@
 
   function startPoll() {
     if (pollTimer || !dbOn()) return;
-    poll();
-    pollTimer = setInterval(poll, 6000);
+    poll();    pollTimer = setInterval(poll, 6000);
   }
   function stopPoll() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
@@ -938,4 +937,29 @@
                        "(Demo mode) Message saved locally. Connect the database in site.js before going live.");
     ok.classList.add("show");
   });
+  /* ---------------- 在线看板：让后台知道「这台设备还在用」 ----------------
+     只在页面可见时上报，45 秒一次；表还没建（没跑 admin/presence.sql）
+     就失败一次然后彻底停掉，不会一直刷错误请求。 */
+  var presenceTimer = null, presenceDead = false, presenceTries = 0;
+  function presencePing() {
+    if (presenceDead || document.hidden) return;
+    if (!(window.DB && window.DB.presencePing && dbOn())) return;
+    try {
+      window.DB.presencePing({ id: VK, kind: "visitor", page: location.pathname })
+        .then(function (res) { if (res && res.error) presenceDead = true; })
+        .catch(function () { presenceDead = true; });
+    } catch (e) { presenceDead = true; }
+  }
+  function startPresence() {
+    if (presenceTimer) return;
+    if (!(window.DB && window.DB.ok && window.DB.ok())) {
+      /* SDK 是异步加载的，等它就绪；20 次（约 30 秒）还没好就放弃 */
+      if (++presenceTries < 20) setTimeout(startPresence, 1500);
+      return;
+    }
+    presencePing();
+    presenceTimer = setInterval(presencePing, 45000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) presencePing(); });
+  }
+  startPresence();
 })();

@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b6e4f">
+<title>谁在使用 · 在线看板</title>
+<style>
+  :root { color-scheme: light; --brand: #0b6e4f; --brand2: #12946a; --ink: #1f3229; --muted: #7c9188; --line: #dfeae4; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 0 0 40px;
+    font: 16px/1.7 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f8f6; color: var(--ink); }
+  .wrap { max-width: 720px; margin: 0 auto; padding: 0 14px; }
+  .top { background: linear-gradient(135deg, #0b6e4f, #12946a); color: #fff;
+    padding: calc(16px + env(safe-area-inset-top, 0px)) 16px 18px; }
+  .top .inner { max-width: 720px; margin: 0 auto; }
+  .top h1 { font-size: 19px; margin: 0; display: flex; align-items: center; gap: 8px; }
+  .top h1 .dot { width: 8px; height: 8px; border-radius: 50%; background: #7dffc0;
+    box-shadow: 0 0 0 4px rgba(125,255,192,.22); }
+  .top p { margin: 6px 0 0; font-size: 13px; opacity: .85; }
+  .top .back { display: inline-block; margin-bottom: 10px; color: #fff; text-decoration: none;
+    font-size: 13px; background: rgba(255,255,255,.16); padding: 4px 12px; border-radius: 99px; }
+  .top .acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .top .acts button { border: 0; border-radius: 10px; padding: 9px 14px; font: inherit; font-size: 13.5px;
+    cursor: pointer; background: rgba(255,255,255,.18); color: #fff; }
+  .top .acts button.on { background: #fff; color: var(--brand); font-weight: 700; }
+
+  .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: -8px; }
+  .stat { background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 2px 12px rgba(11,110,79,.07); }
+  .stat b { display: block; font-size: 24px; line-height: 1.2; color: var(--brand); }
+  .stat span { font-size: 12.5px; color: var(--muted); }
+  .stat.hot b { color: #c0392b; }
+
+  .filters { display: flex; gap: 7px; margin: 14px 0 10px; flex-wrap: wrap; }
+  .filters button { border: 1px solid var(--line); background: #fff; color: #4a6156;
+    border-radius: 99px; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; }
+  .filters button.on { background: var(--brand); border-color: var(--brand); color: #fff; font-weight: 600; }
+
+  .row { background: #fff; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
+    box-shadow: 0 1px 8px rgba(11,110,79,.06); display: flex; gap: 11px; }
+  .row .ic { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 11px; display: grid;
+    place-items: center; background: #eef7f2; color: var(--brand); }
+  .row .ic svg { width: 21px; height: 21px; }
+  .row .main { flex: 1; min-width: 0; }
+  .row .l1 { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .row .l1 b { font-size: 14.5px; font-weight: 600; }
+  .row .l2, .row .l3 { font-size: 12.5px; color: var(--muted); margin-top: 3px;
+    overflow-wrap: anywhere; word-break: normal; line-height: 1.6; }
+  .row .l3 b { color: #4a6156; font-weight: 600; }
+  .badge { font-size: 11.5px; border-radius: 6px; padding: 1px 7px; white-space: nowrap; font-weight: 600; }
+  .badge.on { background: #e6f8ee; color: #0b6e4f; }
+  .badge.away { background: #fff4e5; color: #a35b00; }
+  .badge.off { background: #f0f2f1; color: #84968d; }
+  .badge.adm { background: #eaf1ff; color: #2b5fb0; }
+  .badge.chat { background: #ece7fb; color: #4a3691; }
+  .live { width: 7px; height: 7px; border-radius: 50%; background: #16b979; display: inline-block; }
+  .live.away { background: #e8a33d; }
+  .live.off { background: #c3cdc8; }
+
+  .card { background: #fff; border-radius: 16px; padding: 18px 16px; margin: 16px 0;
+    box-shadow: 0 2px 14px rgba(11,110,79,.07); }
+  .card h2 { font-size: 16px; margin: 0 0 10px; color: var(--brand); }
+  .card p { margin: 0 0 10px; font-size: 14px; color: #3d5348; }
+  .card .sub { font-size: 13px; color: var(--muted); }
+  .btn { display: inline-block; border: 0; border-radius: 11px; padding: 12px 18px; font: inherit;
+    font-size: 14.5px; font-weight: 700; cursor: pointer; background: var(--brand); color: #fff; text-decoration: none; }
+  .btn.ghost { background: #eef7f2; color: var(--brand); border: 1.5px solid #cfe6da; font-weight: 600; }
+  pre { background: #0f2a20; color: #d7f0e5; border-radius: 12px; padding: 12px; overflow: auto;
+    max-height: 320px; font: 12px/1.55 ui-monospace, Menlo, Consolas, monospace; margin: 10px 0 0; }
+  .empty { text-align: center; color: var(--muted); font-size: 14px; padding: 28px 10px; }
+  .foot { text-align: center; font-size: 12px; color: #9aada4; margin-top: 18px; line-height: 1.8; }
+  .tipbar { font-size: 12.5px; color: var(--muted); margin: 4px 2px 0; min-height: 18px; }
+  @media (min-width: 560px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="inner">
+    <a class="back" href="index.html">‹ 回后台</a>
+    <h1><span class="dot"></span>谁在使用</h1>
+    <p id="sub">正在统计…</p>
+    <div class="acts">
+      <button id="btn-auto" class="on">自动刷新 10s</button>
+      <button id="btn-now">立即刷新</button>
+      <button id="btn-clean">清理离线</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="stats" id="stats" style="margin-top:12px"></div>
+  <div class="filters" id="filters">
+    <button data-f="all" class="on">全部</button>
+    <button data-f="on">此刻在线</button>
+    <button data-f="visitor">访客</button>
+    <button data-f="admin">管理员</button>
+    <button data-f="chat">留过言</button>
+  </div>
+  <div id="list"><div class="empty">读取中…</div></div>
+
+  <!-- 没建表时显示 -->
+  <div class="card" id="setup" style="display:none">
+    <h2>还差一步：在 Supabase 跑一次 SQL</h2>
+    <p>现在的后台能打开，但还没有记录「谁在用」的表。跑一次下面的 SQL（30 秒），这一页立刻就有数据。</p>
+    <button class="btn" id="btn-copy">复制建表 SQL</button>
+    <pre id="sql">读取中…</pre>
+    <p class="sub" style="margin-top:12px">跑完回到这里点「立即刷新」。之后每台打开网站或后台的设备，都会自动出现在上面。</p>
+    <a class="btn ghost" href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener" style="margin-top:8px">打开 Supabase SQL 编辑器 →</a>
+  </div>
+
+  <div class="card" id="loginGate" style="display:none">
+    <h2>需要先登录后台</h2>
+    <p>这一页只能管理员看。登录一次就好，之后会自动带过来。</p>
+    <a class="btn" href="index.html">去登录 →</a>
+  </div>
+
+  <div class="foot">
+    在线 = 90 秒内有心跳；设备每 45 秒上报一次（切到后台标签就会暂停）。<br>
+    记录保留 30 天，过期自动清理。
+  </div>
+</div>
+
+<script src="../assets/js/db-config.js?v=2026110534"></script>
+<script src="../assets/vendor/supabase.min.js?v=2026110516"></script>
+<script>
+(function () {
+  "use strict";
+
+  var cfg = window.SUPABASE_CONFIG || {};
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  var p2 = function (n) { return (n < 10 ? "0" : "") + n; };
+  function ago(iso) {
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return "—";
+    var s = Math.max(0, Math.round((Date.now() - t) / 1000));
+    if (s < 10) return "刚刚";
+    if (s < 60) return s + " 秒前";
+    if (s < 3600) return Math.round(s / 60) + " 分钟前";
+    if (s < 86400) return Math.round(s / 3600) + " 小时前";
+    return Math.round(s / 86400) + " 天前";
+  }
+  function hhmm(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    return p2(d.getHours()) + ":" + p2(d.getMinutes());
+  }
+  /* 停留时长：首次出现到现在 */
+  function stay(iso) {
+    var t = new Date(iso).getTime();
+    if (isNaN(t)) return "";
+    var m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return "不到 1 分钟";
+    if (m < 60) return m + " 分钟";
+    var h = Math.floor(m / 60), rest = m % 60;
+    return h + " 小时" + (rest ? " " + rest + " 分" : "");
+  }
+  var ONLINE = 90 * 1000, AWAY = 10 * 60 * 1000;
+  function state(r) {
+    var t = new Date(r.last_at).getTime();
+    if (Date.now() - t <= ONLINE) return "on";
+    if (Date.now() - t <= AWAY) return "away";
+    return "off";
+  }
+
+  var client = null;
+  if (cfg.url && cfg.anonKey) {
+    try { client = window.supabase.createClient(cfg.url, cfg.anonKey); } catch (e) { client = null; }
+  }
+
+  var rows = [], threads = {}, filter = "all", timer = null, auto = true, hasTable = true;
+
+  /* ---------- 登录校验 ---------- */
+  if (!client) {
+    $("sub").textContent = "没有配置数据库，看板不可用";
+    $("list").innerHTML = '<div class="empty">请先在 assets/js/db-config.js 里填 Supabase 地址和 anon key。</div>';
+    return;
+  }
+  client.auth.getSession().then(function (res) {
+    var s = res && res.data && res.data.session;
+    if (!s || !s.user) { showGate(); return; }
+    load(true);
+    startAuto();
+  });
+
+  function showGate() {
+    $("loginGate").style.display = "block";
+    $("list").innerHTML = "";
+    $("sub").textContent = "未登录";
+  }
+
+  /* ---------- 拉数据 ---------- */
+  function load(showBusy) {
+    if (showBusy) $("sub").textContent = "正在读取…";
+    var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    client.from("site_presence")
+      .select("id,kind,name,page,ref,device,ip,screen,tz,lang,hits,first_at,last_at")
+      .gte("last_at", since)
+      .order("last_at", { ascending: false })
+      .limit(300)
+      .then(function (res) {
+        if (res.error) { onErr(res.error); return; }
+        hasTable = true;
+        $("setup").style.display = "none";
+        rows = res.data || [];
+        loadThreads();
+      })
+      .catch(function () { $("sub").textContent = "网络异常，稍后自动重试"; });
+  }
+
+  /* 把「留过联系方式」的访客对上号：visitor_key 就是访客的 zt_vk */
+  function loadThreads() {
+    var ids = rows.filter(function (r) {
+      return r.kind !== "admin" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(r.id);
+    }).map(function (r) { return r.id; });
+    if (!ids.length) { render(); return; }
+    client.from("chat_threads").select("visitor_key,name,phone,last_at")
+      .in("visitor_key", ids)
+      .then(function (res) {
+        threads = {};
+        if (!res.error) (res.data || []).forEach(function (t) { threads[t.visitor_key] = t; });
+        render();
+      })
+      .catch(function () { render(); });
+  }
+
+  function onErr(err) {
+    var msg = String((err && err.message) || err || "");
+    var code = String((err && err.code) || "");
+    if (code === "42P01" || /does not exist|schema cache|Could not find the table/i.test(msg)) {
+      hasTable = false;
+      $("setup").style.display = "block";
+      $("list").innerHTML = "";
+      $("stats").innerHTML = "";
+      $("sub").textContent = "还没有建表，按下面 1 步开通";
+      loadSql();
+      return;
+    }
+    if (code === "42501" || /permission denied|JWT/i.test(msg)) { showGate(); return; }
+    $("sub").textContent = "读取失败：" + msg.slice(0, 60);
+  }
+
+  /* ---------- 渲染 ---------- */
+  function render() {
+    var now = Date.now();
+    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    var on = rows.filter(function (r) { return state(r) === "on"; });
+    var near = rows.filter(function (r) { return state(r) !== "off"; });
+    var today = {};
+    rows.forEach(function (r) { if (new Date(r.first_at).getTime() >= todayStart.getTime()) today[r.id] = 1; });
+    var admOn = on.filter(function (r) { return r.kind === "admin"; }).length;
+
+    $("stats").innerHTML =
+      statBlock(on.length, "此刻在线", on.length > 0) +
+      statBlock(near.length, "10 分钟内", false) +
+      statBlock(Object.keys(today).length, "今天来过", false) +
+      statBlock(admOn, "后台在线", false);
+
+    $("sub").textContent = "最后更新 " + hhmm(new Date().toISOString()) +
+      " · 共 " + rows.length + " 台设备（近 24 小时）";
+
+    var list = rows.filter(function (r) {
+      var st = state(r);
+      if (filter === "on") return st === "on";
+      if (filter === "visitor") return r.kind !== "admin";
+      if (filter === "admin") return r.kind === "admin";
+      if (filter === "chat") return !!threads[r.id];
+      return true;
+    });
+
+    if (!list.length) {
+      $("list").innerHTML = '<div class="empty">' +
+        (rows.length ? "这个筛选下没有设备" : "还没有设备上报。打开一次网站首页，这里就会出现你的手机/电脑。") +
+        '</div>';
+      return;
+    }
+    $("list").innerHTML = list.map(card).join("");
+  }
+
+  function statBlock(v, label, hot) {
+    return '<div class="stat' + (hot ? " hot" : "") + '"><b>' + v + '</b><span>' + label + '</span></div>';
+  }
+
+  function card(r) {
+    var st = state(r);
+    var isAdm = r.kind === "admin";
+    var th = threads[r.id];
+    var who = isAdm ? (r.name || "管理员")
+      : (th && th.name ? th.name : "访客 #" + String(r.id).replace(/-/g, "").slice(0, 4));
+    var page = (r.page || "/").replace(/^.*\//, "/") || "/";
+    var l2 = [];
+    if (r.device) l2.push(esc(r.device));
+    if (r.screen) l2.push(esc(r.screen));
+    l2.push("页面 " + esc(page));
+    if (r.ref) {
+      try { l2.push("来源 " + esc(new URL(r.ref).host)); } catch (e) {}
+    }
+    var l3 = [];
+    l3.push("<b>" + esc(r.ip || "-") + "</b>");
+    l3.push("停留 " + stay(r.first_at));
+    l3.push(ago(r.last_at));
+    if (th && th.phone) l3.push("<b>" + esc(th.phone) + "</b>");
+    else if (th) l3.push("留过言");
+
+    return '<div class="row">' +
+      '<div class="ic">' + (isAdm ? ICON_DESK : ICON_PHONE) + '</div>' +
+      '<div class="main">' +
+        '<div class="l1"><span class="live ' + (st === "on" ? "" : st) + '"></span>' +
+          '<b>' + esc(who) + '</b>' +
+          (isAdm ? '<span class="badge adm">管理员</span>' : '') +
+          (th ? '<span class="badge chat">有会话</span>' : '') +
+          '<span class="badge ' + (st === "on" ? "on" : st === "away" ? "away" : "off") + '">' +
+            (st === "on" ? "在线" : st === "away" ? "离开" : "离线") + '</span>' +
+        '</div>' +
+        '<div class="l2">' + l2.join(" · ") + '</div>' +
+        '<div class="l3">' + l3.join(" · ") + '</div>' +
+      '</div></div>';
+  }
+
+  var ICON_PHONE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.6h3"/></svg>';
+  var ICON_DESK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="4" width="19" height="12.5" rx="2"/><path d="M8 20.5h8M12 16.5v4"/></svg>';
+
+  /* ---------- 交互 ---------- */
+  $("filters").addEventListener("click", function (e) {
+    var b = e.target.closest("button[data-f]");
+    if (!b) return;
+    filter = b.getAttribute("data-f");
+    [].forEach.call(this.querySelectorAll("button"), function (x) { x.classList.toggle("on", x === b); });
+    render();
+  });
+  $("btn-now").addEventListener("click", function () { load(true); });
+  $("btn-auto").addEventListener("click", function () {
+    auto = !auto;
+    this.classList.toggle("on", auto);
+    this.textContent = auto ? "自动刷新 10s" : "自动刷新已暂停";
+    startAuto();
+  });
+  $("btn-clean").addEventListener("click", function () {
+    if (!client || !hasTable) return;
+    var cut = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+    var b = this;
+    b.disabled = true; b.textContent = "清理中…";
+    client.from("site_presence").delete().lt("last_at", cut).then(function (res) {
+      b.disabled = false; b.textContent = res.error ? "清理失败" : "已清理";
+      setTimeout(function () { b.textContent = "清理离线"; }, 1600);
+      load(false);
+    });
+  });
+
+  function startAuto() {
+    if (timer) { clearInterval(timer); timer = null; }
+    if (!auto) return;
+    timer = setInterval(function () { if (!document.hidden) load(false); }, 10000);
+  }
+
+  /* ---------- 建表 SQL ----------
+     优先读仓库里的 admin/presence.sql（唯一真源）；取不到就用页面内嵌的副本，
+     保证在 file:// 或离线打开时也能复制。 */
+  function loadSql() {
+    var inline = document.getElementById("sql-src");
+    var fallback = inline ? inline.textContent : "";
+    fetch("../admin/presence.sql")
+      .then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); })
+      .then(function (t) { $("sql").textContent = String(t || fallback).replace(/^\s+/, ""); })
+      .catch(function () { $("sql").textContent = String(fallback || "请到仓库里打开 admin/presence.sql 复制。").replace(/^\s+/, ""); });
+  }
+  $("btn-copy").addEventListener("click", function () {
+    var t = $("sql").textContent;
+    var b = this;
+    function done(ok) {
+      b.textContent = ok ? "✅ 已复制，去 Supabase 粘贴" : "复制失败，请长按全选手动复制";
+      setTimeout(function () { b.textContent = "复制建表 SQL"; }, 2200);
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(false); });
+    } else {
+      try {
+        var ta = document.createElement("textarea");
+        ta.value = t; document.body.appendChild(ta); ta.select();
+        done(document.execCommand("copy"));
+        ta.remove();
+      } catch (e) { done(false); }
+    }
+  });
+})();
+</script>
+
+<script id="sql-src" type="text/plain">
+-- ============================================================================
+-- 在线看板 · 谁在使用（在 Supabase「SQL 编辑器」里整块执行一次）
+--
+-- 作用：记下每台设备最后一次露面（页面、设备、IP、屏幕、时区），
+--       后台 admin-app/who.html 就能看到「现在谁在看网站 / 谁在用后台」。
+-- 说明：访客只能调函数上报自己，读不到任何人的记录；
+--       只有登录后拿到 admin 身份的账号才能 select。
+-- ============================================================================
+
+begin;
+
+create table if not exists public.site_presence (
+  id        text primary key,                 -- 浏览器/设备标识（访客用 zt_vk，后台用 zt_dev）
+  kind      text not null default 'visitor',  -- visitor 访客 / admin 管理员
+  name      text,                             -- 后台账号邮箱（访客为空）
+  page      text,                             -- 当前页面路径
+  ref       text,                             -- 来源域名
+  ua        text,
+  device    text,                             -- 解析后的「iPhone · 中天App · Chrome」
+  ip        text,
+  screen    text,
+  tz        text,
+  lang      text,
+  hits      integer not null default 1,       -- 上报次数，约等于停留时长
+  first_at  timestamptz not null default now(),
+  last_at   timestamptz not null default now()
+);
+
+create index if not exists idx_presence_last on public.site_presence (last_at desc);
+
+alter table public.site_presence enable row level security;
+
+-- 只给登录后的管理员读；匿名一律读不到
+drop policy if exists p_presence_read on public.site_presence;
+create policy p_presence_read on public.site_presence
+  for select to authenticated using (true);
+
+-- 管理员可以在看板上清掉过期记录
+drop policy if exists p_presence_del on public.site_presence;
+create policy p_presence_del on public.site_presence
+  for delete to authenticated using (true);
+
+-- 上报：匿名可调用，但只能写自己那一行
+drop function if exists public.zt_presence_ping(text, text, text, text, text, text, text, text, text);
+
+create function public.zt_presence_ping(
+  p_id     text,
+  p_kind   text default 'visitor',
+  p_name   text default null,
+  p_page   text default null,
+  p_ref    text default null,
+  p_ua     text default null,
+  p_screen text default null,
+  p_tz     text default null,
+  p_lang   text default null
+) returns boolean
+language plpgsql security definer set search_path = public
+as $fn$
+declare
+  v_hdr text;
+  v_ip  text;
+  v_ua  text;
+  v_dev text;
+begin
+  if p_id is null or length(trim(p_id)) = 0 then
+    return false;
+  end if;
+
+  v_ua := left(coalesce(p_ua, ''), 300);
+
+  -- 真实 IP：Supabase 网关把客户端地址放在 x-forwarded-for 里
+  begin
+    v_hdr := nullif(current_setting('request.headers', true), '');
+    if v_hdr is not null then
+      v_ip := nullif(trim(split_part(coalesce((v_hdr::json) ->> 'x-forwarded-for', ''), ',', 1)), '');
+    end if;
+  exception when others then
+    v_ip := null;
+  end;
+  v_ip := left(coalesce(v_ip, 'unknown'), 60);
+
+  v_dev :=
+    case
+      when v_ua ~* 'iphone'            then 'iPhone'
+      when v_ua ~* 'ipad'              then 'iPad'
+      when v_ua ~* 'android'           then '安卓'
+      when v_ua ~* 'windows'           then 'Windows'
+      when v_ua ~* 'mac os|macintosh'  then 'Mac'
+      when v_ua ~* 'linux'             then 'Linux'
+      else '未知设备'
+    end
+    || case
+         when v_ua ~* 'zhongtianadmin' then ' · 中天App'
+         else ''
+       end
+    || case
+         when v_ua ~* 'micromessenger' then ' · 微信'
+         when v_ua ~* 'edg/'           then ' · Edge'
+         when v_ua ~* 'firefox'        then ' · Firefox'
+         when v_ua ~* 'crios|chrome'   then ' · Chrome'
+         when v_ua ~* 'safari'         then ' · Safari'
+         else ''
+       end;
+
+  insert into public.site_presence
+    (id, kind, name, page, ref, ua, device, ip, screen, tz, lang, hits, first_at, last_at)
+  values
+    (left(trim(p_id), 64),
+     case when p_kind = 'admin' then 'admin' else 'visitor' end,
+     left(nullif(trim(coalesce(p_name, '')), ''), 80),
+     left(coalesce(p_page, ''), 120),
+     left(coalesce(p_ref, ''), 120),
+     v_ua, v_dev, v_ip,
+     left(coalesce(p_screen, ''), 20),
+     left(coalesce(p_tz, ''), 40),
+     left(coalesce(p_lang, ''), 20),
+     1, now(), now())
+  on conflict (id) do update set
+    kind     = excluded.kind,
+    name     = coalesce(excluded.name, public.site_presence.name),
+    page     = excluded.page,
+    ref      = excluded.ref,
+    ua       = excluded.ua,
+    device   = excluded.device,
+    ip       = excluded.ip,
+    screen   = excluded.screen,
+    tz       = excluded.tz,
+    lang     = excluded.lang,
+    hits     = public.site_presence.hits + 1,
+    -- 停了 30 分钟以上再回来，算新的一次到访，否则「停留时长」会越滚越大
+    first_at = case
+                 when public.site_presence.last_at < now() - interval '30 minutes' then now()
+                 else public.site_presence.first_at
+               end,
+    last_at  = now();
+
+  -- 顺手清理：1% 的概率清一次 30 天前的记录，不用额外定时任务
+  if random() < 0.01 then
+    delete from public.site_presence where last_at < now() - interval '30 days';
+  end if;
+
+  return true;
+end;
+$fn$;
+
+revoke all on function public.zt_presence_ping(text, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.zt_presence_ping(text, text, text, text, text, text, text, text, text) to anon, authenticated;
+
+commit;
+</script>
+</body>
+</html>

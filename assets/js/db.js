@@ -106,6 +106,25 @@
       return client.rpc("chat_fetch", { p_key: key });
     },
 
+    /* 在线看板：上报「这台设备还在用」。表不存在时会返回 error，调用方据此停掉
+       相关配置见 admin/presence.sql，页面见 admin-app/who.html */
+    presencePing: function (o) {
+      if (!client || !o || !o.id) return Promise.resolve(null);
+      var tz = "";
+      try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
+      return client.rpc("zt_presence_ping", {
+        p_id: String(o.id).slice(0, 64),
+        p_kind: o.kind === "admin" ? "admin" : "visitor",
+        p_name: o.name || null,
+        p_page: String(o.page || location.pathname).slice(0, 120),
+        p_ref: String(o.ref == null ? (document.referrer || "") : o.ref).slice(0, 120),
+        p_ua: String(navigator.userAgent || "").slice(0, 300),
+        p_screen: window.screen ? (screen.width + "x" + screen.height) : "",
+        p_tz: tz,
+        p_lang: navigator.language || ""
+      });
+    },
+
     /* 聊天附件上传（图片 / 文件）→ 返回公开链接
        桶名固定 chat-files，配置见 admin/chat-files.sql */
     uploadChatFile: function (file, key) {
