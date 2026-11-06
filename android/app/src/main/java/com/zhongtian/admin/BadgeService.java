@@ -51,16 +51,18 @@ public class BadgeService extends Service {
 
     /* 渠道 ID：老渠道 zt_badge 的 showBadge 是错的，且创建后不可修改，只能作废换新 */
     static final String CH_SVC = "zt_svc_v2";
-    static final String CH_UNREAD = "zt_unread_v2";
+    static final String CH_UNREAD = "zt_unread_v3";
 
     private static final int ID_SVC = 1001;      // 前台服务通知
     private static final int ID_UNREAD = 2001;   // 角标通知
-    private static final long INTERVAL_SEC = 60;
+    /* 轮询节奏见 onStartCommand：前台 3 秒、后台 10 秒（1.5 版是固定 60 秒，用户实测要等 30 秒以上） */
 
     private static final String BASE = "https://ndjctekubqinrlyokmzp.supabase.co/rest/v1/";
     private static final String KEY = "sb_publishable_f_3Lam0m4JQfajKTjuXnMw_GnnWOP-x";
 
     static final String ACTION_SYNC = "com.zhongtian.admin.SYNC";
+    /** 网页把算好的未读数直接推过来，跳过轮询等待 */
+    static final String ACTION_PUSH = "com.zhongtian.admin.PUSH";
 
     /* 供 NativeBridge 读取的诊断状态 */
     static volatile int sTotal = -1;
@@ -71,29 +73,51 @@ public class BadgeService extends Service {
     static volatile int sRounds = 0;
     static volatile boolean sPosted = false;
 
-    private ScheduledExecutorService pool;
+    private Thread worker;
+    private volatile boolean alive = true;
+    /** App 是否在前台：MainActivity 的 onResume/onPause 会改这个值，决定轮询快慢 */
+    static volatile boolean sForeground = false;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private final SimpleDateFormat hm = new SimpleDateFormat("HH:mm", Locale.CHINA);
     private volatile String lastErr = "";
+    private int lastAlertTotal = 0;   // 上次"响过"的未读数，用于只在数字变大时提醒
 
     @Override
     public void onCreate() {
         super.onCreate();
         ensureChannels();
         startForeground(ID_SVC, serviceNotification(-1, null));
+        BootReceiver.schedule(this);   // 挂看门狗：被系统杀掉后 15 分钟内自动恢复
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent != null && ACTION_PUSH.equals(intent.getAction())) {
+            /* 网页端刚算出的未读数：立刻落到角标，不等下一轮轮询 */
+            final int t = intent.getIntExtra("total", -1);
+            final int m = intent.getIntExtra("msg", -1);
+            final int c = intent.getIntExtra("chat", -1);
+            if (t >= 0) {
+                ui.post(new Runnable() { @Override public void run() { publish(t, m, c); } });
+            }
+            return START_STICKY;
+        }
         if (intent != null && ACTION_SYNC.equals(intent.getAction())) {
             new Thread(new Runnable() { @Override public void run() { tick(); } }).start();
             return START_STICKY;
         }
-        if (pool == null) {
-            pool = Executors.newSingleThreadScheduledExecutor();
-            pool.scheduleWithFixedDelay(new Runnable() {
-                @Override public void run() { tick(); }
-            }, 0, INTERVAL_SEC, TimeUnit.SECONDS);
+        if (worker == null) {
+            worker = new Thread(new Runnable() {
+                @Override public void run() {
+                    while (alive) {
+                        try { tick(); } catch (Throwable ignored) { }
+                        /* 自适应节奏：App 在前台 3 秒一查（接近即时），退到后台 10 秒一查省电 */
+                        long wait = sForeground ? 3 : 10;
+                        try { Thread.sleep(wait * 1000L); } catch (InterruptedException e) { return; }
+                    }
+                }
+            }, "zt-badge-poll");
+            worker.start();
         }
         return START_STICKY;
     }
@@ -105,9 +129,10 @@ public class BadgeService extends Service {
         NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         if (nm == null) return;
 
-        /* 作废旧渠道：它在历史版本里以「IMPORTANCE_LOW + 被当常驻通知」创建，
-           角标开关错误且不可修改，留着只会继续误导系统与用户 */
+        /* 作废旧渠道：zt_badge 是 1.4 的错误配置；zt_unread_v2 是"普通重要度"，
+           要像微信那样**弹横幅**必须走 IMPORTANCE_HIGH 的新渠道（渠道属性创建后不可改） */
         try { nm.deleteNotificationChannel("zt_badge"); } catch (Throwable ignored) { }
+        try { nm.deleteNotificationChannel("zt_unread_v2"); } catch (Throwable ignored) { }
 
         NotificationChannel svc = new NotificationChannel(CH_SVC, "后台运行状态", NotificationManager.IMPORTANCE_MIN);
         svc.setDescription("保持后台监控未读消息的服务提示，不计入桌面角标");
@@ -117,10 +142,19 @@ public class BadgeService extends Service {
         svc.setLockscreenVisibility(Notification.VISIBILITY_SECRET);
         nm.createNotificationChannel(svc);
 
-        NotificationChannel unread = new NotificationChannel(CH_UNREAD, "未读消息提醒", NotificationManager.IMPORTANCE_DEFAULT);
-        unread.setDescription("有新的客户留言或在线客服消息时，在桌面图标显示未读数量");
+        NotificationChannel unread = new NotificationChannel(CH_UNREAD, "新消息（弹窗提醒）", NotificationManager.IMPORTANCE_HIGH);
+        unread.setDescription("有新的客户留言或在线客服消息时弹出横幅、响铃震动，并在桌面图标显示未读数量");
         unread.setShowBadge(true);      // 关键：允许角标
         unread.enableVibration(true);
+        unread.enableLights(true);
+        unread.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        try {
+            unread.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION),
+                    new android.media.AudioAttributes.Builder()
+                            .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION)
+                            .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build());
+        } catch (Throwable ignored) { }
         nm.createNotificationChannel(unread);
     }
 
@@ -162,9 +196,13 @@ public class BadgeService extends Service {
 
         boolean enabled = notificationsEnabled(nm);
         if (total > 0 && enabled) {
-            nm.notify(ID_UNREAD, unreadNotification(total, msg, chat));
+            /* 未读数变多 = 来了新消息 → 允许这次响铃/震动；数字没变则静默更新，避免反复吵 */
+            boolean alert = total > lastAlertTotal;
+            lastAlertTotal = total;
+            nm.notify(ID_UNREAD, unreadNotification(total, msg, chat, alert));
             sPosted = true;
         } else {
+            if (total == 0) lastAlertTotal = 0;
             nm.cancel(ID_UNREAD);
             sPosted = false;
         }
@@ -208,7 +246,7 @@ public class BadgeService extends Service {
     }
 
     /** 角标通知：非 ongoing + setNumber + 专属渠道 → 官方认定的角标承载者 */
-    private Notification unreadNotification(int total, int msg, int chat) {
+    private Notification unreadNotification(int total, int msg, int chat, boolean alert) {
         String text = (msg >= 0 && chat >= 0)
                 ? "客户留言 " + msg + " 条 · 在线客服 " + chat + " 条，点开查看"
                 : "有新的客户消息，点开查看";
@@ -222,7 +260,7 @@ public class BadgeService extends Service {
                 .setContentIntent(contentIntent())
                 .setAutoCancel(false)      // 点击不消失；真正读完由服务 cancel
                 .setOngoing(false)         // 关键：非常驻，才计入桌面角标
-                .setOnlyAlertOnce(true)
+                .setOnlyAlertOnce(!alert)  // 有新消息时响一次，同数字的重复更新保持安静
                 .setNumber(total)          // 官方：桌面角标数字来源
                 .setCategory(Notification.CATEGORY_MESSAGE)
                 .setColor(0xFF0B6E4F)
@@ -366,7 +404,8 @@ public class BadgeService extends Service {
 
     @Override
     public void onDestroy() {
-        if (pool != null) { pool.shutdownNow(); pool = null; }
+        alive = false;
+        if (worker != null) { worker.interrupt(); worker = null; }
         super.onDestroy();
     }
 

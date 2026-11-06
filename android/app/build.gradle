@@ -10,8 +10,8 @@ android {
         applicationId "com.zhongtian.admin"
         minSdk 26
         targetSdk 34
-        versionCode 6
-        versionName "1.5"
+        versionCode 7
+        versionName "1.6"
     }
 
     /* 固定签名：所有构建（debug/release）用同一个密钥库，

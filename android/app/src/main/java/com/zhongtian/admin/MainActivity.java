@@ -2,11 +2,15 @@ package com.zhongtian.admin;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.webkit.ValueCallback;
@@ -91,6 +95,41 @@ public class MainActivity extends Activity {
 
         askNotificationPermission();
         startBadgeService();
+        maybePromptAutostart();
+    }
+
+    /**
+     * 小米/红米默认禁止应用后台自启，不开启的话服务几分钟就被杀掉，消息和角标全收不到。
+     * 首次打开（或检测到未允许且距上次提醒超过 6 小时）弹一次，给直达系统设置的按钮。
+     */
+    private void maybePromptAutostart() {
+        if (!NativeBridge.isMiui()) return;
+        SharedPreferences sp = getSharedPreferences("zt", MODE_PRIVATE);
+        boolean asked = sp.getBoolean("autostart_asked", false);
+        int state = NativeBridge.autoStartState(this);
+        if (state == 1) return;                       // 已允许，不打扰
+        if (asked && System.currentTimeMillis() - sp.getLong("autostart_at", 0) < 6 * 3600 * 1000L) return;
+        sp.edit().putBoolean("autostart_asked", true)
+          .putLong("autostart_at", System.currentTimeMillis()).apply();
+
+        new AlertDialog.Builder(this)
+            .setTitle("开启「自启动」，否则收不到消息")
+            .setMessage("小米/红米默认会杀掉后台应用。不开自启动，退到桌面几分钟后监控就停了，留言和角标都收不到。\n\n还建议：省电策略设为「无限制」；最近任务里下拉锁定本应用。")
+            .setPositiveButton("去开自启动", new DialogInterface.OnClickListener() {
+                @Override public void onClick(DialogInterface d, int w) {
+                    if (!NativeBridge.jumpAutostart(MainActivity.this)) {
+                        try {
+                            startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                    Uri.parse("package:" + getPackageName())));
+                        } catch (Exception ignored) { }
+                    }
+                }
+            })
+            .setNeutralButton("省电设置", new DialogInterface.OnClickListener() {
+                @Override public void onClick(DialogInterface d, int w) { NativeBridge.jumpBattery(MainActivity.this); }
+            })
+            .setNegativeButton("知道了", null)
+            .show();
     }
 
     private void askNotificationPermission() {
@@ -125,12 +164,14 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        BadgeService.sForeground = true;    // 前台：轮询提速到 3 秒，接近即时
         startBadgeService();
         if (web != null) web.onResume();
     }
 
     @Override
     protected void onPause() {
+        BadgeService.sForeground = false;   // 后台：回到 10 秒一次，省电
         if (web != null) web.onPause();
         super.onPause();
     }
