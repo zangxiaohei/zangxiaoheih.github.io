@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>微信秒收消息：客户一留言，微信立刻响</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 16px 14px 40px;
+    font: 16px/1.75 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f8f6; color: #1f3229;
+  }
+  .card {
+    background: #fff; border-radius: 16px; padding: 18px 16px;
+    box-shadow: 0 2px 14px rgba(11,110,79,.07); margin-bottom: 14px;
+  }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #0b6e4f; }
+  h2 { font-size: 15.5px; margin: 0 0 10px; color: #0b6e4f; }
+  p { margin: 0 0 10px; font-size: 14.5px; color: #3d5348; }
+  .sub { font-size: 13.5px; color: #7c9188; margin: 0 0 14px; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; font-size: 14.5px; color: #3d5348; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  pre {
+    background: #0f2a20; color: #d7f0e5; border-radius: 12px;
+    padding: 12px; overflow-x: auto; margin: 10px 0 12px;
+    white-space: pre; -webkit-overflow-scrolling: touch;
+    font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace;
+    max-height: 260px;
+  }
+  input {
+    width: 100%; padding: 13px 14px; font-size: 15px; font-family: inherit;
+    border: 1.5px solid #cfe6da; border-radius: 12px; background: #fbfefc;
+    color: #1f3229; outline: none;
+  }
+  input:focus { border-color: #0b6e4f; background: #fff; }
+  .btn {
+    display: block; width: 100%; border: 0; border-radius: 12px;
+    padding: 14px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+    background: #0b6e4f; color: #fff; font-family: inherit; margin-top: 10px;
+  }
+  .btn:active { transform: scale(.99); }
+  .btn[disabled] { opacity: .5; }
+  .btn.ghost {
+    background: #eef7f2; color: #0b6e4f; border: 1.5px solid #cfe6da;
+    font-weight: 600; font-size: 14px;
+  }
+  .btn.gray { background: #6b7f76; }
+  .ok { color: #0b6e4f; font-weight: 700; }
+  .bad { color: #c0392b; font-weight: 700; }
+  .note {
+    background: #f6fbf8; border-left: 3px solid #7fd1b0;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; color: #4a6156;
+    margin-top: 10px;
+  }
+  .k { background: #eef2f0; border-radius: 5px; padding: 1px 6px; font-size: 13px; color: #2f4a3d; }
+  a { color: #0b6e4f; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>客户一留言，微信立刻响</h1>
+  <p class="sub">不用装 App、不用开自启动、不用等手机后台。</p>
+  <p>原理：客户在网站提交留言或发客服消息，<b>数据库那一秒</b>就直接发到你微信「服务通知」，有声音、有横幅。微信本来就常驻，所以是秒到。</p>
+  <p style="margin:0">配置一次，以后永久生效。</p>
+</div>
+
+<div class="card">
+  <h2>第 1 步：拿一个推送 token（2 分钟）</h2>
+  <ol>
+    <li>点下面的按钮，用<b>你的微信扫码登录</b> PushPlus（免费，每天 200 条，够用）</li>
+    <li>登录后点右上角头像 → <span class="k">一对一推送</span>（或「密钥管理」）</li>
+    <li>复制那串 <b>token</b>（一长串字母数字）</li>
+    <li>微信公众号会自动让你关注「pushplus 推送加」——<b>必须关注</b>，消息就是从这里来的</li>
+  </ol>
+  <a class="btn ghost" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px"
+     href="https://www.pushplus.plus/" target="_blank" rel="noopener">
+    打开 PushPlus 扫码登录 →
+  </a>
+</div>
+
+<div class="card">
+  <h2>第 2 步：把 token 粘进来</h2>
+  <input id="token" type="text" placeholder="粘贴你的 token，例如 a1b2c3d4..." autocomplete="off" spellcheck="false">
+  <button class="btn gray" id="test">先测一下：发条微信给我</button>
+  <div id="testMsg" class="note hide"></div>
+</div>
+
+<div class="card">
+  <h2>第 3 步：生成 SQL 并复制</h2>
+  <p style="margin-bottom:6px">点按钮后，下面这段就是带好你 token 的完整 SQL，已经自动复制到剪贴板。</p>
+  <button class="btn" id="gen">生成并复制 SQL</button>
+  <pre id="sql">（点上面的按钮生成）</pre>
+  <div class="note">这段 SQL 里没有 <code>$</code> 符号，复制粘贴不会被吃掉字符。</div>
+</div>
+
+<div class="card">
+  <h2>第 4 步：到 Supabase 执行一次</h2>
+  <ol>
+    <li>点下面的按钮打开 SQL 编辑器</li>
+    <li>粘贴，点右下角 <span class="k">Run</span></li>
+    <li>成功标志：出现一行 <span class="ok">微信推送状态 = 已设置 token：xxxxxx****（微信通道已开启）</span></li>
+  </ol>
+  <a class="btn ghost" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px"
+     href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener">
+    打开 Supabase SQL 编辑器 →
+  </a>
+</div>
+
+<div class="card">
+  <h2>第 5 步：验货</h2>
+  <ol>
+    <li>用另一台手机（或者让别人）在官网提交一条留言</li>
+    <li><b>1～2 秒内</b>，你微信应该弹出「新客户留言 · 张三」</li>
+    <li>在线客服里发一条消息，也会立刻收到「在线客服新消息」</li>
+  </ol>
+  <div class="note">如果没收到：先在 PushPlus 网站里点「发送消息」给自己发一条。那条能收到，说明 token 和关注都正常，问题在 SQL；那条也收不到，说明公众号没关注。</div>
+</div>
+
+<script>
+  var SQL_TAIL = `
+
+drop trigger if exists trg_zt_wechat_notify_msg on public.messages;
+create trigger trg_zt_wechat_notify_msg
+after insert on public.messages
+for each row execute function public.zt_wechat_notify();
+
+drop trigger if exists trg_zt_wechat_notify_chat on public.chat_messages;
+create trigger trg_zt_wechat_notify_chat
+after insert on public.chat_messages
+for each row execute function public.zt_wechat_notify();
+
+select
+  case when length(coalesce(pushplus_token, '')) > 8
+       then '已设置 token：' || left(pushplus_token, 6) || '****（微信通道已开启）'
+       else '未设置 token，微信通道关闭' end as 微信推送状态
+from public.app_secrets
+where id = 1;
+`;
+
+  var SQL_HEAD = `create extension if not exists pg_net;
+
+alter table public.app_secrets add column if not exists pushplus_token text;
+
+update public.app_secrets set pushplus_token = '`;
+
+  var SQL_MID = `' where id = 1;
+
+create or replace function public.zt_wechat_notify()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as '
+declare
+  v_token text;
+  v_kind  text;
+  v_name  text;
+  v_text  text;
+  v_title text;
+  v_body  text;
+  j jsonb;
+begin
+  select pushplus_token into v_token from public.app_secrets where id = 1;
+  if v_token is null or length(btrim(v_token)) < 8 then
+    return new;
+  end if;
+
+  j := to_jsonb(new);
+
+  if tg_table_name = ''chat_messages'' then
+    if lower(coalesce(j->>''role'', '''')) in (''admin'', ''agent'', ''staff'', ''operator'') then
+      return new;
+    end if;
+    v_kind := ''在线客服新消息'';
+  else
+    v_kind := ''新客户留言'';
+  end if;
+
+  v_name := coalesce(nullif(btrim(coalesce(j->>''name'', j->>''nickname'', '''')), ''''), ''访客'');
+  v_text := coalesce(nullif(btrim(coalesce(j->>''content'', j->>''message'', '''')), ''''), ''（无正文）'');
+
+  if length(v_text) > 300 then
+    v_text := substring(v_text from 1 for 300) || ''...'';
+  end if;
+
+  v_text := replace(replace(replace(v_text, ''&'', ''&amp;''), ''<'', ''&lt;''), ''>'', ''&gt;'');
+  v_name := replace(replace(replace(v_name, ''&'', ''&amp;''), ''<'', ''&lt;''), ''>'', ''&gt;'');
+
+  v_title := v_kind || '' · '' || v_name;
+  v_body  := ''<b>'' || v_kind || ''</b><br/>来客：'' || v_name || ''<br/>内容：'' || v_text
+             || ''<br/><br/><span style="color:#888">打开后台回复：zangxiaohei.github.io/zangxiaoheih.github.io/admin-app/</span>'';
+
+  perform net.http_post(
+    url     := ''https://www.pushplus.plus/send'',
+    headers := jsonb_build_object(''Content-Type'', ''application/json''),
+    body    := jsonb_build_object(
+                 ''token'',    v_token,
+                 ''title'',    v_title,
+                 ''content'',  v_body,
+                 ''template'', ''html''
+               ),
+    timeout_milliseconds := 5000
+  );
+
+  return new;
+
+exception when others then
+  return new;
+end;
+';
+`;
+
+  function $(id) { return document.getElementById(id); }
+
+  function copyText(text, okCb, failCb) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(okCb).catch(failCb);
+    } else { failCb(); }
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    try { document.execCommand("copy"); return true; } catch (e) { return false; }
+    finally { document.body.removeChild(ta); }
+  }
+
+  $("gen").addEventListener("click", function () {
+    var btn = this;
+    var t = $("token").value.trim();
+    if (t.length < 8) {
+      $("token").focus();
+      $("token").style.borderColor = "#c0392b";
+      btn.textContent = "先把 token 粘到上面";
+      setTimeout(function () { btn.textContent = "生成并复制 SQL"; }, 2200);
+      return;
+    }
+    var sql = SQL_HEAD + t + SQL_MID + SQL_TAIL;
+    $("sql").textContent = sql;
+    function done() {
+      btn.textContent = "✓ 已复制，去 Supabase 粘贴";
+      btn.style.background = "#0a8f66";
+      setTimeout(function () { btn.textContent = "生成并复制 SQL"; btn.style.background = "#0b6e4f"; }, 2800);
+    }
+    copyText(sql, done, function () {
+      if (fallbackCopy(sql)) done();
+      else { btn.textContent = "自动复制失败，请长按下面代码全选复制"; }
+    });
+  });
+
+  $("test").addEventListener("click", function () {
+    var btn = this, t = $("token").value.trim(), box = $("testMsg");
+    box.classList.remove("hide");
+    if (t.length < 8) {
+      box.innerHTML = '<span class="bad">先在上面粘 token，再点测试。</span>';
+      return;
+    }
+    btn.disabled = true; btn.textContent = "正在发送…";
+    box.innerHTML = "正在请求 PushPlus…";
+    fetch("https://www.pushplus.plus/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        token: t,
+        title: "中天后台 · 微信通道测试",
+        content: "<b>测试成功</b><br/>以后客户留言就会这样推给你。",
+        template: "html"
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      if (d && (d.code === 200 || d.code === "200")) {
+        box.innerHTML = '<span class="ok">发送成功！去看微信「服务通知」，几秒内会到。</span>'
+          + '<br>收到了就说明 token 没问题，接着做第 3 步。';
+      } else {
+        box.innerHTML = '<span class="bad">发送失败：' + (d && d.msg ? d.msg : JSON.stringify(d)) + '</span>'
+          + '<br>多半是 token 粘错了，或者没关注「pushplus 推送加」公众号。';
+      }
+    }).catch(function (e) {
+      box.innerHTML = '<span class="bad">浏览器拦住了这个测试请求（跨域），不影响真功能。</span>'
+        + '<br>直接去 PushPlus 网站点「发送消息」测一下也一样。';
+    }).then(function () {
+      btn.disabled = false; btn.textContent = "先测一下：发条微信给我";
+    });
+  });
+</script>
+
+</body>
+</html>
