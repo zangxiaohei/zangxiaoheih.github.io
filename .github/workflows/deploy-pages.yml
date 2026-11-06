@@ -7,7 +7,6 @@ on:
     # 若这里也跑一次，两个工作流会抢同一个 pages 并发组，互相取消。
     paths-ignore:
       - "android/**"
-      - "apk/**"
   workflow_dispatch:
 
 permissions:
