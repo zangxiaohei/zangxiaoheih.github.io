@@ -191,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061200";
+      var ZT_VER = "202611061225";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -232,7 +232,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061200 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061225 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -681,6 +681,58 @@
     xb.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
     xb.onclick = function () { location.href = "xiaomi-push-steps.html"; };
     extraBtns.push(xb);
+
+    /* 微信消息接收开关（服务端开关，和 wechat-notify.html 共用同一个） */
+    var wxBtn = document.createElement("button");
+    wxBtn.style.cssText = "width:100%;margin-top:8px;background:#eef7f2;color:#0b6e4f;border:1.5px solid #cfe6da;border-radius:10px;padding:10px;font-size:13.5px;font-weight:600;cursor:pointer;font-family:inherit";
+    wxBtn.textContent = "微信消息接收：读取中…";
+    extraBtns.push(wxBtn);
+
+    (function () {
+      function goSetup() {
+        wxBtn.textContent = "微信消息接收：未配置 · 点这里去设置";
+        wxBtn.onclick = function () { location.href = "wechat-notify.html"; };
+      }
+      var tok = "";
+      try { tok = localStorage.getItem("zt_pp_token") || ""; } catch (e) { }
+      if (!cfg || !cfg.url || !cfg.anonKey || tok.length < 8) { goSetup(); return; }
+
+      function call(name, body) {
+        return fetch(cfg.url + "/rest/v1/rpc/" + name, {
+          method: "POST",
+          headers: { apikey: cfg.anonKey, Authorization: "Bearer " + cfg.anonKey, "Content-Type": "application/json" },
+          body: JSON.stringify(body || {})
+        }).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.json();
+        });
+      }
+
+      var on = null;
+      function paint() {
+        wxBtn.textContent = on ? "微信消息接收：已开启 · 点这里关闭" : "微信消息接收：已关闭 · 点这里开启";
+        wxBtn.style.background = on ? "#eef7f2" : "#fdf3f2";
+        wxBtn.style.color = on ? "#0b6e4f" : "#c0392b";
+        wxBtn.style.borderColor = on ? "#cfe6da" : "#f0cfcb";
+      }
+
+      call("zt_wechat_status").then(function (v) {
+        on = (v === true || v === "true");
+        paint();
+      }).catch(function () { goSetup(); });
+
+      wxBtn.onclick = function () {
+        if (on === null) { goSetup(); return; }
+        wxBtn.disabled = true;
+        wxBtn.textContent = "正在切换…";
+        call("zt_wechat_toggle", { p_on: !on, p_token: tok }).then(function (ok) {
+          if (ok === true) { on = !on; paint(); }
+          else { wxBtn.textContent = "切换失败：token 对不上，请去设置页重配"; }
+        }).catch(function (e) {
+          wxBtn.textContent = "切换失败：" + (e && e.message ? e.message : "网络问题");
+        }).then(function () { wxBtn.disabled = false; });
+      };
+    })();
 
     if (!cfg.url || !cfg.anonKey) { add("留言接口", "缺少数据库配置", false); flush(); return; }
     fetch(cfg.url + "/rest/v1/rpc/msg_unread_count", {

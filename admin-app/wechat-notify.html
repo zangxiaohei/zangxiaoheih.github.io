@@ -62,6 +62,8 @@
 </head>
 <body>
 
+<script src="../assets/js/db-config.js"></script>
+
 <div class="card">
   <h1>客户一留言，微信立刻响</h1>
   <p class="sub">不用装 App、不用开自启动、不用等手机后台。</p>
@@ -112,6 +114,29 @@
 </div>
 
 <div class="card">
+  <h2>微信接收开关</h2>
+  <p style="margin-bottom:8px">配好之后，这里和 App 的「🔔 提醒自检」里都能随时开关。<b>关掉只是不再推微信</b>，后台和图标角标照常。</p>
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0 12px">
+    <span style="font-size:14.5px;color:#3d5348">现在状态</span>
+    <span id="swState" style="font-weight:700;font-size:14.5px;color:#7c9188">读取中…</span>
+  </div>
+  <button class="btn" id="swBtn" disabled>切换</button>
+  <button class="btn ghost" id="swReload">执行完 SQL 后，点这里刷新状态</button>
+  <div id="swMsg" class="note hide"></div>
+</div>
+
+<div class="card">
+  <h2>报错了怎么办</h2>
+  <ol>
+    <li><b>粘贴前先 Ctrl+A 全选</b>，把编辑器里残留的旧内容删干净再粘</li>
+    <li>粘完看一眼<b>最后一行</b>是不是 <code>where id = 1;</code>，不是就说明没粘全，回上一步重新点「生成并复制」</li>
+    <li>报错信息里如果带 <span class="k">LINE 数字</span>，把那个数字告我，我按行定位</li>
+    <li>这段 SQL 可以重复执行，不碰客户数据，跑错了改好再跑一遍就行</li>
+  </ol>
+  <div class="note">上一版报的那个 <code>v_token</code> 错误已经修掉了：新版把产生变量歧义的写法整个去掉了，函数体更短，也不会再被解析成表名。</div>
+</div>
+
+<div class="card">
   <h2>第 5 步：验货</h2>
   <ol>
     <li>用另一台手机（或者让别人）在官网提交一条留言</li>
@@ -122,98 +147,7 @@
 </div>
 
 <script>
-  var SQL_TAIL = `
-
-drop trigger if exists trg_zt_wechat_notify_msg on public.messages;
-create trigger trg_zt_wechat_notify_msg
-after insert on public.messages
-for each row execute function public.zt_wechat_notify();
-
-drop trigger if exists trg_zt_wechat_notify_chat on public.chat_messages;
-create trigger trg_zt_wechat_notify_chat
-after insert on public.chat_messages
-for each row execute function public.zt_wechat_notify();
-
-select
-  case when length(coalesce(pushplus_token, '')) > 8
-       then '已设置 token：' || left(pushplus_token, 6) || '****（微信通道已开启）'
-       else '未设置 token，微信通道关闭' end as 微信推送状态
-from public.app_secrets
-where id = 1;
-`;
-
-  var SQL_HEAD = `create extension if not exists pg_net;
-
-alter table public.app_secrets add column if not exists pushplus_token text;
-
-update public.app_secrets set pushplus_token = '`;
-
-  var SQL_MID = `' where id = 1;
-
-create or replace function public.zt_wechat_notify()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as '
-declare
-  v_token text;
-  v_kind  text;
-  v_name  text;
-  v_text  text;
-  v_title text;
-  v_body  text;
-  j jsonb;
-begin
-  select pushplus_token into v_token from public.app_secrets where id = 1;
-  if v_token is null or length(btrim(v_token)) < 8 then
-    return new;
-  end if;
-
-  j := to_jsonb(new);
-
-  if tg_table_name = ''chat_messages'' then
-    if lower(coalesce(j->>''role'', '''')) in (''admin'', ''agent'', ''staff'', ''operator'') then
-      return new;
-    end if;
-    v_kind := ''在线客服新消息'';
-  else
-    v_kind := ''新客户留言'';
-  end if;
-
-  v_name := coalesce(nullif(btrim(coalesce(j->>''name'', j->>''nickname'', '''')), ''''), ''访客'');
-  v_text := coalesce(nullif(btrim(coalesce(j->>''content'', j->>''message'', '''')), ''''), ''（无正文）'');
-
-  if length(v_text) > 300 then
-    v_text := substring(v_text from 1 for 300) || ''...'';
-  end if;
-
-  v_text := replace(replace(replace(v_text, ''&'', ''&amp;''), ''<'', ''&lt;''), ''>'', ''&gt;'');
-  v_name := replace(replace(replace(v_name, ''&'', ''&amp;''), ''<'', ''&lt;''), ''>'', ''&gt;'');
-
-  v_title := v_kind || '' · '' || v_name;
-  v_body  := ''<b>'' || v_kind || ''</b><br/>来客：'' || v_name || ''<br/>内容：'' || v_text
-             || ''<br/><br/><span style="color:#888">打开后台回复：zangxiaohei.github.io/zangxiaoheih.github.io/admin-app/</span>'';
-
-  perform net.http_post(
-    url     := ''https://www.pushplus.plus/send'',
-    headers := jsonb_build_object(''Content-Type'', ''application/json''),
-    body    := jsonb_build_object(
-                 ''token'',    v_token,
-                 ''title'',    v_title,
-                 ''content'',  v_body,
-                 ''template'', ''html''
-               ),
-    timeout_milliseconds := 5000
-  );
-
-  return new;
-
-exception when others then
-  return new;
-end;
-';
-`;
+  var SQL_TEMPLATE = "-- ============================================================\n-- 中天官网：客户留言 / 在线客服消息 → 秒级推送到微信\n-- 用法：把下面 update 那行引号里的占位符换成你的 PushPlus token，然后整段执行\n-- 全篇无美元符号，可重复执行\n-- ============================================================\n\n-- 清理可能的残留（重复执行也不会报错）\ndrop trigger if exists trg_zt_wechat_notify_msg on public.messages;\ndrop trigger if exists trg_zt_wechat_notify_chat on public.chat_messages;\ndrop trigger if exists trg_zt_wx_msg on public.messages;\ndrop trigger if exists trg_zt_wx_chat on public.chat_messages;\ndrop function if exists public.zt_wechat_notify();\ndrop function if exists public.zt_wx_msg();\ndrop function if exists public.zt_wx_chat();\ndrop function if exists public.zt_wx_push(text, text);\ndrop function if exists public.zt_wechat_status();\ndrop function if exists public.zt_wechat_toggle(boolean, text);\ndrop table if exists public.v_token;\n\ncreate extension if not exists pg_net;\n\nalter table public.app_secrets add column if not exists pushplus_token text;\n\n-- 微信接收总开关：App 里可以随时关掉（默认开）\nalter table public.app_secrets add column if not exists wechat_push_enabled boolean default true;\n\nupdate public.app_secrets set pushplus_token = 'TOKEN_PLACEHOLDER' where id = 1;\n\n-- 发送函数：从表里取 token，发 HTTP 给 PushPlus。\n-- 这里刻意不用 select into / declare，避免变量被当成表名。\ncreate or replace function public.zt_wx_push(p_title text, p_body text)\nreturns void\nlanguage sql\nsecurity definer\nset search_path = public\nas '\n  select net.http_post(\n    url := ''https://www.pushplus.plus/send'',\n    headers := jsonb_build_object(''Content-Type'', ''application/json''),\n    body := jsonb_build_object(\n              ''token'', s.pushplus_token,\n              ''title'', p_title,\n              ''content'', p_body,\n              ''template'', ''html''\n            ),\n    timeout_milliseconds := 5000\n  )\n  from public.app_secrets s\n  where s.id = 1\n    and coalesce(s.wechat_push_enabled, true)\n    and length(coalesce(s.pushplus_token, '''')) > 8\n';\n\n-- 客户留言触发器函数\ncreate or replace function public.zt_wx_msg()\nreturns trigger\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas '\nbegin\n  perform public.zt_wx_push(\n    ''新客户留言'',\n    ''<b>新客户留言</b><br/>来客：'' || coalesce(to_jsonb(new)->>''name'', ''访客'')\n      || ''<br/>内容：'' || left(coalesce(to_jsonb(new)->>''content'', ''（无正文）''), 300)\n  );\n  return new;\nend;\n';\n\n-- 在线客服触发器函数（管理员自己发的消息跳过）\ncreate or replace function public.zt_wx_chat()\nreturns trigger\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas '\nbegin\n  if lower(coalesce(to_jsonb(new)->>''role'', '''')) in (''admin'', ''agent'', ''staff'', ''operator'') then\n    return new;\n  end if;\n  perform public.zt_wx_push(\n    ''在线客服新消息'',\n    ''<b>在线客服新消息</b><br/>内容：'' || left(coalesce(to_jsonb(new)->>''content'', ''（无正文）''), 300)\n  );\n  return new;\nend;\n';\n\ncreate trigger trg_zt_wx_msg\nafter insert on public.messages\nfor each row execute function public.zt_wx_msg();\n\ncreate trigger trg_zt_wx_chat\nafter insert on public.chat_messages\nfor each row execute function public.zt_wx_chat();\n\n-- ---------- 开关接口（给 App 用） ----------\n-- 读状态：只返回开/关，不泄露 token\ncreate or replace function public.zt_wechat_status()\nreturns boolean\nlanguage sql\nsecurity definer\nset search_path = public\nas '\n  select coalesce((select s.wechat_push_enabled from public.app_secrets s where s.id = 1), true)\n';\n\ngrant execute on function public.zt_wechat_status() to anon, authenticated;\n\n-- 切换开关：必须带上 token 才能改，防止别人乱关你的通知\ncreate or replace function public.zt_wechat_toggle(p_on boolean, p_token text)\nreturns boolean\nlanguage plpgsql\nsecurity definer\nset search_path = public\nas '\nbegin\n  if p_token is null or length(btrim(p_token)) < 8 then\n    return false;\n  end if;\n  update public.app_secrets\n     set wechat_push_enabled = p_on\n   where id = 1\n     and pushplus_token = btrim(p_token);\n  if not found then\n    return false;\n  end if;\n  return true;\nend;\n';\n\ngrant execute on function public.zt_wechat_toggle(boolean, text) to anon, authenticated;\n\nselect '微信通道：' || case\n         when length(coalesce(pushplus_token, '')) <= 8 then '未设置 token'\n         when coalesce(wechat_push_enabled, true) then '已开启（token ' || left(pushplus_token, 6) || '****）'\n         else '已暂停（App 里可随时打开）' end as 状态\nfrom public.app_secrets\nwhere id = 1;\n";
 
   function $(id) { return document.getElementById(id); }
 
@@ -243,10 +177,12 @@ end;
       setTimeout(function () { btn.textContent = "生成并复制 SQL"; }, 2200);
       return;
     }
-    var sql = SQL_HEAD + t + SQL_MID + SQL_TAIL;
+    localStorage.setItem("zt_pp_token", t);
+    var sql = SQL_TEMPLATE.split("TOKEN_PLACEHOLDER").join(t);
+    var lines = sql.split("\n").length;
     $("sql").textContent = sql;
     function done() {
-      btn.textContent = "✓ 已复制，去 Supabase 粘贴";
+      btn.textContent = "✓ 已复制（" + lines + " 行），去 Supabase 粘贴";
       btn.style.background = "#0a8f66";
       setTimeout(function () { btn.textContent = "生成并复制 SQL"; btn.style.background = "#0b6e4f"; }, 2800);
     }
@@ -289,6 +225,78 @@ end;
       btn.disabled = false; btn.textContent = "先测一下：发条微信给我";
     });
   });
+
+  /* ---------- 微信接收开关（服务端开关，App 里共用同一个） ---------- */
+  var cfg = window.SUPABASE_CONFIG || {};
+  var PP_KEY = "zt_pp_token";
+  var swOn = null;
+
+  function rpc(name, body) {
+    return fetch(cfg.url + "/rest/v1/rpc/" + name, {
+      method: "POST",
+      headers: {
+        apikey: cfg.anonKey,
+        Authorization: "Bearer " + cfg.anonKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(body || {})
+    }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function renderSw() {
+    var el = $("swState"), btn = $("swBtn");
+    if (swOn === null) { btn.disabled = true; return; }
+    el.textContent = swOn ? "开启（会推微信）" : "已关闭（不推微信）";
+    el.style.color = swOn ? "#0b6e4f" : "#c0392b";
+    btn.disabled = false;
+    btn.textContent = swOn ? "关掉微信推送" : "打开微信推送";
+    btn.style.background = swOn ? "#6b7f76" : "#0b6e4f";
+  }
+
+  function loadSw() {
+    if (!cfg.url || !cfg.anonKey) { $("swState").textContent = "数据库未配置"; return; }
+    $("swState").textContent = "读取中…";
+    $("swState").style.color = "#7c9188";
+    rpc("zt_wechat_status").then(function (v) {
+      swOn = (v === true || v === "true");
+      renderSw();
+    }).catch(function () {
+      $("swState").textContent = "读不到（SQL 可能还没执行）";
+      $("swState").style.color = "#c0392b";
+      $("swBtn").disabled = true;
+    });
+  }
+
+  $("swReload").addEventListener("click", loadSw);
+
+  $("swBtn").addEventListener("click", function () {
+    var btn = this, msg = $("swMsg");
+    var t = $("token").value.trim() || localStorage.getItem(PP_KEY) || "";
+    if (t.length < 8) {
+      msg.classList.remove("hide");
+      msg.innerHTML = '<span class="bad">先在「第 2 步」粘一次 token（用来验证身份），再切换。</span>';
+      return;
+    }
+    btn.disabled = true;
+    rpc("zt_wechat_toggle", { p_on: !swOn, p_token: t }).then(function (ok) {
+      msg.classList.remove("hide");
+      if (ok === true) {
+        swOn = !swOn; renderSw();
+        msg.innerHTML = '<span class="ok">已' + (swOn ? "打开" : "关闭") + '微信推送。</span>';
+      } else {
+        msg.innerHTML = '<span class="bad">切换失败：token 对不上，或 SQL 还没执行。</span>';
+      }
+    }).catch(function (e) {
+      msg.classList.remove("hide");
+      msg.innerHTML = '<span class="bad">切换失败：' + e.message + '</span>';
+    }).then(function () { btn.disabled = false; });
+  });
+
+  $("token").value = localStorage.getItem(PP_KEY) || "";
+  loadSw();
 </script>
 
 </body>
