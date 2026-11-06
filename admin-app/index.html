@@ -59,9 +59,13 @@
     .tip { font-size: 13px; margin-top: 10px; }
     .tip.ok { color: #1e7e34; } .tip.err { color: var(--danger); }
     .hidden { display: none !important; }
-    .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+    .tabs { display: flex; gap: 7px; margin-bottom: 14px; }
     .tabs button { background: #fff; color: #3c5350; border: 1px solid #c9dcd2; border-radius: 999px;
-                   box-shadow: 0 1px 3px rgba(15,60,45,.06); font-weight: 500; }
+                   box-shadow: 0 1px 3px rgba(15,60,45,.06); font-weight: 500;
+                   /* 紧凑型：三个并排一行，字号和内边距都收小，不再撑成两行大字 */
+                   flex: 1 1 0; min-width: 0; padding: 8px 6px; font-size: 13px;
+                   white-space: nowrap; display: inline-flex; align-items: center;
+                   justify-content: center; gap: 3px; }
     .tabs button:hover { border-color: var(--brand); color: var(--brand); background: var(--softer); }
     .tabs button.on { background: linear-gradient(180deg, var(--brand2), var(--brand)); color: #fff;
                       border-color: var(--brand); box-shadow: 0 2px 8px rgba(11,110,79,.3); }
@@ -187,7 +191,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061035";
+      var ZT_VER = "202611061100";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -228,7 +232,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061035 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611061100 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -241,7 +245,6 @@
         <p class="sub" id="whoami"></p>
       </div>
       <button class="ghost sm" id="btn-diag" title="检查红点/通知为什么不生效">🔔 提醒自检</button>
-      <button class="ghost sm" id="btn-logout">退出登录</button>
     </div>
 
     <div class="tabs">
@@ -293,6 +296,11 @@
         </div>
         <p class="tip" style="color:#7a8794">保存后，网站所有页面在下次打开时自动显示新内容（浏览器缓存可用 Ctrl+F5 刷新）。</p>
       </div>
+    </div>
+
+    <!-- 退出登录：从顶部移到页面最下方，避免误触 -->
+    <div style="margin:28px 0 10px;text-align:center">
+      <button class="ghost sm" id="btn-logout" style="color:#7c9188;font-size:12.5px;padding:7px 18px">退出登录</button>
     </div>
   </div>
 
