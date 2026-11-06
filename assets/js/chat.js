@@ -24,6 +24,9 @@
   var ICON_TEL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3h3l2 5-2.5 1.6a12 12 0 005.9 5.9L15 13l5 2v3a2 2 0 01-2.2 2A17 17 0 013 5.2A2 2 0 015 3z"/></svg>';
   var ICON_QR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM20 14h1M14 20h1M18 18h3v3h-3z"/></svg>';
   var ICON_FORM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6v18h12V7l-4-4z"/><path d="M14 3v4h4M9 13h6M9 17h4"/></svg>';
+  var ICON_EMOJI = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 007 0"/><path d="M9 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>';
+  var ICON_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
+  var ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.2-8.2a3.4 3.4 0 014.8 4.8l-8.1 8.1a1.8 1.8 0 01-2.5-2.5l7.3-7.3"/></svg>';
 
   /* ---------------- 访客身份（存本机，用于接续自己的会话） ---------------- */
   function uuid() {
@@ -63,8 +66,21 @@
     '    <button class="x" aria-label="关闭" title="关闭">✕</button></div>' +
     '  <div class="chat-body"></div>' +
     '  <div class="chat-chips"></div>' +
-    '  <div class="chat-input"><input type="text" placeholder="输入您的问题…" maxlength="200">' +
-    '    <button aria-label="发送">' + ICON_SEND + '</button></div>' +
+    '  <div class="chat-input">' +
+    '    <div class="ci-main">' +
+    '      <textarea rows="1" placeholder="' + L("输入您的问题…", "Type your message…") + '" maxlength="2000"></textarea>' +
+    '      <button class="ci-send" aria-label="发送">' + ICON_SEND + '</button>' +
+    '    </div>' +
+    '    <div class="ci-bar">' +
+    '      <button type="button" data-act="emoji" title="' + L("表情", "Emoji") + '" aria-label="表情">' + ICON_EMOJI + '</button>' +
+    '      <button type="button" data-act="img" title="' + L("发送照片", "Send photo") + '" aria-label="发照片">' + ICON_IMG + '</button>' +
+    '      <button type="button" data-act="file" title="' + L("发送文件", "Send file") + '" aria-label="发文件">' + ICON_CLIP + '</button>' +
+    '      <span class="ci-hint">' + L("照片 / 文件 / 粘贴截图", "Photo / file / paste") + '</span>' +
+    '    </div>' +
+    '    <div class="ci-emoji" hidden></div>' +
+    '    <input type="file" class="ci-pick" accept="image/*" multiple hidden>' +
+    '    <input type="file" class="ci-pick-all" multiple hidden>' +
+    '  </div>' +
     '  <div class="chat-limit" style="display:none"></div>' +
     '  <div class="chat-tools">' +
     '    <button data-goto="tel"><span data-ic="tel"></span>电话咨询</button>' +
@@ -100,7 +116,7 @@
   var badge = el.querySelector(".chat-dot");
   var body = el.querySelector(".chat-body");
   var chips = el.querySelector(".chat-chips");
-  var input = el.querySelector(".chat-input input");
+  var input = el.querySelector(".chat-input textarea");
   var views = el.querySelectorAll(".chat-view");
 
   /* 未读数：初始显示1条作提醒，打开过聊天窗后改为真实未读 */
@@ -217,12 +233,59 @@
     return m;
   }
   function botSay(html) { addMsg(html, false); }
-  function meSay(text) { addMsg(escapeHtml(text), true); }
+  function meSay(text) { addMsg(msgHtml(text), true); }
 
   function escapeHtml(s) {
     return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
       return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
+  }
+
+  /* ---------------- 附件消息（图片 / 文件） ----------------
+     约定：消息 content 以 [[att]] 开头时，后面跟一段 JSON：
+       {"u":"公开链接","n":"文件名","s":字节数,"t":"MIME"}
+     纯文本消息完全不受影响，老消息照常显示。 */
+  function parseAtt(content) {
+    var s = String(content || "");
+    if (s.indexOf("[[att]]") !== 0) return null;
+    try {
+      var o = JSON.parse(s.slice(7));
+      return (o && o.u) ? o : null;
+    } catch (e) { return null; }
+  }
+  function humanSize(n) {
+    n = +n || 0;
+    if (n <= 0) return "";
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return Math.round(n / 1024) + " KB";
+    return (n / 1048576).toFixed(1) + " MB";
+  }
+  function fileTag(name) {
+    var ext = String(name || "").split(".").pop().toLowerCase();
+    if (ext === "pdf") return "PDF";
+    if (/^(doc|docx)$/.test(ext)) return "DOC";
+    if (/^(xls|xlsx|csv)$/.test(ext)) return "XLS";
+    if (/^(ppt|pptx)$/.test(ext)) return "PPT";
+    if (/^(zip|rar|7z)$/.test(ext)) return "ZIP";
+    if (/^(png|jpe?g|gif|webp)$/.test(ext)) return "IMG";
+    return "FILE";
+  }
+  function attHtml(a) {
+    var isImg = /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(a.u);
+    if (isImg) {
+      return '<a class="att-img" href="' + escapeHtml(a.u) + '" target="_blank" rel="noopener">' +
+        '<img src="' + escapeHtml(a.u) + '" alt="' + escapeHtml(a.n || "图片") + '" loading="lazy"></a>';
+    }
+    return '<a class="att-file" href="' + escapeHtml(a.u) + '" target="_blank" rel="noopener" download="' +
+      escapeHtml(a.n || "file") + '">' +
+      '<span class="af-ic">' + fileTag(a.n || a.u) + '</span>' +
+      '<span class="af-tx"><b>' + escapeHtml(a.n || "文件") + '</b><small>' + humanSize(a.s) + '</small></span>' +
+      '<span class="af-dl">↓</span></a>';
+  }
+  function msgHtml(content) {
+    var a = parseAtt(content);
+    if (a) return attHtml(a);
+    return escapeHtml(content).replace(/\n/g, "<br>");
   }
 
   function typing(on) {
@@ -274,7 +337,7 @@
         lastId = m.id;
         if (m.role === "admin") {
           typing(false);
-          botSay(escapeHtml(m.content));
+          botSay(msgHtml(m.content));
           humanReplied = true; /* 人工已接入，后续不再自动回复 */
           /* 聊天窗关着时收到客服回复 → 未读角标+1 */
           if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
@@ -295,6 +358,177 @@
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
   }
 
+  /* ---------------- 附件上传 / 表情 ---------------- */
+  var pickImg = el.querySelector(".ci-pick");
+  var pickAll = el.querySelector(".ci-pick-all");
+  var emojiBox = el.querySelector(".ci-emoji");
+  var barHint = el.querySelector(".ci-hint");
+  var MAX_FILE = 10 * 1048576;
+  var MAX_SIDE = 1600;
+  var uploading = false;
+
+  var viewer = document.createElement("div");
+  viewer.className = "chat-viewer";
+  viewer.innerHTML = '<img alt="预览"><button class="x" aria-label="关闭">✕</button>';
+  el.appendChild(viewer);
+  function showViewer(src) {
+    viewer.querySelector("img").src = src;
+    viewer.classList.add("show");
+  }
+  viewer.addEventListener("click", function (e) {
+    if (e.target === viewer || e.target.classList.contains("x")) viewer.classList.remove("show");
+  });
+
+  function autoGrow() {
+    input.style.height = "auto";
+    input.style.height = Math.min(input.scrollHeight, 110) + "px";
+  }
+
+  function setBarBusy(on) {
+    el.querySelectorAll(".ci-bar button").forEach(function (b) { b.disabled = !!on; });
+    if (barHint) barHint.textContent = on ? L("上传中…", "Uploading…") : L("照片 / 文件 / 粘贴截图", "Photo / file / paste");
+  }
+
+  /* 图片压缩：长边不超过 1600px、JPEG 质量 0.82，手机上几 MB 的照片会变成两三百 KB */
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      if (!/^image\//.test(file.type || "") || /gif|svg/.test(file.type || "")) return resolve(file);
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, MAX_SIDE / Math.max(w, h));
+          if (scale >= 1 && file.size < 700 * 1024) { URL.revokeObjectURL(url); return resolve(file); }
+          var c = document.createElement("canvas");
+          c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(function (blob) {
+            URL.revokeObjectURL(url);
+            if (!blob) return resolve(file);
+            resolve(new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }));
+          }, "image/jpeg", 0.82);
+        } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  function sendAttachments(files) {
+    var list = Array.prototype.slice.call(files || []).filter(Boolean);
+    if (!list.length) return;
+    if (!dbOn()) {
+      botSay(L("当前是演示模式，附件需要先连接数据库。", "Demo mode: connect the database to send files."));
+      return;
+    }
+    if (uploading) { botSay(L("上一个附件还在上传，请稍等。", "Still uploading, please wait.")); return; }
+    if (list.length > 4) list = list.slice(0, 4);
+    uploading = true;
+    setBarBusy(true);
+    var i = 0;
+
+    (function next() {
+      if (i >= list.length) { uploading = false; setBarBusy(false); return; }
+      var f = list[i++];
+      if (f.size > MAX_FILE) {
+        botSay(L("「" + f.name + "」超过 10MB，没有发送。", "\"" + f.name + "\" is over 10MB, not sent."));
+        return next();
+      }
+      var ph = addMsg('<span class="att-up">' + L("正在上传", "Uploading") + " " + escapeHtml(f.name) + "…</span>", true);
+      compressImage(f).then(function (out) {
+        return window.DB.uploadChatFile(out, VK);
+      }).then(function (r) {
+        var content = "[[att]]" + JSON.stringify({ u: r.url, n: f.name, s: f.size, t: f.type || "" });
+        if (ph) ph.remove();
+        meSay(content);
+        pending.push(content);
+        return window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: content })
+          .then(function (res) {
+            if (res && res.error) throw res.error;
+            var d = res && res.data;
+            if (d && d.ok === false) {
+              if (d.error === "limit") { enterLimited(); return; }
+              throw new Error(d.error || "send");
+            }
+          })
+          .catch(function () {
+            clearPending(content);
+            botSay(L("附件已经传上去了，但消息没发出去，请刷新后再试一次。",
+                     "Uploaded but the message failed. Please refresh and retry."));
+          });
+      }).catch(function (e) {
+        if (ph) ph.remove();
+        var m = String((e && (e.message || e.error_description)) || e || "");
+        botSay(/bucket|not found/i.test(m)
+          ? L("附件功能还没启用：请先让管理员打开「发图片/文件」配置页跑一次 SQL。",
+              "File sending is not enabled yet: an admin needs to run the storage setup once.")
+          : L("上传失败：" + (m || "网络异常") + "，请重试或直接发文字。",
+              "Upload failed: " + (m || "network error") + ". Please retry."));
+      }).then(next);
+    })();
+  }
+
+  el.querySelector('[data-act="img"]').addEventListener("click", function () { pickImg.click(); });
+  el.querySelector('[data-act="file"]').addEventListener("click", function () { pickAll.click(); });
+  pickImg.addEventListener("change", function () { sendAttachments(this.files); this.value = ""; });
+  pickAll.addEventListener("change", function () { sendAttachments(this.files); this.value = ""; });
+
+  /* 表情面板：内置 emoji，不依赖外部图片，打开就在 */
+  var EMOJIS = ("😀 😃 😄 😁 😊 🙂 😉 😍 🤝 👍 👏 🙏 💪 🔥 ✨ 🎉 ✅ ❓ ❗ ⏰ 📞 📱 📧 📄 📎 📌 " +
+    "🏆 🎯 💡 📊 🌍 🏭 🔧 🧪 🧾 💰 🤔 😅 😢 🙌 👌 🆗 💬 👉 ⭐ 🌟 🚀 ⏳ 📅 📍 ✍️ 🖼").split(" ");
+  function insertAtCursor(str) {
+    var s = input.selectionStart || 0, en = input.selectionEnd || 0;
+    var v = input.value;
+    input.value = v.slice(0, s) + str + v.slice(en);
+    var pos = s + str.length;
+    try { input.setSelectionRange(pos, pos); } catch (e) { }
+    input.focus();
+    autoGrow();
+  }
+  function toggleEmoji(force) {
+    var show = force === undefined ? emojiBox.hidden : force;
+    emojiBox.hidden = !show;
+    if (show && !emojiBox.childElementCount) {
+      emojiBox.innerHTML = EMOJIS.map(function (e) { return '<button type="button">' + e + "</button>"; }).join("");
+    }
+  }
+  el.querySelector('[data-act="emoji"]').addEventListener("click", function () { toggleEmoji(); });
+  emojiBox.addEventListener("click", function (e) {
+    var b = e.target.closest("button");
+    if (b) insertAtCursor(b.textContent);
+  });
+
+  /* 粘贴截图 / 拖拽文件 */
+  input.addEventListener("paste", function (e) {
+    var items = (e.clipboardData && e.clipboardData.items) || [];
+    var imgs = [];
+    for (var i = 0; i < items.length; i++) {
+      if (items[i].kind === "file" && /^image\//.test(items[i].type || "")) {
+        var f = items[i].getAsFile();
+        if (f) imgs.push(f);
+      }
+    }
+    if (imgs.length) { e.preventDefault(); sendAttachments(imgs); }
+  });
+  panel.addEventListener("dragover", function (e) { e.preventDefault(); panel.classList.add("drag-over"); });
+  panel.addEventListener("dragleave", function (e) {
+    if (!panel.contains(e.relatedTarget)) panel.classList.remove("drag-over");
+  });
+  panel.addEventListener("drop", function (e) {
+    e.preventDefault();
+    panel.classList.remove("drag-over");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) sendAttachments(e.dataTransfer.files);
+  });
+
+  /* 点图片在原窗口放大，不跳走页面 */
+  body.addEventListener("click", function (e) {
+    var a = e.target.closest(".att-img");
+    if (!a) return;
+    e.preventDefault();
+    showViewer(a.getAttribute("href"));
+  });
+
   /* ---------------- 发送 ---------------- */
   function send() {
     var text = input.value.trim();
@@ -302,6 +536,8 @@
     meSay(text);
     pending.push(text);
     input.value = "";
+    autoGrow();
+    toggleEmoji(false);
     chips.innerHTML = "";
 
     if (dbOn()) {
@@ -332,8 +568,11 @@
     typing(true);
     setTimeout(function () { typing(false); botSay(answer(text)); renderChips(); }, 600);
   }
-  el.querySelector(".chat-input button").addEventListener("click", send);
-  input.addEventListener("keydown", function (e) { if (e.key === "Enter") send(); });
+  el.querySelector(".chat-input .ci-send").addEventListener("click", send);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  });
+  input.addEventListener("input", autoGrow);
 
   chips.addEventListener("click", function (e) {
     if (drag.moved) { drag.moved = false; return; }   /* 拖拽结束不当作点击 */

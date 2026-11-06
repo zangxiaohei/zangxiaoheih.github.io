@@ -104,6 +104,24 @@
     },
     chatFetch: function (key) {
       return client.rpc("chat_fetch", { p_key: key });
+    },
+
+    /* 聊天附件上传（图片 / 文件）→ 返回公开链接
+       桶名固定 chat-files，配置见 admin/chat-files.sql */
+    uploadChatFile: function (file, key) {
+      if (!client) return Promise.reject(new Error("offline"));
+      var name = String((file && file.name) || "file");
+      var ext = (name.split(".").pop() || "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin";
+      if (ext === name.toLowerCase()) ext = "bin";
+      var path = String(key || "anon") + "/" + Date.now() + "_" +
+        Math.random().toString(36).slice(2, 8) + "." + ext;
+      return client.storage.from("chat-files")
+        .upload(path, file, { contentType: (file && file.type) || "application/octet-stream", upsert: false })
+        .then(function (res) {
+          if (res && res.error) throw res.error;
+          var pub = client.storage.from("chat-files").getPublicUrl(path);
+          return { url: pub.data.publicUrl, path: path };
+        });
     }
   };
 })();

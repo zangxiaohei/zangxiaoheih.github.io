@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>开通「发图片 / 文件」</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; padding: 16px 14px 40px;
+    font: 16px/1.75 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #f4f8f6; color: #1f3229; }
+  .card { background: #fff; border-radius: 16px; padding: 18px 16px;
+    box-shadow: 0 2px 14px rgba(11,110,79,.07); margin-bottom: 14px; }
+  h1 { font-size: 19px; margin: 0 0 6px; color: #0b6e4f; }
+  h2 { font-size: 15.5px; margin: 0 0 10px; color: #0b6e4f; }
+  p { margin: 0 0 10px; font-size: 14.5px; color: #3d5348; }
+  .sub { font-size: 13.5px; color: #7c9188; margin: 0 0 14px; }
+  ol { margin: 0; padding-left: 20px; }
+  ol li { margin-bottom: 10px; font-size: 14.5px; color: #3d5348; }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12.5px; }
+  pre { background: #0f2a20; color: #d7f0e5; border-radius: 12px;
+    padding: 12px; overflow-x: auto; margin: 10px 0 12px;
+    white-space: pre; -webkit-overflow-scrolling: touch;
+    font: 12px/1.6 ui-monospace, Menlo, Consolas, monospace; max-height: 300px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 12px;
+    padding: 14px; font-size: 15.5px; font-weight: 700; cursor: pointer;
+    background: #0b6e4f; color: #fff; font-family: inherit; margin-top: 10px;
+    text-align: center; text-decoration: none; }
+  .btn.ghost { background: #eef7f2; color: #0b6e4f; border: 1.5px solid #cfe6da;
+    font-weight: 600; font-size: 14px; }
+  .ok { color: #0b6e4f; font-weight: 700; }
+  .note { background: #f6fbf8; border-left: 3px solid #7fd1b0;
+    padding: 10px 12px; border-radius: 8px; font-size: 13.5px; color: #4a6156; margin-top: 10px; }
+  .warn { background: #fff8e6; border: 1px solid #ffe2a8; border-radius: 10px;
+    padding: 10px 12px; font-size: 13.5px; color: #7a5a12; margin-top: 10px; }
+  .k { background: #eef2f0; border-radius: 5px; padding: 1px 6px; font-size: 13px; color: #2f4a3d; }
+</style>
+</head>
+<body>
+
+<div class="card">
+  <h1>开通「发图片 / 文件」</h1>
+  <p class="sub">只用做一次，之后网站聊天和后台都能直接发图、发文件、发 PDF。</p>
+  <p>开通后：访客在聊天窗口点 🖼 发照片、点 📎 发文件，还能直接 <b>Ctrl+V 粘贴截图</b>；你在后台也能同样发图发文件，两边互相看得见。</p>
+  <p style="margin:0">图片会自动压缩到长边 1600px（手机拍的原图几 MB，传上去只剩两三百 KB），单个文件上限 10MB。</p>
+</div>
+
+<div class="card">
+  <h2>第 1 步：复制这段 SQL</h2>
+  <button class="btn" id="gen">复制开通 SQL</button>
+  <pre id="sql">（点上面的按钮）</pre>
+  <div class="note">这段只有建桶和三条权限，没有函数、没有 <code>$</code> 符号，复制粘贴不会掉字符。</div>
+</div>
+
+<div class="card">
+  <h2>第 2 步：到 Supabase 执行一次</h2>
+  <ol>
+    <li>点下面按钮打开 SQL 编辑器</li>
+    <li><b>先 Ctrl+A 全选删掉旧内容</b>，再粘贴、点 <span class="k">Run</span></li>
+    <li>成功标志：结果显示 <span class="ok">bucket 1</span> 和 <span class="ok">policy 3</span></li>
+  </ol>
+  <a class="btn ghost" href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener">打开 Supabase SQL 编辑器 →</a>
+</div>
+
+<div class="card">
+  <h2>第 3 步：试一次</h2>
+  <ol>
+    <li>回到后台 → <span class="k">💬 在线客服</span> → 选一个会话</li>
+    <li>点回复框右边的 🖼，选一张图片 → 几秒内出现在对话里</li>
+    <li>用手机打开网站 → 聊天窗 → 点 🖼 发一张照片，后台应该马上能看到</li>
+  </ol>
+  <div class="warn">如果提示「还没启用」，说明这段 SQL 没跑成功，或者跑在了别的项目里 —— 确认地址栏是 <code>ndjctekubqinrlyokmzp</code> 这个项目。</div>
+</div>
+
+<div class="card">
+  <h2>几点说明</h2>
+  <ol>
+    <li><b>图片和文件存在 Supabase 的存储里</b>，不占数据库，也不会拖慢聊天</li>
+    <li><b>聊天记录里只存一个链接</b>，所以老消息、新消息都能一起显示</li>
+    <li><b>免费额度 1GB</b>，按压缩后 200KB 一张算，大约能存 5000 张；要清理就删 <code>chat-files</code> 桶里的文件</li>
+    <li><b>只能发，不能执行</b>：图片在页面里显示，文件点一下下载，不会自动打开或运行</li>
+  </ol>
+</div>
+
+<script>
+  var SQL = `-- ============================================================================
+-- 在线客服 · 图片 / 文件收发（在 Supabase「SQL 编辑器」里整块执行一次）
+--
+-- 作用：建一个公开读的存储桶 chat-files，访客和客服都能上传图片和文件。
+--       聊天消息里只存一个链接（不把图片塞进数据库），所以聊天照样很快。
+-- 说明：全篇没有 $$、没有变量声明，复制粘贴不会掉字符。
+-- ============================================================================
+
+BEGIN;
+
+-- ---------- 1. 建桶：公开读，单文件最大 10 MB ----------
+INSERT INTO storage.buckets (id, name, public, file_size_limit)
+VALUES ('chat-files', 'chat-files', true, 10485760)
+ON CONFLICT (id) DO UPDATE
+  SET public = true,
+      file_size_limit = 10485760;
+
+-- ---------- 2. 权限 ----------
+-- 上传：访客（anon）和客服（authenticated）都可以
+DROP POLICY IF EXISTS chat_files_insert ON storage.objects;
+CREATE POLICY chat_files_insert ON storage.objects
+  FOR INSERT TO anon, authenticated
+  WITH CHECK (bucket_id = 'chat-files');
+
+-- 读取：公开桶，但要这个策略才能列目录 / 取签名
+DROP POLICY IF EXISTS chat_files_read ON storage.objects;
+CREATE POLICY chat_files_read ON storage.objects
+  FOR SELECT TO anon, authenticated
+  USING (bucket_id = 'chat-files');
+
+-- 删除：只给登录后的客服
+DROP POLICY IF EXISTS chat_files_delete ON storage.objects;
+CREATE POLICY chat_files_delete ON storage.objects
+  FOR DELETE TO authenticated
+  USING (bucket_id = 'chat-files');
+
+COMMIT;
+
+-- ---------- 自检（应看到：桶 1 个 / 策略 3 条） ----------
+SELECT 'bucket' AS item, count(*)::text AS n FROM storage.buckets WHERE id = 'chat-files'
+UNION ALL
+SELECT 'policy', count(*)::text FROM pg_policies
+ WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname LIKE 'chat_files_%';`;
+  function $(id) { return document.getElementById(id); }
+  function copyText(t, ok, fail) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(t).then(ok).catch(fail);
+    } else { fail(); }
+  }
+  function fallback(t) {
+    var ta = document.createElement("textarea");
+    ta.value = t;
+    ta.style.cssText = "position:fixed;top:0;left:0;opacity:0";
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    var r = false;
+    try { r = document.execCommand("copy"); } catch (e) { r = false; }
+    document.body.removeChild(ta);
+    return r;
+  }
+  $("gen").addEventListener("click", function () {
+    var btn = $("gen");
+    $("sql").textContent = SQL;
+    function done() {
+      btn.textContent = "已复制，去 Supabase 粘贴";
+      btn.style.background = "#12886a";
+      setTimeout(function () { btn.textContent = "复制开通 SQL"; btn.style.background = "#0b6e4f"; }, 2600);
+    }
+    copyText(SQL, done, function () {
+      if (fallback(SQL)) done();
+      else { btn.textContent = "复制失败，请长按下面这段手动复制"; btn.style.background = "#c0392b"; }
+    });
+  });
+</script>
+</body>
+</html>

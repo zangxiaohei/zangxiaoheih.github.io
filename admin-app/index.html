@@ -157,6 +157,45 @@
     .bubble-row.admin .bubble-meta { text-align: right; color: #7fa395; }
     .reply-box { display: flex; gap: 8px; align-items: flex-end; }
     .reply-box textarea { min-height: 64px; }
+    .reply-tools { display: flex; gap: 4px; flex: 0 0 auto; }
+    .reply-tools button {
+      width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--line);
+      background: #f7fbf9; color: var(--brand); font-size: 17px; cursor: pointer; line-height: 1;
+    }
+    .reply-tools button:hover:not(:disabled) { background: #e8f5ee; }
+    .reply-tools button:disabled { opacity: .45; cursor: default; }
+    /* 附件气泡 */
+    .bubble-b.has-att { padding: 6px; background: #fff; }
+    .bubble-row.admin .bubble-b.has-att { background: rgba(255,255,255,.16); }
+    .bubble-b img.att-img-b {
+      max-width: 230px; max-height: 230px; border-radius: 9px; display: block; cursor: zoom-in;
+    }
+    .att-file-card { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit;
+      padding: 4px 6px; min-width: 180px; }
+    .att-file-card .af-ic { width: 36px; height: 36px; border-radius: 9px; flex: 0 0 auto;
+      background: #e8f5ee; color: var(--brand); display: grid; place-items: center;
+      font-size: 10px; font-weight: 800; }
+    .bubble-row.admin .att-file-card .af-ic { background: rgba(255,255,255,.24); color: #fff; }
+    .att-file-card b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+    .att-file-card small { font-size: 11px; opacity: .7; }
+    .t-back { display: none; }
+    .chat-viewer { position: fixed; inset: 0; z-index: 9999; background: rgba(8,18,26,.88);
+      display: none; align-items: center; justify-content: center; padding: 18px; }
+    .chat-viewer.show { display: flex; }
+    .chat-viewer img { max-width: 94vw; max-height: 86vh; border-radius: 10px; }
+    .chat-viewer .x { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px;
+      border-radius: 50%; border: 0; background: rgba(255,255,255,.18); color: #fff; font-size: 18px; cursor: pointer; }
+    @media (max-width: 780px) {
+      .chat-layout { display: block; }
+      .chat-layout.has-thread .thread-list { display: none; }
+      .chat-layout:not(.has-thread) .thread-view { display: none; }
+      .t-back { display: inline-block; margin-bottom: 8px; }
+      .thread-msgs { height: calc(100dvh - 330px); min-height: 300px; }
+      .thread-list { max-height: none; }
+      .bubble-b { max-width: 84%; font-size: 14.5px; }
+      .bubble-b img.att-img-b { max-width: 62vw; max-height: 44vh; }
+      .reply-box { position: sticky; bottom: 0; background: #fff; padding-top: 6px; }
+    }
     ::-webkit-scrollbar { width: 9px; height: 9px; }
     ::-webkit-scrollbar-thumb { background: #c4d4cb; border-radius: 6px; }
     ::-webkit-scrollbar-thumb:hover { background: #a9bfb2; }
@@ -191,7 +230,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061556";
+      var ZT_VER = "202611061630";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -334,6 +373,8 @@
           <div class="row" style="justify-content:space-between;margin-bottom:8px">
             <b style="font-size:14px">会话列表</b>
             <span>
+              <a class="ghost sm" href="chat-files.html" target="_blank" rel="noopener"
+                 style="display:inline-flex;align-items:center;text-decoration:none">🖼 发图未开通？</a>
               <button class="ghost sm" id="btn-readall">全部已读</button>
               <button class="ghost sm" id="btn-threads">刷新</button>
             </span>
@@ -341,12 +382,20 @@
           <div id="threads"></div>
         </div>
         <div class="card thread-view">
-          <div id="thread-head" class="thread-head">选择左侧一个会话开始回复</div>
+          <div class="thread-head"><button class="ghost sm t-back" id="btn-back-list">‹ 会话列表</button>
+            <span id="thread-head">选择左侧一个会话开始回复</span></div>
           <div id="thread-msgs" class="thread-msgs"></div>
           <div class="reply-box">
             <textarea id="reply-text" placeholder="输入回复内容，Ctrl+Enter 发送"></textarea>
+            <div class="reply-tools">
+              <button type="button" id="btn-send-img" title="发送照片">🖼</button>
+              <button type="button" id="btn-send-file" title="发送文件">📎</button>
+            </div>
             <button id="btn-reply">发送回复</button>
+            <input type="file" id="pick-img" accept="image/*" multiple hidden>
+            <input type="file" id="pick-file" multiple hidden>
           </div>
+          <div class="chat-viewer" id="ad-viewer"><img alt="预览"><button class="x" id="ad-viewer-x">✕</button></div>
           <div class="tip" id="thread-tip"></div>
         </div>
       </div>
@@ -1454,9 +1503,138 @@
     document.querySelectorAll(".thread-item").forEach(function (x) { x.classList.remove("on"); });
     it.classList.add("on");
     loadMessagesOf(curThread, false);
+    var lay = document.querySelector(".chat-layout");
+    if (lay) lay.classList.add("has-thread");
     client.from("chat_messages").update({ is_read: true }).eq("thread_id", curThread).eq("role", "visitor")
       .then(function () { loadUnread(); });
   });
+
+  /* ---------------- 聊天附件：消息 content 以 [[att]] 开头时后面是 JSON ---------------- */
+  function parseAtt(content) {
+    var s = String(content || "");
+    if (s.indexOf("[[att]]") !== 0) return null;
+    try {
+      var o = JSON.parse(s.slice(7));
+      return (o && o.u) ? o : null;
+    } catch (e) { return null; }
+  }
+  function humanSize(n) {
+    n = +n || 0;
+    if (n <= 0) return "";
+    if (n < 1024) return n + " B";
+    if (n < 1048576) return Math.round(n / 1024) + " KB";
+    return (n / 1048576).toFixed(1) + " MB";
+  }
+  function fileTag(name) {
+    var ext = String(name || "").split(".").pop().toLowerCase();
+    if (ext === "pdf") return "PDF";
+    if (/^(doc|docx)$/.test(ext)) return "DOC";
+    if (/^(xls|xlsx|csv)$/.test(ext)) return "XLS";
+    if (/^(ppt|pptx)$/.test(ext)) return "PPT";
+    if (/^(zip|rar|7z)$/.test(ext)) return "ZIP";
+    return "FILE";
+  }
+  function attMsgHtml(content) {
+    var a = parseAtt(content);
+    if (!a) return esc(content);
+    var isImg = /^image\//.test(a.t || "") || /\.(png|jpe?g|gif|webp|bmp)$/i.test(a.u);
+    if (isImg) {
+      return '<img class="att-img-b" src="' + esc(a.u) + '" alt="' + esc(a.n || "图片") + '" loading="lazy">';
+    }
+    return '<a class="att-file-card" href="' + esc(a.u) + '" target="_blank" rel="noopener" download="' + esc(a.n || "file") + '">' +
+      '<span class="af-ic">' + fileTag(a.n || a.u) + '</span>' +
+      '<span><b>' + esc(a.n || "文件") + '</b><small>' + humanSize(a.s) + '</small></span></a>';
+  }
+
+  /* 图片压缩：长边 1600、JPEG 0.82 */
+  function compressImage(file) {
+    return new Promise(function (resolve) {
+      if (!/^image\//.test(file.type || "") || /gif|svg/.test(file.type || "")) return resolve(file);
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        try {
+          var w = img.naturalWidth, h = img.naturalHeight;
+          var scale = Math.min(1, 1600 / Math.max(w, h));
+          if (scale >= 1 && file.size < 700 * 1024) { URL.revokeObjectURL(url); return resolve(file); }
+          var c = document.createElement("canvas");
+          c.width = Math.round(w * scale); c.height = Math.round(h * scale);
+          c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          c.toBlob(function (b) {
+            URL.revokeObjectURL(url);
+            if (!b) return resolve(file);
+            resolve(new File([b], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" }));
+          }, "image/jpeg", 0.82);
+        } catch (e) { URL.revokeObjectURL(url); resolve(file); }
+      };
+      img.onerror = function () { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
+  /* 发附件：上传到 chat-files 桶，再把链接写进消息 */
+  var adminUploading = false;
+  function sendAdminFiles(files) {
+    var list = Array.prototype.slice.call(files || []).filter(Boolean);
+    if (!list.length) return;
+    if (!curThread) { showTip($("thread-tip"), "请先在左侧选择一个会话。", true); return; }
+    if (adminUploading) return;
+    adminUploading = true;
+    setReplyBusy(true);
+    var i = 0, failed = 0;
+    (function next() {
+      if (i >= list.length) {
+        adminUploading = false;
+        setReplyBusy(false);
+        if (!failed) { showTip($("thread-tip"), "✅ 附件已发送", false); loadMessagesOf(curThread, false); }
+        return;
+      }
+      var f = list[i++];
+      if (f.size > 10 * 1048576) {
+        failed++;
+        showTip($("thread-tip"), "「" + f.name + "」超过 10MB，已跳过。", true);
+        return next();
+      }
+      showTip($("thread-tip"), "上传中：" + f.name + " …", false);
+      compressImage(f)
+        .then(function (out) { return client.storage.from("chat-files").upload(
+            "admin/" + Date.now() + "_" + Math.random().toString(36).slice(2, 8) + "." +
+              ((out.name.split(".").pop() || "bin").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 6) || "bin"),
+            out, { contentType: out.type || "application/octet-stream", upsert: false }); })
+        .then(function (res) {
+          if (res && res.error) throw res.error;
+          var path = res.data && (res.data.path || res.data.Key);
+          if (!path) throw new Error("no path");
+          var pub = client.storage.from("chat-files").getPublicUrl(path);
+          var content = "[[att]]" + JSON.stringify({ u: pub.data.publicUrl, n: f.name, s: f.size, t: f.type || "" });
+          return sendContent(content);
+        })
+        .catch(function (e) {
+          failed++;
+          var m = String((e && e.message) || e || "");
+          showTip($("thread-tip"), /bucket|not found/i.test(m)
+            ? "附件桶还没建：先在 Supabase 跑一次 admin/chat-files.sql。"
+            : "上传失败：" + (m || "网络异常"), true);
+        })
+        .then(next);
+    })();
+  }
+
+  function setReplyBusy(on) {
+    ["btn-reply", "btn-send-img", "btn-send-file"].forEach(function (id) {
+      var b = $(id); if (b) b.disabled = !!on;
+    });
+  }
+
+  /* 发一条消息（文本或附件） */
+  function sendContent(content) {
+    return client.from("chat_messages")
+      .insert([{ thread_id: curThread, role: "admin", content: String(content).slice(0, 2000) }])
+      .then(function (res) {
+        if (res.error) throw new Error(res.error.message);
+        return client.from("chat_threads").update({ last_at: new Date().toISOString() }).eq("id", curThread);
+      });
+  }
 
   function loadMessagesOf(threadId, quiet) {
     client.from("chat_threads").select("*").eq("id", threadId).maybeSingle().then(function (tr) {
@@ -1481,8 +1659,9 @@
         }
         var atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 40;
         box.innerHTML = res.data.map(function (m) {
+          var att = parseAtt(m.content);
           return '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
-            '<div><div class="bubble-b">' + esc(m.content) + '</div>' +
+            '<div><div class="bubble-b' + (att ? " has-att" : "") + '">' + attMsgHtml(m.content) + '</div>' +
             '<div class="bubble-meta" style="text-align:right">' + fmtTime(m.created_at) + '</div></div></div>';
         }).join("") || '<div class="empty">暂无消息</div>';
         if (!quiet || atBottom) box.scrollTop = box.scrollHeight;
@@ -1495,11 +1674,7 @@
     if (!curThread) { showTip($("thread-tip"), "请先在左侧选择一个会话。", true); return; }
     if (!text) { showTip($("thread-tip"), "回复内容不能为空。", true); return; }
     $("btn-reply").disabled = true;
-    client.from("chat_messages").insert([{ thread_id: curThread, role: "admin", content: text.slice(0, 2000) }])
-      .then(function (res) {
-        if (res.error) throw new Error(res.error.message);
-        return client.from("chat_threads").update({ last_at: new Date().toISOString() }).eq("id", curThread);
-      })
+    sendContent(text)
       .then(function () {
         ta.value = "";
         showTip($("thread-tip"), "✅ 已发送，访客页面上 6 秒内可见。", false);
@@ -1514,6 +1689,26 @@
   $("btn-reply").addEventListener("click", sendReply);
   $("reply-text").addEventListener("keydown", function (e) {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(); }
+  });
+
+  /* 图片 / 文件 / 预览 / 手机端返回列表 */
+  $("btn-send-img").addEventListener("click", function () { $("pick-img").click(); });
+  $("btn-send-file").addEventListener("click", function () { $("pick-file").click(); });
+  $("pick-img").addEventListener("change", function () { sendAdminFiles(this.files); this.value = ""; });
+  $("pick-file").addEventListener("change", function () { sendAdminFiles(this.files); this.value = ""; });
+  $("btn-back-list").addEventListener("click", function () {
+    var lay = document.querySelector(".chat-layout");
+    if (lay) lay.classList.remove("has-thread");
+    loadThreads(true);
+  });
+  $("thread-msgs").addEventListener("click", function (e) {
+    var img = e.target.closest("img.att-img-b");
+    if (!img) return;
+    $("ad-viewer").querySelector("img").src = img.getAttribute("src");
+    $("ad-viewer").classList.add("show");
+  });
+  $("ad-viewer").addEventListener("click", function (e) {
+    if (e.target === this || e.target.id === "ad-viewer-x") this.classList.remove("show");
   });
 
   /* ---------------- 内容编辑 ---------------- */
