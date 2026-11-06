@@ -409,11 +409,14 @@ public class BadgeService extends Service {
                 b.setSound(android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_NOTIFICATION));
                 b.setVibrate(new long[]{0, 550, 250, 550});
             } catch (Throwable ignored) { }
-        } else if (Build.VERSION.SDK_INT >= 26) {
-            /* 不该响的这一路强制静音。
-               进程被杀重启后，系统有可能把重发的通知当成"新通知"，光靠 setOnlyAlertOnce 压不住；
-               setSilent 直接在通知层覆盖渠道的声音和震动，保证重启后不会莫名其妙响一声。 */
-            b.setSilent(true);
+        } else {
+            /* 不该响的这一路尽量别出声。
+               setSilent 在 android.app.Notification.Builder 上不是每个 SDK 都有（编译期会找不到符号），
+               所以用反射调：有这个方法就静音，没有就跳过 —— 反射失败只是少了这层保险，不影响编译和运行。 */
+            try {
+                b.getClass().getMethod("setSilent", boolean.class).invoke(b, true);
+            } catch (Throwable ignored) { }
+            b.setDefaults(0);
         }
         Notification n = b.build();
 
