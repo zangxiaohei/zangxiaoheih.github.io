@@ -47,7 +47,14 @@ jobs:
         if: failure()
         run: |
           mkdir -p apk
-          { echo "构建失败：$(date -u)"; echo; tail -n 150 /tmp/build.log 2>/dev/null || echo "无日志"; } > apk/build-error.txt
+          {
+            echo "构建失败：$(date -u)"
+            echo "=== 错误行 ==="
+            grep -nE "error:|error;|What went wrong|Execution failed|Caused by:|^e: |cannot find symbol|符号" /tmp/build.log 2>/dev/null | head -60
+            echo
+            echo "=== 编译任务输出（前 80 行）==="
+            grep -nE "^> Task .*javac|^> Task .*Compile|\.java:" /tmp/build.log 2>/dev/null | head -80
+          } > apk/build-error.txt
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f apk/build-error.txt
