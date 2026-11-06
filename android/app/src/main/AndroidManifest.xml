@@ -5,6 +5,10 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- 前台服务类型用 specialUse 而不是 dataSync：Android 15 起对 dataSync 有 6 小时
+         上限，超时系统会直接把服务停掉，之后又变成「收不到消息」。
+         specialUse 没有时长限制，才适合常驻轮询 -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -42,10 +46,17 @@
             </intent-filter>
         </activity>
 
+        <!-- stopWithTask=false：从最近任务划掉 App 时，系统不会顺手把这个服务停掉，
+             进程和轮询都继续，消息照收。默认是 true —— 划掉就等于彻底静音 -->
         <service
             android:name=".BadgeService"
             android:exported="false"
-            android:foregroundServiceType="dataSync" />
+            android:stopWithTask="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="keepAdminUnreadBadgeInSync" />
+        </service>
 
         <receiver
             android:name=".BootReceiver"

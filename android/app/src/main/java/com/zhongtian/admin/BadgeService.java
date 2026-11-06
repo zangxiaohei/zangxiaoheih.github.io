@@ -557,6 +557,20 @@ public class BadgeService extends Service {
         return sb.toString();
     }
 
+    /**
+     * 用户从最近任务里把 App 划掉。
+     *
+     * Manifest 里已经声明 stopWithTask=false，所以正常情况下这里被调用时服务还活着、
+     * 轮询也没断 —— 这一步只是给「某些 ROM 仍然强杀进程」留的后手：
+     * 立刻排一个 1.5 秒后的闹钟，进程真被杀掉也会马上被拉回来，
+     * 而不是像以前那样干等 5 分钟的慢速看门狗。
+     */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        try { BootReceiver.scheduleSoon(this, 1500); } catch (Throwable ignored) { }
+        super.onTaskRemoved(rootIntent);
+    }
+
     @Override
     public void onDestroy() {
         alive = false;
@@ -564,6 +578,9 @@ public class BadgeService extends Service {
         try { if (screenRxOn) unregisterReceiver(screenRx); } catch (Throwable ignored) { }
         screenRxOn = false;
         dropWake();   // 服务销毁必须放锁，否则会一直耗电
+        /* 这里故意不排重启闹钟：服务如果是被系统强制停掉（比如前台服务受限），
+           再自己排闹钟会被反复拉起 → 反复被停，既耗电又可能触发系统的启动限制。
+           正常拉起交给 onTaskRemoved 和 5 分钟看门狗就够了 */
         super.onDestroy();
     }
 

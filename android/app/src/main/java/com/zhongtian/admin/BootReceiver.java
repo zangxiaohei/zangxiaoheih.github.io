@@ -35,6 +35,31 @@ public class BootReceiver extends BroadcastReceiver {
      * 普通闹钟会被推迟到"维护窗口"（可能几十分钟），而 allow-while-idle 的闹钟
      * 在 Doze 里也会照常触发 —— 这是服务被冻结后能自己醒过来的关键。
      */
+    /**
+     * 划掉任务时的秒级自愈。
+     *
+     * 用 101 这个独立的 requestCode，避免覆盖掉 5 分钟那只「慢速」看门狗。
+     * 设了 stopWithTask=false 之后服务本来就不会随任务移除而停止，正常情况下这段不会被用上；
+     * 但国产 ROM 有些会绕过 stopWithTask 直接 kill 进程，这时 1.5 秒后闹钟就会把服务拉回来，
+     * 用户基本感觉不到断档。
+     */
+    static void scheduleSoon(Context ctx, long delayMs) {
+        try {
+            AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
+            if (am == null) return;
+            Intent i = new Intent(ctx, BootReceiver.class).setAction(ACTION_WATCHDOG);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent pi = PendingIntent.getBroadcast(ctx, 101, i, flags);
+            long at = System.currentTimeMillis() + Math.max(delayMs, 1000L);
+            if (Build.VERSION.SDK_INT >= 23) {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at, pi);
+            } else {
+                am.set(AlarmManager.RTC_WAKEUP, at, pi);
+            }
+        } catch (Exception ignored) { }
+    }
+
     static void schedule(Context ctx) {
         try {
             AlarmManager am = (AlarmManager) ctx.getSystemService(Context.ALARM_SERVICE);
