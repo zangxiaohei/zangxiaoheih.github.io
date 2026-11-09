@@ -1351,7 +1351,7 @@
               }).join("");
               return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
-                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>'
+                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>' +
                 '<span class="cnt">' + list.length + ' 条</span>' +
                 (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
@@ -1500,7 +1500,7 @@
               var hasUnread = list.some(function (t) { return (unreadMap[t.id] || 0) > 0; });
               return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '">' +
-                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>'
+                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>' +
                 '<span class="cnt">' + list.length + ' 会话</span>' +
                 (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
