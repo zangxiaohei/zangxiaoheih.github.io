@@ -304,8 +304,10 @@
 
 @media (max-width: 720px) {
   .chat-fab { right: 14px; bottom: 14px; top: auto; }
-  .chat-panel { right: 0; left: 0; bottom: 0; top: 0; width: 100%; height: 100dvh; max-height: none;
-    border-radius: 0; transform: translateY(6px) scale(1); }
+  /* max-width 必须一起覆盖：桌面那条 calc(100vw - 126px) 优先级更高，
+     不重置的话手机上面板只占屏幕左侧 2/3，右边留一条白 */
+  .chat-panel { right: 0; left: 0; bottom: 0; top: 0; width: 100%; max-width: 100%;
+    height: 100dvh; max-height: none; border-radius: 0; transform: translateY(6px) scale(1); }
   .chat-panel.open { transform: none; }
   .chat-head { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
   .chat-invite { right: 10px; bottom: 82px; max-width: calc(100vw - 90px); }
@@ -318,15 +320,19 @@
   .msg .bubble { max-width: 86%; padding: 10px 12px; font-size: 13.8px; }
   .att-img img { max-width: 62vw; max-height: 46vh; }
   .att-grid { width: min(62vw, 216px); }
-  .att-stk img { width: 96px; height: 96px; }
-  .att-file { max-width: 60vw; }
+  .att-stk img { width: clamp(72px, 24vw, 96px); height: auto; aspect-ratio: 1 / 1; }
+  .att-file { max-width: 62vw; }
+  .att-grid { max-width: 100%; }
   .att-file .af-tx b { max-width: 34vw; }
-  .cp-body[data-panel="emoji"] { grid-template-columns: repeat(8, 1fr); }
-  .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(6, 1fr); gap: 5px; }
-  .ci-panel { max-height: 252px; }
-  .chat-input { padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+  .cp-body[data-panel="emoji"] { grid-template-columns: repeat(auto-fill, minmax(30px, 1fr)); }
+  .cp-body[data-panel="stk"]:not([hidden]) { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: 5px; }
+  .ci-panel { max-height: min(252px, 40vh); }
+  /* 底部工具栏在最外沿，安全区留给它；输入框不再重复留白 */
+  .chat-input { padding-bottom: 8px; }
+  .chat-tools, .chat-limit { padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .chat-chips { padding-right: 14px; }
   .ci-bar button { width: 38px; height: 38px; }
-  .chat-input .ci-send { min-width: 56px; height: 40px; }
+  .chat-input .ci-send { min-width: clamp(52px, 15vw, 60px); height: clamp(36px, 10vw, 42px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .chat-fab, .chat-panel { transition: none; }

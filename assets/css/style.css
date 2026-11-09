@@ -614,6 +614,29 @@ body.menu-open .drawer { opacity: 1; visibility: visible; transform: translateY(
   .client-wall { grid-template-columns: repeat(3, 1fr); }
   .topbar ul li:nth-child(2) { display: none; }
 }
+/* 窄屏（360 / 320）头部不撑破视口：之前 logo 图 + 汉堡按钮硬撑到 440px，
+   页面被浏览器整体缩小，字全变小 */
+@media (max-width: 560px) {
+  .header .wrap { height: 62px; gap: 8px; }
+  .logo { flex-shrink: 1; min-width: 0; gap: 8px; }
+  .logo-img { height: 32px; max-width: 42vw; object-fit: contain; }
+  .logo-text { min-width: 0; }
+  .logo-text b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .header-cta { gap: 8px; }
+  .burger { width: 40px; height: 40px; flex: 0 0 auto; }
+  .burger span { left: 10px; width: 18px; }
+  .burger span:nth-child(1) { top: 13px; }
+  .burger span:nth-child(2) { top: 19px; }
+  .burger span:nth-child(3) { top: 25px; }
+}
+/* 图片永远不超出容器：横版 logo、示意图在窄屏最容易把页面撑宽 */
+img { max-width: 100%; }
+@media (max-width: 380px) {
+  .wrap { padding: 0 14px; }
+  .footer-about p { max-width: 100%; }
+  .footer-grid { gap: 26px; }
+  .footer-about { min-width: 0; }
+}
 @media (max-width: 720px) {
   body { font-size: 15.5px; }
   .wrap { padding: 0 18px; }
