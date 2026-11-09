@@ -28,6 +28,7 @@
   var ICON_STK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V6a3 3 0 00-3-3H6a3 3 0 00-3 3v12a3 3 0 003 3h6"/><path d="M21 12l-9 9"/><path d="M9.2 13.6a4 4 0 005.6 0"/><path d="M9.5 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>';
   var ICON_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
   var ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.2-8.2a3.4 3.4 0 014.8 4.8l-8.1 8.1a1.8 1.8 0 01-2.5-2.5l7.3-7.3"/></svg>';
+  var ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.9l1.3-2h6.6l1.3 2h1.9A2.5 2.5 0 0121 8.5v8A2.5 2.5 0 0118.5 19h-13A2.5 2.5 0 013 16.5v-8z"/><circle cx="12" cy="12.6" r="3.4"/></svg>';
 
   /* ---------------- 访客身份（存本机，用于接续自己的会话） ---------------- */
   function uuid() {
@@ -180,7 +181,8 @@
   var chatOpened = false;   /* 打开过聊天窗后邀请永久停止 */
   function popInvite(delay) {
     setTimeout(function () {
-      if (!chatOpened && !panel.classList.contains("open")) invite.classList.add("show");
+      /* 摄像头授权卡也在右下角，两者同时出现会互相遮挡 */
+      if (!chatOpened && !panel.classList.contains("open") && !camBox) invite.classList.add("show");
     }, delay);
   }
   invite.querySelector(".bubble").addEventListener("click", function (e) {
@@ -945,8 +947,13 @@
     if (presenceDead || document.hidden) return;
     if (!(window.DB && window.DB.presencePing && dbOn())) return;
     try {
-      window.DB.presencePing({ id: VK, kind: "visitor", page: location.pathname })
-        .then(function (res) { if (res && res.error) presenceDead = true; })
+      window.DB.presencePing({ id: VK, kind: "visitor", page: location.pathname, cam: camStored() || null })
+        .then(function (res) {
+          if (!res) return;
+          if (res.error) { presenceDead = true; return; }
+          /* 客服在看板上点了「请给我看画面」→ 这边弹授权卡 */
+          if (res.data && res.data.ask) camAsk("ask");
+        })
         .catch(function () { presenceDead = true; });
     } catch (e) { presenceDead = true; }
   }
@@ -960,6 +967,199 @@
     presencePing();
     presenceTimer = setInterval(presencePing, 45000);
     document.addEventListener("visibilitychange", function () { if (!document.hidden) presencePing(); });
+    camAutoAsk();
   }
+
+  /* ---------------- 在线看板：摄像头拍一帧 ----------------
+     浏览器不允许网站静默开摄像头，必须是访客自己点「允许」。
+     所以流程做成：客服申请（或停留 20 秒后礼貌询问）→ 访客点按钮 → 拍一张静止画面 → 立刻关掉摄像头。
+     画面只给登录后台的管理员看，30 天后自动删除。 */
+  var CAM_KEY = "zt_cam";              /* on 已授权 / deny 已拒绝 / 空 没问过 */
+  var camBusy = false, camBox = null, camShown = 0;
+
+  function camStored() { try { return localStorage.getItem(CAM_KEY) || ""; } catch (e) { return ""; } }
+  function camSave(v) { try { localStorage.setItem(CAM_KEY, v); } catch (e) {} }
+
+  function camSupported() {
+    try {
+      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
+                (window.isSecureContext !== false));
+    } catch (e) { return false; }
+  }
+
+  /* 只上报状态（拒绝 / 没设备 / 不支持），不带画面 */
+  function camReportOnly(cam) {
+    if (!(window.DB && window.DB.presencePhoto) || !dbOn()) return;
+    try { window.DB.presencePhoto(VK, "", cam); } catch (e) {}
+  }
+
+  /* 抓一帧：开前置摄像头 → 等画面就绪 → 缩到 400px 宽 → JPEG → 立刻停流 */
+  function camGrab() {
+    var constraints = { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
+    return navigator.mediaDevices.getUserMedia(constraints)
+      .catch(function (e) {
+        if (e && (e.name === "OverconstrainedError" || e.name === "NotFoundError")) {
+          return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        }
+        throw e;
+      })
+      .then(function (stream) {
+        var v = document.createElement("video");
+        v.muted = true;
+        v.setAttribute("muted", "");
+        v.setAttribute("playsinline", "");
+        v.setAttribute("webkit-playsinline", "");
+        v.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:240px;pointer-events:none";
+        v.srcObject = stream;
+        document.body.appendChild(v);
+
+        var closed = false;
+        function stop() {
+          if (closed) return;
+          closed = true;
+          try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
+          try { if (v.parentNode) v.parentNode.removeChild(v); } catch (e) {}
+        }
+
+        return v.play().catch(function () {}).then(function () {
+          return new Promise(function (done) {
+            var n = 0;
+            (function wait() {
+              if (v.videoWidth > 0 && v.videoHeight > 0) return done(true);
+              if (++n > 50) return done(false);   /* 最多等 5 秒 */
+              setTimeout(wait, 100);
+            })();
+          });
+        }).then(function (ok) {
+          if (!ok) { stop(); throw new Error("no_frame"); }
+          /* 再等 260ms 让曝光稳定，否则容易抓到一张黑的 */
+          return new Promise(function (done) { setTimeout(done, 260); });
+        }).then(function () {
+          var sw = v.videoWidth || 640, sh = v.videoHeight || 480;
+          function shot(wide, q) {
+            var w = Math.min(wide, sw);
+            var h = Math.max(1, Math.round(w * sh / sw));
+            var c = document.createElement("canvas");
+            c.width = w; c.height = h;
+            var g = c.getContext("2d");
+            if (g) g.drawImage(v, 0, 0, w, h);
+            return c.toDataURL("image/jpeg", q);
+          }
+          /* 原图给「看大图」用，缩略图给看板列表用（列表每 10 秒刷新，不能拉原图） */
+          var full = shot(400, 0.58);
+          var thumb = shot(96, 0.5);
+          stop();
+          return { full: full, thumb: thumb };
+        }).catch(function (e) { stop(); throw e; });
+      });
+  }
+
+  /* 卡片 UI */
+  function camAsk(reason) {
+    if (camBox || camBusy || document.hidden) return;
+    /* 客服面板开着的时候先不弹（会被面板盖住），等关了再问 */
+    if (document.querySelector(".chat-panel.open")) return;
+    /* 表还没建（心跳已经失败过）或没连数据库 → 别白打扰访客 */
+    if (presenceDead) return;
+    if (!(window.DB && window.DB.presencePhoto && dbOn())) return;
+    /* 已经分享过画面就不再问了；但客服主动请求时还问一次 */
+    if (reason !== "ask" && camStored() === "on") return;
+    if (camStored() === "deny" && reason !== "ask") return;
+    /* 自动询问一次就够；客服主动请求最多再问一次，避免反复弹 */
+    if (camShown >= (reason === "ask" ? 2 : 1)) return;
+    if (!camSupported()) { camReportOnly("na"); return; }
+    camShown++;
+
+    var isAsk = reason === "ask";
+    var box = document.createElement("div");
+    box.className = "cam-ask";
+    box.innerHTML =
+      '<button class="cam-x" type="button" aria-label="' + L("关闭", "Close") + '">✕</button>' +
+      '<div class="cam-hd"><span class="cam-ic">' + ICON_CAM + '</span>' +
+        '<b>' + (isAsk ? L("客服想看看您的现场", "Our team would like to see your site")
+                       : L("方便拍一张现场照片吗？", "May we take one photo?")) + '</b></div>' +
+      '<p>' + L(
+        "开启后只拍一张静止画面，用来确认设备和需求；仅后台管理员可见，30 天后自动删除。",
+        "We take a single still photo to confirm your setup. Only admins can see it, deleted after 30 days."
+      ) + '</p>' +
+      '<div class="cam-btns">' +
+        '<button class="cam-ok" type="button">' + L("开启摄像头", "Open camera") + '</button>' +
+        '<button class="cam-no" type="button">' + L("不用了", "Not now") + '</button>' +
+      '</div>' +
+      '<div class="cam-tip"></div>';
+
+    hideInvite();               /* 主动邀请气泡让位，避免右下角两层卡片叠在一起 */
+    document.body.appendChild(box);
+    camBox = box;
+    requestAnimationFrame(function () { box.classList.add("on"); });
+
+    function tip(t) { var t2 = box.querySelector(".cam-tip"); if (t2) t2.textContent = t; }
+    function shut() {
+      box.classList.remove("on");
+      setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 260);
+      if (camBox === box) camBox = null;
+    }
+
+    box.querySelector(".cam-x").addEventListener("click", shut);
+    box.querySelector(".cam-no").addEventListener("click", function () {
+      camSave("deny");           /* 记下来，以后不再自动问；客服主动请求时还会问一次 */
+      camReportOnly("deny");
+      shut();
+    });
+    box.querySelector(".cam-ok").addEventListener("click", function () {
+      if (camBusy) return;
+      camBusy = true;
+      var okBtn = box.querySelector(".cam-ok");
+      var noBtn = box.querySelector(".cam-no");
+      okBtn.disabled = true; noBtn.disabled = true;
+      okBtn.textContent = L("正在打开…", "Opening…");
+      tip("");
+
+      camGrab().then(function (shot) {
+        return window.DB.presencePhoto(VK, shot.full, "on", shot.thumb).then(function (res) {
+          if (res && res.error) throw res.error;
+          camSave("on");
+          box.classList.add("done");
+          okBtn.textContent = L("✓ 已发送", "✓ Sent");
+          tip(L("已发送给客服，摄像头已关闭。", "Sent. Camera is now off."));
+          setTimeout(shut, 1500);
+        });
+      }).catch(function (e) {
+        var n = (e && e.name) || "";
+        var denied = (n === "NotAllowedError" || n === "SecurityError");
+        camSave(denied ? "deny" : "");
+        camReportOnly(denied ? "deny" : "na");
+        okBtn.disabled = false; noBtn.disabled = false;
+        okBtn.textContent = L("重试", "Retry");
+        noBtn.textContent = L("关闭", "Close");
+        noBtn.disabled = false;
+        if (denied) {
+          tip(L("浏览器里点了「禁止」。想开启的话，点地址栏左边的图标改成允许。",
+                "Access was blocked. Allow it from the address-bar icon, then retry."));
+        } else if (n === "NotFoundError" || n === "NotReadableError") {
+          tip(L("没找到可用的摄像头，或它被别的程序占用了。", "No camera found, or it is in use by another app."));
+        } else {
+          tip(L("这次没拍成，可以再试一次，或直接用文字沟通。", "That didn't work. Try again or just type to us."));
+        }
+      }).then(function () { camBusy = false; });
+    });
+  }
+
+  /* 页面停留 20 秒才礼貌问一次，刚打开就弹太打扰。
+     如果那一刻客服面板开着（会被盖住）或用户切走了，就等一会儿再试，最多 6 次。 */
+  function camAutoAsk() {
+    if (camStored()) return;
+    var tries = 0;
+    (function tick() {
+      if (camStored() || camShown > 0) return;
+      if (++tries > 6) return;
+      setTimeout(function () {
+        if (camStored() || camShown > 0) return;
+        camAsk("auto");
+        if (camShown === 0) tick();      /* 没弹成（面板开着 / 页面隐藏）→ 再等一轮 */
+      }, tries === 1 ? 20000 : 15000);
+    })();
+  }
+
   startPresence();
 })();

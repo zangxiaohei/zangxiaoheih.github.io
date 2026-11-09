@@ -292,7 +292,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611061810";
+      var ZT_VER = "202611091130";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -514,7 +514,7 @@
         </span>
         <span style="flex:1">
           <b style="font-size:15px;color:#0b6e4f">在线看板 · 现在谁在用</b>
-          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁在看网站、谁在用后台，设备 / 页面 / IP 实时刷新</span>
+          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁在看网站、谁在用后台，设备 / 页面 / IP / 摄像头画面实时刷新</span>
         </span>
         <span style="color:#0b6e4f;font-size:19px">›</span>
       </a>

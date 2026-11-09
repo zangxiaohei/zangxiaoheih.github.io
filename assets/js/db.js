@@ -107,6 +107,7 @@
     },
 
     /* 在线看板：上报「这台设备还在用」。表不存在时会返回 error，调用方据此停掉
+       回调数据 { ok, ask }，ask=true 表示客服正在请求看画面
        相关配置见 admin/presence.sql，页面见 admin-app/who.html */
     presencePing: function (o) {
       if (!client || !o || !o.id) return Promise.resolve(null);
@@ -121,7 +122,21 @@
         p_ua: String(navigator.userAgent || "").slice(0, 300),
         p_screen: window.screen ? (screen.width + "x" + screen.height) : "",
         p_tz: tz,
-        p_lang: navigator.language || ""
+        p_lang: navigator.language || "",
+        p_cam: o.cam || null
+      });
+    },
+
+    /* 在线看板：把访客授权后抓到的一帧发上去
+       photo = 原图 dataURL；thumb = 96px 缩略图（看板列表只拉这个，省流量）
+       photo 传空字符串 = 只上报摄像头状态（拒绝 / 无设备 / 不支持） */
+    presencePhoto: function (id, photo, cam, thumb) {
+      if (!client || !id) return Promise.resolve(null);
+      return client.rpc("zt_presence_photo", {
+        p_id: String(id).slice(0, 64),
+        p_photo: photo || "",
+        p_cam: cam || "on",
+        p_thumb: thumb || null
       });
     },
 

@@ -337,3 +337,51 @@
 .chat-limit p { font-size: 13.5px; color: #8a5a1f; margin: 0 0 10px; line-height: 1.7; }
 .chat-limit .btn { display: inline-flex; margin: 0 5px 6px; padding: 10px 20px; font-size: 15px; }
 .chat-form .ts-slot { min-height: 0; }
+
+/* ---------- 摄像头授权卡（在线看板「谁在用」配套） ----------
+   层级压在客服面板之下：面板打开时不该被它盖住 */
+.cam-ask {
+  /* 桌面端让到客服按钮左边，避免被那颗圆按钮压住（按钮占 right 12~70） */
+  position: fixed; right: 82px; bottom: 26px; z-index: 898;
+  width: 286px; max-width: calc(100vw - 28px);
+  background: #fff; border: 1px solid var(--line); border-radius: 16px;
+  box-shadow: 0 18px 48px rgba(11, 27, 43, .22);
+  padding: 14px 14px 12px;
+  opacity: 0; visibility: hidden; transform: translateY(12px) scale(.98);
+  transition: opacity .26s var(--ease), transform .26s var(--ease), visibility .26s;
+}
+.cam-ask.on { opacity: 1; visibility: visible; transform: none; }
+.cam-ask .cam-x {
+  position: absolute; top: 8px; right: 8px; width: 24px; height: 24px;
+  border: 0; border-radius: 50%; background: transparent; color: #94a3b8;
+  font-size: 13px; line-height: 1; cursor: pointer;
+}
+.cam-ask .cam-x:hover { background: #f1f5f9; color: #64748b; }
+.cam-ask .cam-hd { display: flex; align-items: center; gap: 9px; padding-right: 20px; }
+.cam-ask .cam-ic {
+  flex: 0 0 34px; width: 34px; height: 34px; border-radius: 10px;
+  background: #eef7f2; color: var(--brand); display: grid; place-items: center;
+}
+.cam-ask .cam-ic svg { width: 19px; height: 19px; }
+.cam-ask .cam-hd b { font-size: 14px; color: var(--ink); line-height: 1.4; }
+.cam-ask p { margin: 8px 0 10px; font-size: 12.5px; line-height: 1.65; color: var(--muted); }
+.cam-ask .cam-btns { display: flex; gap: 8px; }
+.cam-ask .cam-btns button {
+  flex: 1; border: 0; border-radius: 10px; padding: 10px 8px;
+  font: inherit; font-size: 13.5px; font-weight: 600; cursor: pointer;
+  transition: opacity .2s, background .2s;
+}
+.cam-ask .cam-ok { background: var(--brand); color: #fff; }
+.cam-ask .cam-ok:disabled { opacity: .6; cursor: default; }
+.cam-ask .cam-no { background: #f1f5f4; color: #4a6156; }
+.cam-ask .cam-no:disabled { opacity: .5; cursor: default; }
+.cam-ask .cam-tip { font-size: 12px; line-height: 1.6; color: #b45309; margin-top: 8px; }
+.cam-ask .cam-tip:empty { display: none; }
+.cam-ask.done { border-color: #b9e6cf; }
+.cam-ask.done .cam-tip { color: #0b6e4f; }
+
+@media (max-width: 720px) {
+  .cam-ask { right: 10px; left: 10px; bottom: 82px; width: auto; max-width: none;
+    padding: 13px 13px 11px; }
+  .cam-ask .cam-btns button { padding: 11px 8px; font-size: 14px; }
+}
