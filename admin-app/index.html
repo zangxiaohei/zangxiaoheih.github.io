@@ -8,7 +8,9 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
   <meta http-equiv="Pragma" content="no-cache" />
   <meta http-equiv="Expires" content="0" />
-  <title>中天后台管理</title>
+  <title>中天科技官网后台管理</title>
+  <link rel="icon" href="../assets/img/favicon.png?v=2026110516" type="image/png" />
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png" />
   <style>
     :root { --brand: #0b6e4f; --brand2: #12805c; --soft: #e7f3ed; --softer: #f3f9f6;
             --danger: #c0392b; --line: #dde8e2; --bg: #eef3f0; --ink: #1f2d28; --mut: #6b7d75; }
@@ -96,15 +98,17 @@
       padding: 9px clamp(8px, 2.4vw, 14px); margin: 14px 0 10px;
       font-size: clamp(12.5px, 3.3vw, 14px); font-weight: 700; color: var(--ink);
     }
-    /* 日期文字单独可省略，胶囊和箭头永不被压断行 */
-    .day-head .d-lb { flex: 1 1 auto; min-width: 0; overflow: hidden;
+    /* 日期文字单独可省略，周几、胶囊和箭头永不被压断行 */
+    .day-head .d-lb { flex: 0 1 auto; min-width: 0; overflow: hidden;
                        text-overflow: ellipsis; white-space: nowrap; }
+    .day-head .d-wk { flex: 0 0 auto; white-space: nowrap; font-size: .92em;
+                      font-weight: 600; color: #4c6b5b; }
     .day-head:first-child { margin-top: 0; }
     .day-head .arrow { flex: 0 0 auto; transition: transform .2s; font-size: 12px; color: var(--mut); }
     .day-group.closed .arrow { transform: rotate(-90deg); }
     .day-group.closed .day-body { display: none; }
     .day-body { padding: 2px 4px 6px; }
-    .day-head .cnt { flex: 0 0 auto; white-space: nowrap; font-weight: 600;
+    .day-head .cnt { flex: 0 0 auto; white-space: nowrap; font-weight: 600; margin-left: auto;
                      font-size: clamp(11px, 2.9vw, 12.5px); color: var(--brand);
                      background: #fff; border-radius: 999px; padding: 1px clamp(6px, 1.6vw, 9px); }
     .day-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
@@ -274,12 +278,19 @@
                        white-space: nowrap; max-width: min(160px, 44vw); }
     .att-file-card small { font-size: 11px; opacity: .7; }
     .t-back { display: none; }
-    .chat-viewer { position: fixed; inset: 0; z-index: 9999; background: rgba(8,18,26,.88);
-      display: none; align-items: center; justify-content: center; padding: clamp(8px, 2.6vw, 18px); }
-    .chat-viewer.show { display: flex; }
-    .chat-viewer img { max-width: 94vw; max-height: 86vh; border-radius: 10px; }
-    .chat-viewer .x { position: absolute; top: 14px; right: 14px; width: 40px; height: 40px;
-      border-radius: 50%; border: 0; background: rgba(255,255,255,.18); color: #fff; font-size: 18px; cursor: pointer; }
+    /* 大图预览：关闭按钮要贴着图片右上角，不能钉在视口角落（宽屏下会飘到很远，看着是歪的） */
+    .chat-viewer { position: fixed; inset: 0; z-index: 9999; background: rgba(8,18,26,.9); display: none; }
+    .chat-viewer.show { display: grid; place-items: center; padding: clamp(16px, 4vw, 28px); }
+    .chat-viewer .cv-box { position: relative; display: grid; place-items: center;
+      max-width: 100%; max-height: 100%; }
+    .chat-viewer img { max-width: min(94vw, 1400px); max-height: 80vh; border-radius: 10px; display: block;
+      box-shadow: 0 18px 50px rgba(0,0,0,.55); }
+    .chat-viewer .x { position: absolute; top: -13px; right: -13px; padding: 0;
+      width: clamp(30px, 7.5vw, 36px); height: clamp(30px, 7.5vw, 36px);
+      display: grid; place-items: center; border-radius: 50%; border: 0;
+      background: rgba(255,255,255,.22); color: #fff; font-size: 17px; line-height: 1;
+      cursor: pointer; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
+    .chat-viewer .x:hover { background: rgba(255,255,255,.34); }
     @media (max-width: 780px) {
       .chat-layout { display: block; }
       .chat-layout.has-thread .thread-list { display: none; }
@@ -347,16 +358,15 @@
     if (t) t.textContent = "已安装为应用，可以用桌面图标打开后台了";
   });
 </script>
-  <link rel="apple-touch-icon" href="../assets/img/admin-touch-icon.png" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="中天后台" />
+  <meta name="apple-mobile-web-app-title" content="中天科技后台" />
   <script src="../assets/js/push.js?v=202611052325" defer></script>
   <script>
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611091600";
+      var ZT_VER = "202611091532";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -445,7 +455,7 @@
   <!-- 登录视图 -->
   <div id="view-login">
     <div class="hero">
-      <h1>官网后台管理</h1>
+      <h1>中天科技官网后台管理</h1>
       <p class="sub">仅限管理员登录</p>
     </div>
     <div class="card" style="max-width:420px">
@@ -464,7 +474,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611061530 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611091532 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -473,7 +483,7 @@
   <div id="view-admin" class="hidden">
     <div class="topbar hero">
       <div>
-        <h1>官网后台管理</h1>
+        <h1>中天科技官网后台管理</h1>
         <p class="sub" id="whoami"></p>
       </div>
       <button class="ghost sm" id="btn-diag" title="检查红点/通知为什么不生效">🔔 提醒自检</button>
@@ -498,13 +508,6 @@
           <div class="row" style="justify-content:space-between;margin-bottom:8px">
             <b style="font-size:14px">会话列表</b>
             <span style="display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end">
-              <a class="ghost sm" href="chat-files.html" target="_blank" rel="noopener"
-                 title="发图片 / 文件需要先配置存储空间，点这里看设置步骤"
-                 style="display:inline-flex;align-items:center;gap:4px;text-decoration:none">
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor"
-                     stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"
-                     style="flex:0 0 auto"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>
-                附件设置</a>
               <button class="ghost sm" id="btn-readall">全部已读</button>
               <button class="ghost sm" id="btn-threads">刷新</button>
             </span>
@@ -550,7 +553,7 @@
             <input type="file" id="pick-cam" accept="image/*" capture="environment" hidden>
             <input type="file" id="pick-file" multiple hidden>
           </div>
-          <div class="chat-viewer" id="ad-viewer"><img alt="预览"><button class="x" id="ad-viewer-x">✕</button></div>
+          <div class="chat-viewer" id="ad-viewer"><div class="cv-box"><img alt="预览"><button class="x" id="ad-viewer-x" aria-label="关闭">✕</button></div></div>
           <div class="tip" id="thread-tip"></div>
         </div>
       </div>
@@ -1197,6 +1200,18 @@
     if (k === dkey(yd)) return "昨天 · " + name;
     return name;
   }
+  /* 日期行要拆成两段渲染：主文（放不下可以省略）+ 周几（永远不省略）。
+     侧栏只有 224px 时，「今天 · 11月9日 周一」会先吃掉"周一"，正好是老板最想看的，
+     所以今天/昨天只写"今天""昨天"（年、月在上一级已显示），周几单独占位 */
+  function dayParts(k) {
+    if (k === "未知") return { main: "未知时间", wk: "" };
+    var d = new Date(k + "T12:00:00");
+    var wk = "周" + DAYCN[d.getDay()];
+    var now = new Date(), yd = new Date(Date.now() - 864e5);
+    if (k === dkey(now)) return { main: "今天", wk: wk };
+    if (k === dkey(yd)) return { main: "昨天", wk: wk };
+    return { main: (d.getMonth() + 1) + "月" + d.getDate() + "日", wk: wk };
+  }
   function putInTree(tree, k, item) {
     var y = k.slice(0, 4), mo = k.slice(0, 7);
     if (k === "未知") { y = "未知"; mo = "未知"; }
@@ -1337,6 +1352,7 @@
             var days = Object.keys(tree[y][mo]).sort().reverse();
             var dHtml = days.map(function (k) {
               var list = tree[y][mo][k];
+              var dp = dayParts(k);
               var hasUnread = list.some(function (m) { return !m.is_read; });
               var cards = list.map(function (m) {
                 return '<div class="msg-card' + (m.is_read ? "" : " unread") + '">' +
@@ -1351,7 +1367,8 @@
               }).join("");
               return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '" data-day="' + k + '">' +
-                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>' +
+                '<span class="dot"></span><span class="d-lb">' + dp.main + '</span>' +
+                (dp.wk ? '<span class="d-wk">' + dp.wk + '</span>' : '') +
                 '<span class="cnt">' + list.length + ' 条</span>' +
                 (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
@@ -1497,10 +1514,12 @@
             var days = Object.keys(tree[y][mo]).sort().reverse();
             var dHtml = days.map(function (k) {
               var list = tree[y][mo][k];
+              var dp = dayParts(k);
               var hasUnread = list.some(function (t) { return (unreadMap[t.id] || 0) > 0; });
               return '<div class="day-group' + (k === latest.d ? "" : " closed") + '" data-state-key="d:' + k + '">' +
                 '<button type="button" class="day-head' + (hasUnread ? "" : " read-day") + '">' +
-                '<span class="dot"></span><span class="d-lb">' + dayLabel(k) + '</span>' +
+                '<span class="dot"></span><span class="d-lb">' + dp.main + '</span>' +
+                (dp.wk ? '<span class="d-wk">' + dp.wk + '</span>' : '') +
                 '<span class="cnt">' + list.length + ' 会话</span>' +
                 (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
@@ -1552,7 +1571,7 @@
           var badge = $("chat-badge");
           badge.textContent = total;
           badge.classList.toggle("hidden", total === 0);
-          document.title = (total > 0 ? "(" + total + ") " : "") + "官网后台管理";
+          document.title = (total > 0 ? "(" + total + ") " : "") + "中天科技官网后台管理";
           /* 关键：同步到手机桌面图标角标（留言 + 客服 全部未读） */
           syncBadge(total);
         });
@@ -2002,8 +2021,18 @@
     $("ad-viewer").querySelector("img").src = img.getAttribute("src");
     $("ad-viewer").classList.add("show");
   });
+  function closeViewer() {
+    var v = $("ad-viewer");
+    if (!v) return;
+    v.classList.remove("show");
+    var im = v.querySelector("img");
+    if (im) im.removeAttribute("src");
+  }
   $("ad-viewer").addEventListener("click", function (e) {
-    if (e.target === this || e.target.id === "ad-viewer-x") this.classList.remove("show");
+    if (e.target === this || e.target.id === "ad-viewer-x" || e.target.classList.contains("cv-box")) closeViewer();
+  });
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "Escape" || e.key === "Esc") && $("ad-viewer").classList.contains("show")) closeViewer();
   });
 
   /* ---------------- 内容编辑 ---------------- */

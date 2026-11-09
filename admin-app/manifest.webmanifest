@@ -1,6 +1,6 @@
 {
-  "name": "中天后台管理",
-  "short_name": "中天后台",
+  "name": "中天科技官网后台管理",
+  "short_name": "中天科技后台",
   "description": "官网留言与客服消息管理后台",
   "lang": "zh-CN",
   "start_url": "./index.html",
