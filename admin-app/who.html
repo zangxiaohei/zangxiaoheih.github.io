@@ -23,12 +23,22 @@
     font-size: 13px; background: rgba(255,255,255,.16); padding: 4px 12px; border-radius: 99px; }
   .top .acts { display: flex; gap: 8px; margin-top: 14px; overflow-x: auto;
     scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 2px; }
+  /* 关键：类选择器的 display:flex 会盖掉 [hidden] 的浏览器默认值，
+     不写这条两套顶栏按钮会同时出现 */
+  .top .acts[hidden] { display: none !important; }
   .top .acts::-webkit-scrollbar { display: none; }
   .top .acts button { flex: 0 0 auto; border: 0; border-radius: 10px; padding: 9px 14px; font: inherit; font-size: 13.5px;
     cursor: pointer; background: rgba(255,255,255,.18); color: #fff; }
   .top .acts button.on { background: #fff; color: var(--brand); font-weight: 700; }
 
   .stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: -8px; }
+  /* 手机上一行放四个：老板第一屏要看到「人在下面」，别让四个数字占掉半屏 */
+  @media (max-width: 559px) {
+    .stats { grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .stat { padding: 9px 5px; text-align: center; border-radius: 12px; }
+    .stat b { font-size: 20px; }
+    .stat span { font-size: 10.6px; display: block; line-height: 1.35; }
+  }
   .stat { background: #fff; border-radius: 14px; padding: 12px 14px; box-shadow: 0 2px 12px rgba(11,110,79,.07); }
   .stat b { display: block; font-size: 24px; line-height: 1.2; color: var(--brand); }
   .stat span { font-size: 12.5px; color: var(--muted); }
@@ -133,6 +143,67 @@
   .foot { text-align: center; font-size: 12px; color: #9aada4; margin-top: 18px; line-height: 1.8; }
   .tipbar { font-size: 12.5px; color: var(--muted); margin: 4px 2px 0; min-height: 18px; }
   @media (min-width: 560px) { .stats { grid-template-columns: repeat(4, 1fr); } }
+
+  /* ---------- 视图切换：后台登录 / 网站访客 ---------- */
+  .seg { display: flex; gap: 4px; margin-top: 12px; background: rgba(255,255,255,.16);
+    border-radius: 12px; padding: 4px; }
+  .seg button { flex: 1; border: 0; border-radius: 9px; padding: 9px 6px; font: inherit;
+    font-size: 13.5px; font-weight: 600; cursor: pointer; background: transparent;
+    color: rgba(255,255,255,.8); transition: background .18s, color .18s; }
+  .seg button.on { background: #fff; color: var(--brand); }
+  .view[hidden] { display: none; }
+
+  /* ---------- 后台登录视图 ---------- */
+  .pane-hd { display: flex; align-items: center; gap: 8px; margin: 18px 2px 9px;
+    font-size: 13px; font-weight: 700; color: #4a6156; }
+  .pane-hd i { width: 7px; height: 7px; border-radius: 50%; background: #16b979;
+    animation: pulse 1.8s ease-out infinite; }
+  .pane-hd i.off { background: #c3cdc8; animation: none; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(22,185,121,.55)}
+    70%{box-shadow:0 0 0 7px rgba(22,185,121,0)} 100%{box-shadow:0 0 0 0 rgba(22,185,121,0)} }
+  .pane-hd .cnt { margin-left: auto; font-weight: 500; font-size: 12.3px; color: #93a89e; }
+
+  .adm-row { display: flex; align-items: center; gap: 11px; background: #fff; border-radius: 14px;
+    padding: 12px 14px; margin-bottom: 9px; box-shadow: 0 1px 8px rgba(11,110,79,.06); }
+  .adm-row .av { flex: 0 0 38px; width: 38px; height: 38px; border-radius: 12px; display: grid;
+    place-items: center; background: linear-gradient(145deg, #0b6e4f, #16a06f); color: #fff;
+    font-size: 15px; font-weight: 700; text-transform: uppercase; }
+  .adm-row .m { flex: 1; min-width: 0; }
+  .adm-row .m .e { font-size: 14.4px; font-weight: 700; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-row .m .d { font-size: 12.2px; color: #7c9188; margin-top: 3px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .adm-row .st { flex: 0 0 auto; font-size: 11.6px; font-weight: 700; border-radius: 99px;
+    padding: 4px 9px; background: #e6f8ee; color: #0b6e4f; white-space: nowrap; text-align: center; }
+  .adm-row .st.away { background: #fdf3e3; color: #a3700f; }
+  .adm-row .st i { display: block; font-style: normal; font-size: 10.2px; font-weight: 600;
+    opacity: .72; margin-top: 1px; }
+
+  .log-row { display: flex; gap: 10px; background: #fff; border-radius: 12px; padding: 10px 13px;
+    margin-bottom: 8px; box-shadow: 0 1px 6px rgba(11,110,79,.05);
+    border-left: 3px solid #b7e6ce; }
+  .log-row.newn { border-left-color: #e8a33d; }
+  .log-row.bad { border-left-color: #e2685c; background: #fffafa; }
+  .log-row .t { flex: 0 0 44px; font-size: 11.8px; color: #93a89e;
+    font-variant-numeric: tabular-nums; padding-top: 2px; }
+  .log-row .m { flex: 1; min-width: 0; }
+  .log-row .m .l1 { font-size: 13.4px; font-weight: 600; color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .log-row .m .l2 { font-size: 12px; color: #7c9188; margin-top: 2px; line-height: 1.55;
+    word-break: break-word; }
+  .log-row .bd { flex: 0 0 auto; font-size: 11px; font-weight: 700; border-radius: 6px;
+    padding: 2px 7px; align-self: flex-start; margin-top: 1px; white-space: nowrap;
+    background: #eef7f2; color: #0b6e4f; }
+  .log-row.newn .bd { background: #fff4e5; color: #a35b00; }
+  .log-row.bad .bd { background: #fdecea; color: #c0392b; }
+
+  /* 新来的记录闪一下，一眼看到「刚有人登录」 */
+  @keyframes flashIn {
+    0% { background: #d9f4e6; transform: translateY(-6px); opacity: 0; }
+    60% { background: #eafaf1; transform: none; opacity: 1; }
+    100% { background: #fff; opacity: 1; }
+  }
+  .log-row.fresh { animation: flashIn 1.6s ease-out both; }
 </style>
 </head>
 <body>
@@ -142,16 +213,45 @@
     <a class="back" href="index.html">‹ 回后台</a>
     <h1><span class="dot"></span>谁在使用</h1>
     <p id="sub">正在统计…</p>
-    <div class="acts">
+    <div class="seg" id="seg">
+      <button data-v="login" class="on">🔐 后台登录</button>
+      <button data-v="visitor">🌐 网站访客</button>
+    </div>
+    <div class="acts" id="acts-visitor" hidden>
       <button id="btn-live">▶ 全部直播</button>
       <button id="btn-auto" class="on">自动 10s</button>
       <button id="btn-now">刷新</button>
       <button id="btn-clean">清理</button>
     </div>
+    <div class="acts" id="acts-login" hidden>
+      <button id="btn-login-now">刷新</button>
+    </div>
   </div>
 </div>
 
 <div class="wrap">
+
+  <!-- ========== 视图一：谁登录了后台（默认） ========== -->
+  <div class="view" id="view-login">
+    <div class="stats" id="stats-login" style="margin-top:12px"></div>
+
+    <div class="pane-hd"><i id="adm-dot"></i>正在使用后台<span class="cnt" id="adm-cnt"></span></div>
+    <div id="adm-list"><div class="empty">读取中…</div></div>
+
+    <div class="pane-hd">登录流水<span class="cnt" id="log-cnt"></span></div>
+    <div id="log-list"><div class="empty">读取中…</div></div>
+
+    <div class="card" id="log-setup" style="display:none">
+      <h2>还差一步：装登录记录</h2>
+      <p>现在能看到「谁在线」，但看不到「谁在什么时候登录过」。跑一次下面的 SQL，每次登录都会留痕，换设备/换网络/密码输错还会推微信。</p>
+      <button class="btn" id="btn-copy-log">复制 SQL</button>
+      <pre id="sql-log">读取中…</pre>
+      <a class="btn ghost" href="login-watch.html" style="margin-top:8px">打开安装说明 →</a>
+    </div>
+  </div>
+
+  <!-- ========== 视图二：网站访客 ========== -->
+  <div class="view" id="view-visitor" hidden>
   <div class="stats" id="stats" style="margin-top:12px"></div>
 
   <!-- 实时画面墙：有人授权并且在看时才出现 -->
@@ -181,6 +281,7 @@
     <p class="sub" style="margin-top:12px">跑完回到这里点「立即刷新」。之后每台打开网站或后台的设备，都会自动出现在上面。</p>
     <a class="btn ghost" href="https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new" target="_blank" rel="noopener" style="margin-top:8px">打开 Supabase SQL 编辑器 →</a>
   </div>
+  </div>
 
   <div class="card" id="loginGate" style="display:none">
     <h2>需要先登录后台</h2>
@@ -188,10 +289,9 @@
     <a class="btn" href="index.html">去登录 →</a>
   </div>
 
-  <div class="foot">
-    在线 = 90 秒内有心跳；设备每 45 秒上报一次（切到后台标签就会暂停）。<br>
-    画面要访客本人点「允许」才拍得到（浏览器不允许网站偷偷开摄像头）。<br>
-    记录保留 30 天，过期自动清理。
+  <div class="foot" id="foot">
+    在线 = 90 秒内有心跳（设备每 45 秒上报一次，切到后台标签会暂停）。<br>
+    登录记录保留 180 天；访客记录保留 30 天。
   </div>
 </div>
 
@@ -265,23 +365,273 @@
   var cols = COLS_FULL, needUpgrade = false;
   var thumbs = {}, thumbCursor = "1970-01-01T00:00:00+00:00";
 
+  /* ==================================================================
+     视图切换：默认打开「后台登录」——老板要看的是谁登录了后台
+     ================================================================== */
+  var view = "login", loginTimer = null, admRows = [], admDead = false;
+  var logLoadedOnce = false;
+
+  function switchView(v) {
+    view = v === "visitor" ? "visitor" : "login";
+    var bs = document.querySelectorAll("#seg button");
+    for (var i = 0; i < bs.length; i++) {
+      bs[i].classList.toggle("on", bs[i].getAttribute("data-v") === view);
+    }
+    $("view-login").hidden = view !== "login";
+    $("view-visitor").hidden = view !== "visitor";
+    $("acts-login").hidden = view !== "login";
+    $("acts-visitor").hidden = view !== "visitor";
+    try { localStorage.setItem("zt_who_view", view); } catch (e) {}
+
+    if (view === "visitor") {
+      stopLoginTimer();
+      load(true);
+      startAuto();
+    } else {
+      if (timer) { clearInterval(timer); timer = null; }
+      loadLogin(true);
+      startLoginTimer();
+    }
+  }
+
+  function startLoginTimer() {
+    if (loginTimer) return;
+    loginTimer = setInterval(function () { if (!document.hidden) loadLogin(false); }, 4000);
+  }
+  function stopLoginTimer() {
+    if (loginTimer) { clearInterval(loginTimer); loginTimer = null; }
+  }
+  document.addEventListener("visibilitychange", function () {
+    if (document.hidden) return;
+    if (view === "login") loadLogin(false);
+  });
+
+  function when(iso) {
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return "—";
+    var now = new Date();
+    if (d.toDateString() === now.toDateString()) return hhmm(iso);
+    var y = new Date(now.getTime() - 864e5);
+    if (d.toDateString() === y.toDateString()) return "昨天";
+    return (d.getMonth() + 1) + "/" + d.getDate();
+  }
+
+  /* ---------- 拉数据：在线管理员 + 登录流水 ---------- */
+  function loadLogin(busy) {
+    if (!client) return;
+    if (busy) $("sub").textContent = "正在读取…";
+    var since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
+
+    client.from("site_presence")
+      .select("id,kind,name,page,device,ip,first_at,last_at")
+      .eq("kind", "admin")
+      .gte("last_at", since)
+      .order("last_at", { ascending: false })
+      .limit(50)
+      .then(function (r1) {
+        admDead = !!(r1 && r1.error);
+        admRows = (r1 && !r1.error && r1.data) ? r1.data : [];
+        return client.from("admin_login_log")
+          .select("id,email,ok,ip,device,city,is_new,logged_at")
+          .order("logged_at", { ascending: false })
+          .limit(60);
+      })
+      .then(function (r2) {
+        if (r2 && r2.error) {
+          $("log-setup").style.display = "block";
+          $("log-list").innerHTML = "";
+          $("stats-login").innerHTML = "";
+          $("log-cnt").textContent = "";
+          $("sub").textContent = "登录记录表还没建，按下面提示跑一次 SQL";
+          renderAdmRows();          /* 在线那块照样能显示 */
+          return;
+        }
+        $("log-setup").style.display = "none";
+        renderLoginView((r2 && r2.data) || []);
+      })
+      .catch(function () {
+        $("sub").textContent = "网络异常，4 秒后自动重试";
+      });
+  }
+
+  function renderLoginView(logs) {
+    /* --- 统计 --- */
+    var todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+    var okToday = 0, badToday = 0, newToday = 0;
+    logs.forEach(function (r) {
+      if (new Date(r.logged_at).getTime() < todayStart.getTime()) return;
+      if (r.ok === false) badToday++; else okToday++;
+      if (r.is_new) newToday++;
+    });
+    var onNow = admRows.filter(function (r) { return state(r) === "on"; }).length;
+
+    $("stats-login").innerHTML =
+      statBlock(onNow, "后台在线", false) +
+      statBlock(okToday, "今日登录", false) +
+      statBlock(newToday, "新 IP", newToday > 0) +
+      statBlock(badToday, "密码错误", badToday > 0);
+
+    renderAdmRows();
+
+    /* --- 流水：增量插入 ---
+       整表重绘会把手上的 fresh 动画类冲掉（4 秒一轮，动画 1.6 秒，必然被清），
+       所以只在顶部插新来的那几条，旧行完全不碰。 */
+    renderLogs(logs);
+
+    $("sub").textContent = "最后更新 " + hhmm(new Date().toISOString());
+  }
+
+  function logRowHtml(r, freshId) {
+    var cls = r.ok === false ? "bad" : (r.is_new ? "newn" : "");
+    if (freshId && Number(r.id) === Number(freshId)) cls += " fresh";
+    var tag = r.ok === false ? "密码错误" : (r.is_new ? "新 IP" : "正常");
+    var l2 = [];
+    if (r.device) l2.push(esc(r.device));
+    if (r.ip) l2.push(esc(r.ip) + (r.city ? " " + esc(r.city) : ""));
+    return '<div class="log-row ' + cls + '" data-id="' + esc(r.id) + '">' +
+      '<div class="t">' + when(r.logged_at) + '</div>' +
+      '<div class="m">' +
+        '<div class="l1">' + esc(r.email || "未知账号") + '</div>' +
+        '<div class="l2">' + (l2.join(" · ") || "—") + '</div>' +
+      '</div>' +
+      '<div class="bd">' + tag + '</div>' +
+    '</div>';
+  }
+
+  var LOG_MAX = 80;
+
+  function renderLogs(logs) {
+    var box = $("log-list");
+    var els = box.querySelectorAll(".log-row");
+
+    if (!logLoadedOnce || !els.length) {
+      box.innerHTML = logs.length
+        ? logs.map(function (r) { return logRowHtml(r, 0); }).join("")
+        : '<div class="empty">还没有登录记录。<br>换个手机或换张流量卡登录一次，这里马上会多一条。</div>';
+      logLoadedOnce = true;
+      $("log-cnt").textContent = logs.length ? "最近 " + logs.length + " 条" : "";
+      return;
+    }
+
+    /* 只挑列表里还没有的 */
+    var have = {};
+    for (var i = 0; i < els.length; i++) have[els[i].getAttribute("data-id")] = 1;
+    var add = logs.filter(function (r) { return !have[String(r.id)]; });
+    if (!add.length) return;
+
+    var em = box.querySelector(".empty");
+    if (em) box.removeChild(em);
+
+    /* logs 是倒序（新的在前），倒回来逐个 afterbegin，最终顺序才正确 */
+    for (var j = add.length - 1; j >= 0; j--) {
+      box.insertAdjacentHTML("afterbegin", logRowHtml(add[j], add[j].id));
+    }
+    while (box.querySelectorAll(".log-row").length > LOG_MAX) {
+      box.removeChild(box.lastElementChild);
+    }
+    var n = box.querySelectorAll(".log-row").length;
+    $("log-cnt").textContent = "最近 " + n + " 条";
+  }
+
+  function renderAdmRows() {
+    var on = admRows.filter(function (r) { return state(r) === "on"; });
+    var dots = document.querySelectorAll("#adm-dot");
+    for (var d = 0; d < dots.length; d++) dots[d].classList.toggle("off", !on.length);
+
+    $("adm-cnt").textContent = on.length
+      ? on.length + " 人正在用"
+      : (admDead ? "还没装在线表" : "此刻没人在后台");
+
+    if (admDead) {
+      $("adm-list").innerHTML = '<div class="empty">还看不到「正在使用」——需要在 Supabase 跑一次 admin/presence.sql。<br>下面的登录流水不受影响。</div>';
+      return;
+    }
+    if (!admRows.length) {
+      $("adm-list").innerHTML = '<div class="empty">近 24 小时没有管理员打开过后台。</div>';
+      return;
+    }
+    $("adm-list").innerHTML = admRows.map(function (r) {
+      var st = state(r);
+      var mail = r.name || "管理员";
+      var initial = String(mail).slice(0, 1);
+      /* 手机上宽度有限：只留设备 + IP，分辨率/语言这些对老板没用 */
+      var d = [];
+      if (r.device) d.push(esc(r.device));
+      d.push(esc(r.ip || "-"));
+      return '<div class="adm-row">' +
+        '<div class="av">' + esc(initial) + '</div>' +
+        '<div class="m">' +
+          '<div class="e">' + esc(mail) + '</div>' +
+          '<div class="d">' + d.join(" · ") + '</div>' +
+        '</div>' +
+        '<div class="st ' + (st === "on" ? "" : "away") + '">' +
+          (st === "on" ? "在线" : "离开") +
+          '<i>' + (st === "on" ? stay(r.first_at) : ago(r.last_at)) + '</i>' +
+        '</div>' +
+      '</div>';
+    }).join("");
+  }
+
+  /* 复制登录记录 SQL：能读到文件就复制，读不到就跳安装页 */
+  $("btn-copy-log").addEventListener("click", function () {
+    var b = this;
+    b.disabled = true; b.textContent = "读取中…";
+    fetch("../admin/login-watch.sql").then(function (r) {
+      if (!r.ok) throw new Error("404");
+      return r.text();
+    }).then(function (t) {
+      return navigator.clipboard.writeText(t).then(function () {
+        b.textContent = "已复制，去 Supabase 跑 →";
+        window.open("https://supabase.com/dashboard/project/ndjctekubqinrlyokmzp/sql/new", "_blank");
+        setTimeout(function () { b.disabled = false; b.textContent = "复制 SQL"; }, 3000);
+      });
+    }).catch(function () {
+      b.disabled = false;
+      b.textContent = "复制 SQL";
+      location.href = "login-watch.html";
+    });
+  });
+
   /* ---------- 登录校验 ---------- */
   if (!client) {
     $("sub").textContent = "没有配置数据库，看板不可用";
-    $("list").innerHTML = '<div class="empty">请先在 assets/js/db-config.js 里填 Supabase 地址和 anon key。</div>';
+    $("view-visitor").hidden = false;
+    $("view-login").hidden = false;
+    $("adm-list").innerHTML = '<div class="empty">请先在 assets/js/db-config.js 里填 Supabase 地址和 anon key。</div>';
+    $("log-list").innerHTML = "";
     return;
   }
   client.auth.getSession().then(function (res) {
     var s = res && res.data && res.data.session;
     if (!s || !s.user) { showGate(); return; }
-    load(true);
-    startAuto();
+    /* 记住上次看的视图；默认是「后台登录」 */
+    var last = "login";
+    try { last = localStorage.getItem("zt_who_view") || "login"; } catch (e) {}
+    switchView(last);
+  });
+
+  var segBs = document.querySelectorAll("#seg button");
+  for (var si = 0; si < segBs.length; si++) {
+    (function (b) {
+      b.addEventListener("click", function () { switchView(b.getAttribute("data-v")); });
+    })(segBs[si]);
+  }
+  $("btn-login-now").addEventListener("click", function () {
+    this.textContent = "刷新中…";
+    loadLogin(true);
+    var self = this;
+    setTimeout(function () { self.textContent = "刷新"; }, 900);
   });
 
   function showGate() {
     $("loginGate").style.display = "block";
-    $("list").innerHTML = "";
+    $("view-login").hidden = true;
+    $("view-visitor").hidden = true;
+    $("acts-login").hidden = true;
+    $("acts-visitor").hidden = true;
     $("sub").textContent = "未登录";
+    stopLoginTimer();
+    if (timer) { clearInterval(timer); timer = null; }
   }
 
   /* ---------- 拉数据 ---------- */
@@ -389,10 +739,10 @@
 
     $("stats").innerHTML =
       statBlock(on.length, "此刻在线", on.length > 0) +
-      statBlock(near.length, "10 分钟内", false) +
+      statBlock(near.length, "10 分钟", false) +
       statBlock(Object.keys(today).length, "今天来过", false) +
       (liveN ? statBlock(liveN, "正在直播", true)
-             : statBlock(withFace, "已看到画面", withFace > 0));
+             : statBlock(withFace, "有画面", withFace > 0));
 
     $("sub").textContent = "最后更新 " + hhmm(new Date().toISOString()) +
       " · 共 " + rows.length + " 台（近 24 小时）" + (admOn ? " · 后台在线 " + admOn : "");
