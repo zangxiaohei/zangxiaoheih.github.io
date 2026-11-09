@@ -2,7 +2,7 @@
 <html lang="zh-CN" translate="no">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content" />
 <meta name="google" content="notranslate" />
   <meta name="robots" content="noindex, nofollow" />
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
@@ -158,6 +158,8 @@
     .bubble-row.admin .bubble-b { background: linear-gradient(135deg, var(--brand2), var(--brand)); color: #fff;
                                   border: 0; border-radius: 12px 12px 4px 12px; }
     .bubble-meta { font-size: 11px; color: #93a39c; margin-top: 4px; }
+    .bubble-meta .rd { color: #9db3a8; }
+    .bubble-meta .rd.un { color: #c07f18; font-weight: 600; }
     .bubble-row.admin .bubble-meta { text-align: right; color: #7fa395; }
     /* 按天分隔 */
     .day-sep { text-align: center; margin: 4px 0 14px; }
@@ -245,7 +247,12 @@
       .chat-layout.has-thread .thread-list { display: none; }
       .chat-layout:not(.has-thread) .thread-view { display: none; }
       .t-back { display: inline-block; margin-bottom: 8px; }
-      .thread-msgs { height: calc(100dvh - 372px); min-height: 260px; }
+      /* 手机上让会话区填满剩余高度，输入框永远贴在屏幕底部。
+         原来写死 calc(100dvh - 372px)，顶部一高就被顶到屏幕外，
+         用户点输入框等于点在空白处 —— 表现就是「点一下打不了字」 */
+      .thread-view { display: flex; flex-direction: column; }
+      .thread-head { flex: 0 0 auto; }
+      .thread-msgs { flex: 1 1 auto; height: auto; min-height: 90px; }
       .thread-list { max-height: none; }
       .bubble-row > div { max-width: 84%; }
       .bubble-b { font-size: 14.5px; }
@@ -256,7 +263,7 @@
       .cp-body[data-panel="emoji"] { grid-template-columns: repeat(8, 1fr); }
       .rb-tools .rb-hint { display: none; }
       .rb-input #btn-reply { min-width: 72px; }
-      .reply-box { position: sticky; bottom: 0; background: #fff; padding-top: 6px; z-index: 2; }
+      .reply-box { position: static; flex: 0 0 auto; background: #fff; padding-top: 6px; z-index: 2; }
     }
     ::-webkit-scrollbar { width: 9px; height: 9px; }
     ::-webkit-scrollbar-thumb { background: #c4d4cb; border-radius: 6px; }
@@ -292,7 +299,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611091430";
+      var ZT_VER = "202611091525";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -419,7 +426,6 @@
       <button data-tab="msg" class="on">📋 客户留言</button>
       <button data-tab="chat">💬 在线客服 <b id="chat-badge" class="badge hidden">0</b></button>
       <button data-tab="content">✏️ 网站内容</button>
-      <button data-tab="login">🔐 谁在用</button>
     </div>
 
     <!-- 留言 -->
@@ -471,7 +477,7 @@
               <span class="rb-hint">可粘贴截图（Ctrl+V）或把文件拖进聊天区</span>
             </div>
             <div class="rb-input">
-              <textarea id="reply-text" placeholder="输入回复内容，Enter 换行；Ctrl+Enter 发送"></textarea>
+              <textarea id="reply-text" placeholder="输入回复内容，Enter 发送；Ctrl+Enter 换行"></textarea>
               <button id="btn-reply">发送</button>
             </div>
             <div class="ci-panel" id="reply-panel" hidden>
@@ -506,23 +512,6 @@
       </div>
     </div>
 
-    <!-- 谁在用：登录记录 -->
-    <div id="tab-login" class="hidden">
-      <a href="watch.html" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-bottom:12px">
-        <span style="width:40px;height:40px;border-radius:12px;background:#0f2a20;color:#35d08a;display:grid;place-items:center;flex:0 0 auto">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10.5V7.2c0-.7-.6-1.2-1.2-1.2H3.2C2.6 6 2 6.5 2 7.2v9.6c0 .7.6 1.2 1.2 1.2h10.6c.6 0 1.2-.5 1.2-1.2v-3.3l6 3.2V7.3l-6 3.2z"/></svg>
-        </span>
-        <span style="flex:1">
-          <b style="font-size:15px;color:#0b6e4f">监控台 · 看谁在登录后台</b>
-          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁在用后台、用的哪台设备，以及那台设备摄像头拍到的画面（对方点「允许」后才传）</span>
-        </span>
-        <span style="color:#0b6e4f;font-size:19px">›</span>
-      </a>
-      <div class="row"><button class="ghost sm" id="btn-login-refresh">刷新记录</button><span class="tip" id="login-log-tip"></span></div>
-      <div id="login-summary" style="margin-top:12px"></div>
-      <div id="login-list" style="margin-top:10px"></div>
-    </div>
-
     <!-- 退出登录：从顶部移到页面最下方，避免误触 -->
     <div style="margin:28px 0 10px;text-align:center">
       <button class="ghost sm" id="btn-logout" style="color:#7c9188;font-size:12.5px;padding:7px 18px">退出登录</button>
@@ -533,7 +522,6 @@
 
 <script src="../assets/js/db-config.js?v=2026110534"></script>
 <script src="../assets/vendor/supabase.min.js?v=2026110516"></script>
-<script src="../assets/js/admin-cam.js?v=202611091445"></script>
 <script>
 (function () {
   "use strict";
@@ -650,31 +638,6 @@
   $("btn-login").addEventListener("click", doLogin);
   $("login-pass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
 
-  /* 登录记录：谁在什么时候、用什么设备、从哪个 IP 登进来的。
-     成功和失败都记一条；「第一次出现的 IP」和「密码错误」服务端会当场推微信。
-     城市只是锦上添花 —— 2 秒拿不到就只记 IP，绝不能因为查归属地把登录卡住。 */
-  function reportLogin(email, ok) {
-    if (!client) return;
-    var ua = navigator.userAgent;
-    var sent = false;
-    function send(city) {
-      if (sent) return;
-      sent = true;
-      try {
-        /* 表还没建的时候这个 RPC 会 404 —— 吞掉，不能让上报失败影响登录 */
-        var q = client.rpc("zt_log_login", { p_email: email, p_ok: !!ok, p_ua: ua, p_city: city || "" });
-        if (q && q.catch) q.catch(function () {});
-      } catch (e) {}
-    }
-    var t = setTimeout(function () { send(""); }, 2000);
-    try {
-      fetch("https://ipapi.co/json/")
-        .then(function (r) { return r.json(); })
-        .then(function (j) { clearTimeout(t); send([j.city, j.region].filter(Boolean).join(" ")); })
-        .catch(function () { clearTimeout(t); send(""); });
-    } catch (e) { clearTimeout(t); send(""); }
-  }
-
   function doLogin() {
     var email = $("login-email").value.trim();
     var pass = $("login-pass").value;
@@ -687,13 +650,10 @@
         var m = String(res.error.message || "");
         var isNet = /fetch|network|timeout|Failed to/i.test(m) || res.error.status === 0;
         showTip(tipLogin, isNet ? "网络连接失败，请检查网络后重试（或切换网络）。" : "邮箱或密码错误。", true);
-        /* 网络问题不算「有人试密码」，只有真的认证失败才记 */
-        if (!isNet) reportLogin(email, false);
         return;
       }
       /* 手动登录成功：解除"刚退出"保护 */
       try { localStorage.removeItem("zt_logout_at"); } catch (e) {}
-      reportLogin(email, true);
       enterAdmin(res.data.user);
     });
   }
@@ -778,54 +738,7 @@
     initRealtime();
     /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
     if (window.ZTPush) window.ZTPush.adminOnline();
-    /* 在线看板：让监控台看到这台设备正在用后台；同时把摄像头授权状态一起报上去 */
-    startAdminPresence();
-    /* 被监控端：连上指令频道，监控台点「看画面」时才弹授权卡 */
-    try { if (window.AdminCam) window.AdminCam.init(client, (user && user.email) || ""); } catch (e) {}
-    /* 已授权过的设备，登录成功后静默抓一帧当「登录留影」（不会弹权限框） */
-    try {
-      if (window.AdminCam && window.AdminCam.state() === "on") setTimeout(function () { window.AdminCam.snap("login"); }, 1200);
-    } catch (e) {}
-  }
-
-  /* ---------------- 在线看板：本设备心跳（配置见 admin/presence.sql） ---------------- */
-  var presenceTimer = null, presenceDead = false;
-  function adminPing() {
-    if (!client || presenceDead || document.hidden) return;
-    var id = null;
-    try { id = localStorage.getItem("zt_dev"); } catch (e) {}
-    if (!id) {
-      id = "adm-" + Math.random().toString(36).slice(2, 10) + "-" + Date.now().toString(36).slice(-4);
-      try { localStorage.setItem("zt_dev", id); } catch (e) {}
-    }
-    var tz = "";
-    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch (e) {}
-    client.rpc("zt_presence_ping", {
-      p_id: id,
-      p_kind: "admin",
-      p_name: (currentUser && currentUser.email) || "",
-      p_page: location.pathname,
-      p_ref: "",
-      p_ua: navigator.userAgent,
-      p_screen: screen.width + "x" + screen.height,
-      p_tz: tz,
-      p_lang: navigator.language || "",
-      /* 摄像头授权状态：监控台据此判断「能直接看」还是「要等本人允许」 */
-      p_cam: (function () { try { return (window.AdminCam && window.AdminCam.state()) || null; } catch (e) { return null; } })()
-    }).then(function (res) {
-      /* 表不存在（还没跑 admin/presence.sql）→ 停掉，别每 45 秒报一次错 */
-      if (res && res.error) { presenceDead = true; return; }
-      /* 监控台点了「请求看画面」→ 心跳会带回 ask=true，这时才弹授权卡 */
-      try {
-        if (window.AdminCam && res && res.data && res.data.ask) window.AdminCam.onAsk();
-      } catch (e) {}
-    }).catch(function () { presenceDead = true; });
-  }
-  function startAdminPresence() {
-    if (presenceTimer) return;
-    adminPing();
-    presenceTimer = setInterval(adminPing, 45000);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) adminPing(); });
+    probeReceipt();
   }
 
   /* ---------------- 提醒自检：一眼看出红点/通知卡在哪 ---------------- */
@@ -1205,79 +1118,10 @@
       $("tab-msg").classList.toggle("hidden", tab !== "msg");
       $("tab-chat").classList.toggle("hidden", tab !== "chat");
       $("tab-content").classList.toggle("hidden", tab !== "content");
-      $("tab-login").classList.toggle("hidden", tab !== "login");
-      if (tab === "login") loadLoginLog(true);
+      if (tab === "chat") setTimeout(fitChat, 30);
       startAuto(); autoRefresh(true);
     });
   });
-
-  /* ---------------- 谁在用（登录记录） ---------------- */
-  $("btn-login-refresh").addEventListener("click", function () { loadLoginLog(true); });
-
-  function loadLoginLog(manual) {
-    var tip = $("login-log-tip"), box = $("login-list"), sum = $("login-summary");
-    if (!client) return;
-    if (manual) tip.textContent = "读取中…";
-    client.from("admin_login_log")
-      .select("id,email,ok,ip,device,city,is_new,logged_at")
-      .order("logged_at", { ascending: false })
-      .limit(80)
-      .then(function (res) {
-        if (res.error) {
-          tip.textContent = "";
-          box.innerHTML = '<div class="card"><p class="tip" style="margin:0">还读不到记录。先打开 <a href="login-watch.html" style="color:#0b6e4f;font-weight:700">安装页面</a>，点一下按钮复制 SQL，粘贴到 Supabase 跑一次就好了。</p></div>';
-          sum.innerHTML = "";
-          return;
-        }
-        tip.textContent = "";
-        var rows = res.data || [];
-        renderLoginSum(sum, rows);
-        renderLoginList(box, rows);
-      });
-  }
-
-  function renderLoginSum(sum, rows) {
-    var week = Date.now() - 7 * 864e5, recent = [], ips = {}, bad = 0;
-    rows.forEach(function (r) {
-      if (new Date(r.logged_at).getTime() < week) return;
-      recent.push(r);
-      ips[r.ip || "?"] = 1;
-      if (r.ok === false) bad++;
-    });
-    var nIp = Object.keys(ips).length;
-    function block(label, val, danger) {
-      return '<div><div class="tip" style="margin:0">' + label + '</div><b style="font-size:20px;' +
-        (danger ? "color:#c0392b" : "color:#0b6e4f") + '">' + val + '</b></div>';
-    }
-    sum.innerHTML = '<div class="card" style="display:flex;gap:22px;flex-wrap:wrap;align-items:flex-end">' +
-      block("最近 7 天登录", recent.length, false) +
-      block("不同 IP", nIp, nIp > 2) +
-      block("密码错误", bad, bad > 0) +
-      '</div>';
-  }
-
-  function renderLoginList(box, rows) {
-    if (!rows.length) {
-      box.innerHTML = '<div class="card"><p class="tip" style="margin:0">还没有记录。换个手机或换张流量卡登录一次，这里马上会多一条，微信也会收到提醒。</p></div>';
-      return;
-    }
-    var html = "";
-    rows.forEach(function (r) {
-      var tag;
-      if (r.ok === false) {
-        tag = '<span style="background:#fdecea;color:#c0392b;border-radius:6px;padding:1px 7px;font-size:12px">密码错误</span>';
-      } else if (r.is_new) {
-        tag = '<span style="background:#fff4e5;color:#a35b00;border-radius:6px;padding:1px 7px;font-size:12px">新 IP · 已微信提醒</span>';
-      } else {
-        tag = '<span style="background:#eef7f2;color:#0b6e4f;border-radius:6px;padding:1px 7px;font-size:12px">正常</span>';
-      }
-      html += '<div class="msg-card">' +
-        '<div class="meta"><b>' + esc(r.device || "未知设备") + '</b>' + tag + '<span>' + fmtTime(r.logged_at) + '</span></div>' +
-        '<div class="body">IP：' + esc(r.ip || "-") + (r.city ? " · " + esc(r.city) : "") +
-        '<br>账号：' + esc(r.email || "-") + '</div></div>';
-    });
-    box.innerHTML = html;
-  }
 
   /* ---- 日期分组辅助：留言 / 会话共用（按本机时区，凌晨消息不再算错天） ---- */
   function dkey(d) {
@@ -1674,6 +1518,7 @@
     loadMessagesOf(curThread, false);
     var lay = document.querySelector(".chat-layout");
     if (lay) lay.classList.add("has-thread");
+    setTimeout(fitChat, 30);
     client.from("chat_messages").update({ is_read: true }).eq("thread_id", curThread).eq("role", "visitor")
       .then(function () { loadUnread(); });
   });
@@ -1966,6 +1811,16 @@
       });
   }
 
+  /* 已读回执依赖 admin/chat-read-receipt.sql。没装就干脆不显示标记，
+     否则老板会看到一整片「未读」被吓到 */
+  var receiptOk = null;
+  function probeReceipt() {
+    if (receiptOk !== null || !client) return;
+    client.rpc("chat_mark_read", { p_key: "00000000-0000-0000-0000-000000000000" })
+      .then(function (r) { receiptOk = !(r && r.error); })
+      .catch(function () { receiptOk = false; });
+  }
+
   function loadMessagesOf(threadId, quiet) {
     client.from("chat_threads").select("*").eq("id", threadId).maybeSingle().then(function (tr) {
       var t = (tr && tr.data) || {};
@@ -1978,7 +1833,7 @@
         if (res.error) { showTip($("thread-tip"), "读取消息失败：" + res.error.message, true); return; }
         var box = $("thread-msgs");
         /* 静默刷新：消息没变就不重绘，避免每 12 秒闪一下 */
-        var sig = res.data.map(function (m) { return m.id + (m.role === "admin" ? "a" : "v"); }).join(",");
+        var sig = res.data.map(function (m) { return m.id + (m.role === "admin" ? "a" : "v") + (m.is_read ? "1" : "0"); }).join(",");
         if (quiet && chatSig[threadId] === sig) return;
         chatSig[threadId] = sig;
         /* 正在看这个会话 = 已读：把新来的访客消息标为已读，角标数字才会随之下降 */
@@ -1997,7 +1852,12 @@
           lastDay = day || lastDay;
           return sep + '<div class="bubble-row' + (m.role === "admin" ? " admin" : "") + '">' +
             '<div><div class="bubble-b' + bubbleCls(m.content) + '">' + attMsgHtml(m.content) + '</div>' +
-            '<div class="bubble-meta">' + fmtHM(m.created_at) + '</div></div></div>';
+            '<div class="bubble-meta">' + fmtHM(m.created_at) +
+              (m.role === "admin" && receiptOk !== false
+                ? ' · <span class="rd' + (m.is_read ? "" : " un") + '">' +
+                  (m.is_read ? "已读" : "未读") + '</span>'
+                : "") +
+            '</div></div></div>';
         }).join("") || '<div class="empty">暂无消息</div>';
         if (!quiet || atBottom) box.scrollTop = box.scrollHeight;
       });
@@ -2023,8 +1883,45 @@
 
   $("btn-reply").addEventListener("click", sendReply);
   $("reply-text").addEventListener("keydown", function (e) {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(); }
+    if (e.key !== "Enter") return;
+    /* 中文输入法正在拼字时按回车是「选词」，绝不能当成发送 */
+    if (e.isComposing || e.keyCode === 229) return;
+    /* Ctrl / ⌘ / Shift + 回车 = 换行 */
+    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+    e.preventDefault();
+    sendReply();
   });
+
+  /* 手机上点输入框，键盘一弹就把输入框滚到可视区中间。
+     不然它在键盘底下，用户看不见光标，表现就是「点一下打不了字」。 */
+  /* 会话区高度 = 屏幕剩余高度。手机键盘弹出时 visualViewport 变小，
+     这里立刻跟着缩，输入框就始终在可见区域内 */
+  function fitChat() {
+    var tv = document.querySelector(".thread-view");
+    if (!tv) return;
+    if (window.innerWidth > 780) { tv.style.height = ""; return; }
+    var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    var top = tv.getBoundingClientRect().top;
+    tv.style.height = Math.max(260, Math.round(vh - top - 10)) + "px";
+  }
+  window.addEventListener("resize", function () { setTimeout(fitChat, 60); });
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener("resize", function () { setTimeout(fitChat, 60); });
+  }
+
+  (function keepInputVisible() {
+    var rt = $("reply-text");
+    function lift() {
+      try { rt.scrollIntoView({ block: "center", behavior: "smooth" }); }
+      catch (e) { try { rt.scrollIntoView(); } catch (e2) {} }
+    }
+    rt.addEventListener("focus", function () { setTimeout(lift, 320); });
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", function () {
+        if (document.activeElement === rt) lift();
+      });
+    }
+  })();
 
   /* 图片 / 文件 / 预览 / 手机端返回列表 */
   $("btn-send-img").addEventListener("click", function () { $("pick-img").click(); });
@@ -2037,6 +1934,8 @@
   $("btn-back-list").addEventListener("click", function () {
     var lay = document.querySelector(".chat-layout");
     if (lay) lay.classList.remove("has-thread");
+    var tv = document.querySelector(".thread-view");
+    if (tv) tv.style.height = "";
     loadThreads(true);
   });
   $("thread-msgs").addEventListener("click", function (e) {

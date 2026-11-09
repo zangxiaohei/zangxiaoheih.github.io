@@ -16,7 +16,6 @@ import android.provider.MediaStore;
 import android.provider.Settings;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
-import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -40,7 +39,6 @@ public class MainActivity extends Activity {
     private static final int REQ_CAMERA = 1003;      /* 拍完照回来 */
     private static final int REQ_CAM_PERM = 1004;    /* 申请相机权限 */
     private Uri cameraOut;                            /* 本次拍照要写入的 Uri */
-    private PermissionRequest pendingPerm;            /* 网页要开摄像头时挂起的授权请求 */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -78,34 +76,6 @@ public class MainActivity extends Activity {
         });
 
         web.setWebChromeClient(new WebChromeClient() {
-            /**
-             * 网页里调 getUserMedia（在线看板抓拍访客画面）时，WebView 默认一律拒绝，
-             * 表现就是「点了开启摄像头没反应」。这里只放行摄像头，麦克风等其他资源全部拒绝。
-             */
-            @Override
-            public void onPermissionRequest(final PermissionRequest request) {
-                runOnUiThread(new Runnable() {
-                    @Override public void run() {
-                        String[] res = request.getResources();
-                        boolean wantVideo = false;
-                        if (res != null) {
-                            for (String r : res) {
-                                if (PermissionRequest.RESOURCE_VIDEO_CAPTURE.equals(r)) { wantVideo = true; break; }
-                            }
-                        }
-                        if (!wantVideo) { request.deny(); return; }   // 不要麦克风，也不要别的
-
-                        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
-                            request.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
-                        } else {
-                            if (pendingPerm != null) { try { pendingPerm.deny(); } catch (Exception ignored) { } }
-                            pendingPerm = request;
-                            requestPermissions(new String[]{Manifest.permission.CAMERA}, REQ_CAM_PERM);
-                        }
-                    }
-                });
-            }
-
             @Override
             public boolean onShowFileChooser(WebView v, ValueCallback<Uri[]> cb,
                                              FileChooserParams params) {
@@ -256,21 +226,6 @@ public class MainActivity extends Activity {
         if (code == REQ_NOTIFY) { startBadgeService(); return; }
         if (code == REQ_CAM_PERM) {
             boolean granted = results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED;
-
-            /* 情况 A：是网页要开摄像头（getUserMedia）触发的权限申请 */
-            if (pendingPerm != null) {
-                PermissionRequest pr = pendingPerm;
-                pendingPerm = null;
-                try {
-                    if (granted) pr.grant(new String[]{PermissionRequest.RESOURCE_VIDEO_CAPTURE});
-                    else pr.deny();
-                } catch (Exception ignored) { }
-                if (!granted) {
-                    android.widget.Toast.makeText(this, "没有相机权限，网页无法抓拍画面",
-                            android.widget.Toast.LENGTH_SHORT).show();
-                }
-                return;
-            }
 
             /* 情况 B：网页「拍照」按钮触发的系统相机 */
             if (granted) { startCamera(); return; }

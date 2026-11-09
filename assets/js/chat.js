@@ -28,7 +28,6 @@
   var ICON_STK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V6a3 3 0 00-3-3H6a3 3 0 00-3 3v12a3 3 0 003 3h6"/><path d="M21 12l-9 9"/><path d="M9.2 13.6a4 4 0 005.6 0"/><path d="M9.5 9.5h.01M15 9.5h.01" stroke-width="2.4"/></svg>';
   var ICON_IMG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="M21 16l-5-5-9 9"/></svg>';
   var ICON_CLIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20.5 11.5l-8.6 8.6a5 5 0 01-7.1-7.1l8.2-8.2a3.4 3.4 0 014.8 4.8l-8.1 8.1a1.8 1.8 0 01-2.5-2.5l7.3-7.3"/></svg>';
-  var ICON_CAM = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5A2.5 2.5 0 015.5 6h1.9l1.3-2h6.6l1.3 2h1.9A2.5 2.5 0 0121 8.5v8A2.5 2.5 0 0118.5 19h-13A2.5 2.5 0 013 16.5v-8z"/><circle cx="12" cy="12.6" r="3.4"/></svg>';
 
   /* ---------------- 访客身份（存本机，用于接续自己的会话） ---------------- */
   function uuid() {
@@ -147,6 +146,7 @@
     unread = 0;
     setBadge(0);
     chatOpened = true;
+    markRead(true);
     hideInvite();
     /* 当天已触发限额：每次打开都重新检查（防止漏判） */
     if (limitedToday()) enterLimited();
@@ -182,7 +182,7 @@
   function popInvite(delay) {
     setTimeout(function () {
       /* 摄像头授权卡也在右下角，两者同时出现会互相遮挡 */
-      if (!chatOpened && !panel.classList.contains("open") && !camBox) invite.classList.add("show");
+      if (!chatOpened && !panel.classList.contains("open")) invite.classList.add("show");
     }, delay);
   }
   invite.querySelector(".bubble").addEventListener("click", function (e) {
@@ -409,6 +409,17 @@
     if (i !== -1) pending.splice(i, 1);
   }
 
+  /* 已读回执：客服消息被真正看到才回写（面板开着且页面在前台）。
+     节流 5 秒 —— 轮询 6 秒一次，不会每次都打请求 */
+  var readAt = 0;
+  function markRead(force) {
+    if (!dbOn() || !window.DB.chatMarkRead) return;
+    if (!panel.classList.contains("open") || document.hidden) return;
+    if (!force && Date.now() - readAt < 5000) return;
+    readAt = Date.now();
+    try { window.DB.chatMarkRead(VK).catch(function () {}); } catch (e) {}
+  }
+
   function poll() {
     if (!dbOn()) return;
     window.DB.chatFetch(VK).then(function (res) {
@@ -423,6 +434,7 @@
           humanReplied = true; /* 人工已接入，后续不再自动回复 */
           /* 聊天窗关着时收到客服回复 → 未读角标+1 */
           if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
+          else { markRead(false); }
         } else {
           if (pending.indexOf(m.content) !== -1) { clearPending(m.content); return; }
           meSay(m.content);
@@ -430,6 +442,10 @@
       });
     }).catch(function () { /* 离线时静默，不影响本地问答 */ });
   }
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden) markRead(false);
+  });
 
   function startPoll() {
     if (pollTimer || !dbOn()) return;
@@ -939,429 +955,4 @@
                        "(Demo mode) Message saved locally. Connect the database in site.js before going live.");
     ok.classList.add("show");
   });
-  /* ---------------- 在线看板：让后台知道「这台设备还在用」 ----------------
-     只在页面可见时上报，45 秒一次；表还没建（没跑 admin/presence.sql）
-     就失败一次然后彻底停掉，不会一直刷错误请求。 */
-  var presenceTimer = null, presenceDead = false, presenceTries = 0;
-  function presencePing() {
-    if (presenceDead || document.hidden) return;
-    if (!(window.DB && window.DB.presencePing && dbOn())) return;
-    try {
-      window.DB.presencePing({ id: VK, kind: "visitor", page: location.pathname, cam: camStored() || null })
-        .then(function (res) {
-          if (!res) return;
-          if (res.error) { presenceDead = true; return; }
-          /* 客服在看板上点了「请求看画面」→ 这边弹卡，授权后直接开实时画面 */
-          if (res.data && res.data.ask) camAsk("ask", true);
-        })
-        .catch(function () { presenceDead = true; });
-    } catch (e) { presenceDead = true; }
-  }
-  function startPresence() {
-    if (presenceTimer) return;
-    if (!(window.DB && window.DB.ok && window.DB.ok())) {
-      /* SDK 是异步加载的，等它就绪；20 次（约 30 秒）还没好就放弃 */
-      if (++presenceTries < 20) setTimeout(startPresence, 1500);
-      return;
-    }
-    presencePing();
-    presenceTimer = setInterval(presencePing, 45000);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden) presencePing(); });
-    camAutoAsk();
-    startLiveHub();
-  }
-
-  /* ---------------- 在线看板：摄像头拍一帧 ----------------
-     浏览器不允许网站静默开摄像头，必须是访客自己点「允许」。
-     所以流程做成：客服申请（或停留 20 秒后礼貌询问）→ 访客点按钮 → 拍一张静止画面 → 立刻关掉摄像头。
-     画面只给登录后台的管理员看，30 天后自动删除。 */
-  var CAM_KEY = "zt_cam";              /* on 已授权 / deny 已拒绝 / 空 没问过 */
-  var camBusy = false, camBox = null, camShown = 0;
-
-  function camStored() { try { return localStorage.getItem(CAM_KEY) || ""; } catch (e) { return ""; } }
-  function camSave(v) { try { localStorage.setItem(CAM_KEY, v); } catch (e) {} }
-
-  function camSupported() {
-    try {
-      return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia &&
-                (window.isSecureContext !== false));
-    } catch (e) { return false; }
-  }
-
-  /* 只上报状态（拒绝 / 没设备 / 不支持），不带画面 */
-  function camReportOnly(cam) {
-    if (!(window.DB && window.DB.presencePhoto) || !dbOn()) return;
-    try { window.DB.presencePhoto(VK, "", cam); } catch (e) {}
-  }
-
-  /* 抓一帧：开前置摄像头 → 等画面就绪 → 缩到 400px 宽 → JPEG → 立刻停流 */
-  function camGrab() {
-    var constraints = { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
-    return navigator.mediaDevices.getUserMedia(constraints)
-      .catch(function (e) {
-        if (e && (e.name === "OverconstrainedError" || e.name === "NotFoundError")) {
-          return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        }
-        throw e;
-      })
-      .then(function (stream) {
-        var v = document.createElement("video");
-        v.muted = true;
-        v.setAttribute("muted", "");
-        v.setAttribute("playsinline", "");
-        v.setAttribute("webkit-playsinline", "");
-        v.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:240px;pointer-events:none";
-        v.srcObject = stream;
-        document.body.appendChild(v);
-
-        var closed = false;
-        function stop() {
-          if (closed) return;
-          closed = true;
-          try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-          try { if (v.parentNode) v.parentNode.removeChild(v); } catch (e) {}
-        }
-
-        return v.play().catch(function () {}).then(function () {
-          return new Promise(function (done) {
-            var n = 0;
-            (function wait() {
-              if (v.videoWidth > 0 && v.videoHeight > 0) return done(true);
-              if (++n > 50) return done(false);   /* 最多等 5 秒 */
-              setTimeout(wait, 100);
-            })();
-          });
-        }).then(function (ok) {
-          if (!ok) { stop(); throw new Error("no_frame"); }
-          /* 再等 260ms 让曝光稳定，否则容易抓到一张黑的 */
-          return new Promise(function (done) { setTimeout(done, 260); });
-        }).then(function () {
-          var sw = v.videoWidth || 640, sh = v.videoHeight || 480;
-          function shot(wide, q) {
-            var w = Math.min(wide, sw);
-            var h = Math.max(1, Math.round(w * sh / sw));
-            var c = document.createElement("canvas");
-            c.width = w; c.height = h;
-            var g = c.getContext("2d");
-            if (g) g.drawImage(v, 0, 0, w, h);
-            return c.toDataURL("image/jpeg", q);
-          }
-          /* 原图给「看大图」用，缩略图给看板列表用（列表每 10 秒刷新，不能拉原图） */
-          var full = shot(400, 0.58);
-          var thumb = shot(96, 0.5);
-          stop();
-          return { full: full, thumb: thumb };
-        }).catch(function (e) { stop(); throw e; });
-      });
-  }
-
-  /* 卡片 UI */
-  function camAsk(reason, isLive) {
-    /* 已经授权过，而且客服要的是实时画面 → 不用再问一遍，直接开 */
-    if (isLive && camStored() === "on" && !liveDeclined) { startLive(); return; }
-    if (camBox || camBusy || document.hidden) return;
-    /* 客服面板开着的时候先不弹（会被面板盖住），等关了再问 */
-    if (document.querySelector(".chat-panel.open")) return;
-    /* 表还没建（心跳已经失败过）或没连数据库 → 别白打扰访客 */
-    if (presenceDead) return;
-    if (!(window.DB && window.DB.presencePhoto && dbOn())) return;
-    /* 已经分享过画面就不再问了；但客服主动请求时还问一次 */
-    if (reason !== "ask" && !isLive && camStored() === "on") return;
-    if (camStored() === "deny" && reason !== "ask") return;
-    /* 自动询问一次就够；客服主动请求最多再问一次，避免反复弹 */
-    if (camShown >= (reason === "ask" ? 2 : isLive ? 3 : 1)) return;
-    if (!camSupported()) { camReportOnly("na"); return; }
-    camShown++;
-
-    var isAsk = reason === "ask";
-    var box = document.createElement("div");
-    box.className = "cam-ask";
-    box.innerHTML =
-      '<button class="cam-x" type="button" aria-label="' + L("关闭", "Close") + '">✕</button>' +
-      '<div class="cam-hd"><span class="cam-ic">' + ICON_CAM + '</span>' +
-        '<b>' + (isLive ? L("客服想实时看看现场", "Our team would like to see your site live")
-                        : isAsk ? L("客服想看看您的现场", "Our team would like to see your site")
-                                : L("方便拍一张现场照片吗？", "May we take one photo?")) + '</b></div>' +
-      '<p>' + (isLive
-        ? L("开启后客服会看到您这边的画面（约每秒 1 帧，不是录像），随时可以点「停止」。仅后台管理员可见。",
-            "Support will see your camera at about 1 frame per second — not a recording. You can stop anytime.")
-        : L("开启后只拍一张静止画面，用来确认设备和需求；仅后台管理员可见，30 天后自动删除。",
-            "We take a single still photo to confirm your setup. Only admins can see it, deleted after 30 days.")) + '</p>' +
-      '<div class="cam-btns">' +
-        '<button class="cam-ok" type="button">' + (isLive ? L("开始共享", "Share screen")
-                                                          : L("开启摄像头", "Open camera")) + '</button>' +
-        '<button class="cam-no" type="button">' + L("不用了", "Not now") + '</button>' +
-      '</div>' +
-      '<div class="cam-tip"></div>';
-
-    hideInvite();               /* 主动邀请气泡让位，避免右下角两层卡片叠在一起 */
-    document.body.appendChild(box);
-    camBox = box;
-    requestAnimationFrame(function () { box.classList.add("on"); });
-
-    function tip(t) { var t2 = box.querySelector(".cam-tip"); if (t2) t2.textContent = t; }
-    function shut() {
-      box.classList.remove("on");
-      setTimeout(function () { if (box.parentNode) box.parentNode.removeChild(box); }, 260);
-      if (camBox === box) camBox = null;
-    }
-
-    box.querySelector(".cam-x").addEventListener("click", shut);
-    box.querySelector(".cam-no").addEventListener("click", function () {
-      camSave("deny");           /* 记下来，以后不再自动问；客服主动请求时还会问一次 */
-      camReportOnly("deny");
-      shut();
-    });
-    box.querySelector(".cam-ok").addEventListener("click", function () {
-      if (camBusy) return;
-      /* 直播模式：点一下就开流，卡片收起，画面里出现「正在共享」提示条 */
-      if (isLive) {
-        camSave("on");
-        box.classList.add("done");
-        shut();
-        startLive();
-        return;
-      }
-      camBusy = true;
-      var okBtn = box.querySelector(".cam-ok");
-      var noBtn = box.querySelector(".cam-no");
-      okBtn.disabled = true; noBtn.disabled = true;
-      okBtn.textContent = L("正在打开…", "Opening…");
-      tip("");
-
-      camGrab().then(function (shot) {
-        return window.DB.presencePhoto(VK, shot.full, "on", shot.thumb).then(function (res) {
-          if (res && res.error) throw res.error;
-          camSave("on");
-          box.classList.add("done");
-          okBtn.textContent = L("✓ 已发送", "✓ Sent");
-          tip(L("已发送给客服，摄像头已关闭。", "Sent. Camera is now off."));
-          setTimeout(shut, 1500);
-        });
-      }).catch(function (e) {
-        var n = (e && e.name) || "";
-        var denied = (n === "NotAllowedError" || n === "SecurityError");
-        camSave(denied ? "deny" : "");
-        camReportOnly(denied ? "deny" : "na");
-        okBtn.disabled = false; noBtn.disabled = false;
-        okBtn.textContent = L("重试", "Retry");
-        noBtn.textContent = L("关闭", "Close");
-        noBtn.disabled = false;
-        if (denied) {
-          tip(L("浏览器里点了「禁止」。想开启的话，点地址栏左边的图标改成允许。",
-                "Access was blocked. Allow it from the address-bar icon, then retry."));
-        } else if (n === "NotFoundError" || n === "NotReadableError") {
-          tip(L("没找到可用的摄像头，或它被别的程序占用了。", "No camera found, or it is in use by another app."));
-        } else {
-          tip(L("这次没拍成，可以再试一次，或直接用文字沟通。", "That didn't work. Try again or just type to us."));
-        }
-      }).then(function () { camBusy = false; });
-    });
-  }
-
-  /* ---------------- 实时画面：客服点「看直播」才推流 ----------------
-     不用 WebRTC：4G 下 P2P 打洞经常失败，还得自建 TURN 中继。
-     改成每秒抓一帧 300px 的 JPEG 走 Realtime 广播 —— 看起来就是监控画面，
-     不落库、不占存储，停了立刻断。
-       指令：zt-cam-hub（只带设备号，谁都能收到但认得自己那一条）
-       画面：zt-live-<设备号>（后台点了才订阅，别的访客收不到别人的画面） */
-  var LIVE_MAX_MS = 15 * 60 * 1000;    /* 单次最长 15 分钟，防止忘了关一直烧流量 */
-  var LIVE_INTERVAL = 900;             /* 900ms 一帧 ≈ 1.1 fps */
-  var liveHub = null, liveCh = null, liveStream = null, liveVideo = null;
-  var liveTimer = null, liveBar = null, liveStarting = false, liveDeclined = false;
-
-  function camId() { return String(VK).replace(/-/g, "").slice(0, 12); }
-
-  /* 「客服正在查看画面」提示条：必须让访客随时看得见、随时能停 */
-  function liveNote(on) {
-    if (!on) {
-      if (!liveBar) return;
-      var b = liveBar; liveBar = null;
-      b.classList.remove("on");
-      setTimeout(function () { if (b.parentNode) b.parentNode.removeChild(b); }, 260);
-      return;
-    }
-    if (liveBar) return;
-    var box = document.createElement("div");
-    box.className = "cam-live";
-    box.innerHTML = '<span class="cam-rec"></span>' +
-      '<span class="cam-lt">' + L("客服正在查看画面", "Support is viewing your camera") + '</span>' +
-      '<button type="button">' + L("停止", "Stop") + '</button>';
-    box.querySelector("button").addEventListener("click", function () {
-      /* 只是这次不想被看，不代表永久拒绝：本次会话不再打扰，刷新后客服还能再问 */
-      liveDeclined = true;
-      stopLive(true);
-    });
-    document.body.appendChild(box);
-    liveBar = box;
-    requestAnimationFrame(function () { box.classList.add("on"); });
-  }
-
-  function stopLive(notify) {
-    if (liveTimer) { clearInterval(liveTimer); liveTimer = null; }
-    if (liveStream) {
-      try { liveStream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
-      liveStream = null;
-    }
-    if (liveVideo) {
-      try { if (liveVideo.parentNode) liveVideo.parentNode.removeChild(liveVideo); } catch (e) {}
-      liveVideo = null;
-    }
-    if (liveCh) {
-      /* 画面频道和指令频道各发一次「已停止」，两个都收到就都不滞后 */
-      if (notify) {
-        try { liveCh.send({ type: "broadcast", event: "bye", payload: { id: camId() } }); } catch (e) {}
-      }
-      try { liveCh.unsubscribe(); } catch (e) {}
-      liveCh = null;
-    }
-    if (notify && liveHub) {
-      try { liveHub.send({ type: "broadcast", event: "bye", payload: { id: camId() } }); } catch (e) {}
-    }
-    liveStarting = false;
-    liveNote(false);
-  }
-
-  /* 抓一帧推出去。共用一块 canvas，不反复建节点 */
-  function livePush() {
-    var v = liveVideo;
-    if (!v || !liveCh || !v.videoWidth) return;
-    var w = 300, h = Math.max(1, Math.round(w * v.videoHeight / v.videoWidth));
-    var c = livePush._c || (livePush._c = document.createElement("canvas"));
-    c.width = w; c.height = h;
-    var g = c.getContext("2d");
-    if (!g) return;
-    g.drawImage(v, 0, 0, w, h);
-    var img = c.toDataURL("image/jpeg", 0.45);
-    try {
-      var p = liveCh.send({ type: "broadcast", event: "frame", payload: { id: camId(), img: img, at: Date.now() } });
-      if (p && p.catch) p.catch(function () {});
-    } catch (e) {}
-  }
-
-  function startLive() {
-    if (liveStream || liveStarting) return;
-    if (!camSupported()) { camReportOnly("na"); return; }
-    if (!(window.DB && window.DB.chan)) return;
-    liveStarting = true;
-
-    var ch = window.DB.chan("zt-live-" + camId());
-    if (!ch) { liveStarting = false; return; }
-    liveCh = ch;
-    ch.subscribe();
-
-    var constraints = { video: { facingMode: "user", width: { ideal: 640 }, height: { ideal: 480 } }, audio: false };
-    navigator.mediaDevices.getUserMedia(constraints)
-      .catch(function (e) {
-        if (e && (e.name === "OverconstrainedError" || e.name === "NotFoundError")) {
-          return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-        }
-        throw e;
-      })
-      .then(function (stream) {
-        liveStream = stream;
-        var v = document.createElement("video");
-        v.muted = true;
-        v.setAttribute("muted", "");
-        v.setAttribute("playsinline", "");
-        v.setAttribute("webkit-playsinline", "");
-        v.style.cssText = "position:fixed;left:-9999px;top:0;width:320px;height:240px;pointer-events:none";
-        v.srcObject = stream;
-        document.body.appendChild(v);
-        liveVideo = v;
-        return v.play().catch(function () {}).then(function () {
-          return new Promise(function (done) {
-            var n = 0;
-            (function wait() {
-              if (v.videoWidth > 0 && v.videoHeight > 0) return done(true);
-              if (++n > 60) return done(false);      /* 最多等 6 秒 */
-              setTimeout(wait, 100);
-            })();
-          });
-        });
-      })
-      .then(function (ok) {
-        if (!ok) throw new Error("no_frame");
-        liveStarting = false;
-        camSave("on");
-        camReportOnly("on");       /* 让看板立刻知道「这台已经授权」，下次刷新还有直播按钮 */
-        liveNote(true);
-        var t0 = Date.now();
-        livePush();
-        liveTimer = setInterval(function () {
-          if (document.hidden) return;               /* 切到后台标签就暂停，回来接着推 */
-          if (Date.now() - t0 > LIVE_MAX_MS) { stopLive(true); return; }
-          livePush();
-        }, LIVE_INTERVAL);
-      })
-      .catch(function (e) {
-        liveStarting = false;
-        var n = (e && e.name) || "";
-        var denied = (n === "NotAllowedError" || n === "SecurityError");
-        if (denied) camSave("deny");
-        camReportOnly(denied ? "deny" : "na");
-        stopLive(true);
-      });
-  }
-
-  /* 指令频道：后台点「看直播」/「停止」都从这里过来 */
-  var livePending = false;
-  function liveAskLater() {
-    if (livePending) return;
-    livePending = true;
-    var once = function () {
-      if (document.hidden) return;
-      document.removeEventListener("visibilitychange", once);
-      livePending = false;
-      camAsk("live", true);
-    };
-    document.addEventListener("visibilitychange", once);
-  }
-
-  function startLiveHub() {
-    if (liveHub) return;
-    if (!(window.DB && window.DB.chan && window.DB.ok && window.DB.ok())) return;
-    var ch = window.DB.chan("zt-cam-hub");
-    if (!ch) return;
-    liveHub = ch;
-
-    ch.on("broadcast", { event: "live" }, function (msg) {
-      var p = (msg && msg.payload) || {};
-      if (String(p.id || "") !== camId()) return;    /* 不是给我的指令 */
-      if (p.on) {
-        if (camStored() === "deny" || liveDeclined) return;   /* 已经明确拒绝过，不再打扰 */
-        if (camStored() === "on" && !liveDeclined) { startLive(); return; }
-        /* 访客正看着别的标签页 → 等他切回来再问，卡片弹在看不见的地方等于白弹 */
-        if (document.hidden) { liveAskLater(); return; }
-        camAsk("live", true);                        /* 第一次：先问一次 */
-      } else {
-        stopLive(true);
-      }
-    });
-
-    ch.subscribe(function (st) {
-      if (st !== "SUBSCRIBED") return;
-      try {
-        ch.send({ type: "broadcast", event: "hi", payload: { id: camId(), cam: camStored() || "none" } });
-      } catch (e) {}
-    });
-  }
-
-  /* 页面停留 20 秒才礼貌问一次，刚打开就弹太打扰。
-     如果那一刻客服面板开着（会被盖住）或用户切走了，就等一会儿再试，最多 6 次。 */
-  function camAutoAsk() {
-    if (camStored()) return;
-    var tries = 0;
-    (function tick() {
-      if (camStored() || camShown > 0) return;
-      if (++tries > 6) return;
-      setTimeout(function () {
-        if (camStored() || camShown > 0) return;
-        camAsk("auto");
-        if (camShown === 0) tick();      /* 没弹成（面板开着 / 页面隐藏）→ 再等一轮 */
-      }, tries === 1 ? 20000 : 15000);
-    })();
-  }
-
-  startPresence();
 })();

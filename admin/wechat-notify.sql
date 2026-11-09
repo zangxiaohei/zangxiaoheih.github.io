@@ -19,6 +19,10 @@ create function public.zt_wechat_notify() returns trigger
 language plpgsql security definer set search_path = public
 as '
 begin
+  -- 自己（后台）发出的消息不推给自己，只推访客发来的
+  if tg_table_name = 'chat_messages' and coalesce(to_jsonb(new)->>'role', '') = 'admin' then
+    return new;
+  end if;
   perform net.http_post(
     url   := ''https://www.pushplus.plus/send'',
     body  := jsonb_build_object(
