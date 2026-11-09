@@ -140,6 +140,16 @@
       });
     },
 
+    /* 实时通道（Supabase Realtime Broadcast）：在线监控的画面就走这条路。
+       不落库、不占存储，只有订阅了同一个频道名的那两端才收得到。
+       指令频道只有设备号，画面频道名带设备号 → 别的访客订阅不到别人的画面。 */
+    chan: function (name) {
+      if (!client || !name) return null;
+      try {
+        return client.channel(name, { config: { broadcast: { self: false } } });
+      } catch (e) { return null; }
+    },
+
     /* 聊天附件上传（图片 / 文件）→ 返回公开链接
        桶名固定 chat-files，配置见 admin/chat-files.sql */
     uploadChatFile: function (file, key) {

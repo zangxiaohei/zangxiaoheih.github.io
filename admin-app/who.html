@@ -21,8 +21,10 @@
   .top p { margin: 6px 0 0; font-size: 13px; opacity: .85; }
   .top .back { display: inline-block; margin-bottom: 10px; color: #fff; text-decoration: none;
     font-size: 13px; background: rgba(255,255,255,.16); padding: 4px 12px; border-radius: 99px; }
-  .top .acts { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
-  .top .acts button { border: 0; border-radius: 10px; padding: 9px 14px; font: inherit; font-size: 13.5px;
+  .top .acts { display: flex; gap: 8px; margin-top: 14px; overflow-x: auto;
+    scrollbar-width: none; -ms-overflow-style: none; padding-bottom: 2px; }
+  .top .acts::-webkit-scrollbar { display: none; }
+  .top .acts button { flex: 0 0 auto; border: 0; border-radius: 10px; padding: 9px 14px; font: inherit; font-size: 13.5px;
     cursor: pointer; background: rgba(255,255,255,.18); color: #fff; }
   .top .acts button.on { background: #fff; color: var(--brand); font-weight: 700; }
 
@@ -61,17 +63,50 @@
   .badge.chat { background: #ece7fb; color: #4a3691; }
   .badge.cam { background: #e6f8ee; color: #0b6e4f; }
   .badge.deny { background: #f4f1ec; color: #8a7355; }
+  .badge.lv { background: #ffe9e6; color: #c0392b; display: inline-flex; align-items: center; gap: 4px; }
+  .badge.lv i { width: 5px; height: 5px; border-radius: 50%; background: #e8342a;
+    animation: bp 1.4s ease-out infinite; }
+  @keyframes bp { 0% { box-shadow: 0 0 0 0 rgba(232,52,42,.55);} 70% { box-shadow: 0 0 0 5px rgba(232,52,42,0);} 100% { box-shadow: 0 0 0 0 rgba(232,52,42,0);} }
   .live { width: 7px; height: 7px; border-radius: 50%; background: #16b979; display: inline-block; }
   .live.away { background: #e8a33d; }
   .live.off { background: #c3cdc8; }
 
-  /* 行内小按钮：请给我看画面 / 重拍 */
+  /* 正在直播的行：头像换成实时画面，描红边 */
+  .row .ic.is-live { background: #0a1f17; cursor: zoom-in;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #e8342a; }
+  .row .ic.is-live img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+  /* ---------- 监控画面墙 ---------- */
+  .wall { background: #0f2a20; border-radius: 16px; padding: 12px; margin: 0 0 12px;
+    box-shadow: 0 8px 26px rgba(6, 24, 17, .22); }
+  .wall[hidden] { display: none; }
+  .wall-hd { display: flex; align-items: center; gap: 8px; color: #d7f0e5;
+    font-size: 13px; font-weight: 600; margin-bottom: 10px; }
+  .wall-hd .rec { width: 8px; height: 8px; border-radius: 50%; background: #ff5b5b;
+    animation: bp 1.6s ease-out infinite; flex: 0 0 8px; }
+  .wall-hd .cnt { margin-left: auto; font-weight: 400; font-size: 12px; color: #8fb9a8; }
+  .wall-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  @media (min-width: 560px) { .wall-grid { grid-template-columns: repeat(3, 1fr); } }
+  .wall-grid.one { grid-template-columns: 1fr; }
+  .wall-grid.one .cam-cell { aspect-ratio: 16 / 9; }
+  .cam-cell { position: relative; border-radius: 10px; overflow: hidden; background: #08201a;
+    aspect-ratio: 4 / 3; cursor: zoom-in; border: 1px solid rgba(255,255,255,.08); }
+  .cam-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cam-cell .cn { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 7px 5px;
+    font-size: 11px; color: #eafaf3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    background: linear-gradient(to top, rgba(0,0,0,.72), rgba(0,0,0,0)); }
+  .cam-cell .wait { position: absolute; inset: 0; display: grid; place-items: center;
+    color: #7fae9c; font-size: 12px; text-align: center; padding: 10px; line-height: 1.6; }
+
+  /* 行内小按钮：看直播 / 停止 / 请求看画面 */
   .pill { margin-left: auto; border: 1px solid #cfe6da; background: #f3fbf7; color: var(--brand);
     border-radius: 99px; padding: 3px 10px; font: inherit; font-size: 11.8px; font-weight: 600;
     cursor: pointer; white-space: nowrap; }
   .pill:active { background: #e2f4ea; }
   .pill:disabled { opacity: .6; cursor: default; }
   .pill.done { background: #e6f8ee; border-color: #b9e6cf; color: #0b6e4f; }
+  .pill.stop { border-color: #f3c9c4; background: #fff1ef; color: #c0392b; }
+  .pill.wait { border-color: #e6dcc4; background: #fffaf0; color: #a37518; }
 
   /* 点脸看大图 */
   .lb { position: fixed; inset: 0; z-index: 999; background: rgba(4, 14, 10, .96);
@@ -108,18 +143,28 @@
     <h1><span class="dot"></span>谁在使用</h1>
     <p id="sub">正在统计…</p>
     <div class="acts">
-      <button id="btn-auto" class="on">自动刷新 10s</button>
-      <button id="btn-now">立即刷新</button>
-      <button id="btn-clean">清理离线</button>
+      <button id="btn-live">▶ 全部直播</button>
+      <button id="btn-auto" class="on">自动 10s</button>
+      <button id="btn-now">刷新</button>
+      <button id="btn-clean">清理</button>
     </div>
   </div>
 </div>
 
 <div class="wrap">
   <div class="stats" id="stats" style="margin-top:12px"></div>
+
+  <!-- 实时画面墙：有人授权并且在看时才出现 -->
+  <div class="wall" id="wall" hidden>
+    <div class="wall-hd"><span class="rec"></span>实时画面
+      <span class="cnt" id="wall-cnt"></span></div>
+    <div class="wall-grid" id="wall-grid"></div>
+  </div>
+
   <div class="filters" id="filters">
     <button data-f="all" class="on">全部</button>
     <button data-f="on">此刻在线</button>
+    <button data-f="live">正在直播</button>
     <button data-f="visitor">访客</button>
     <button data-f="admin">管理员</button>
     <button data-f="face">有画面</button>
@@ -261,6 +306,7 @@
         rows = res.data || [];
         loadThreads();
         syncThumbs();
+        restoreWatch();
       })
       .catch(function () { $("sub").textContent = "网络异常，稍后自动重试"; });
   }
@@ -339,22 +385,27 @@
     rows.forEach(function (r) { if (new Date(r.first_at).getTime() >= todayStart.getTime()) today[r.id] = 1; });
     var admOn = on.filter(function (r) { return r.kind === "admin"; }).length;
     var withFace = rows.filter(function (r) { return !!r.photo_at; }).length;
+    var liveN = Object.keys(live).filter(function (k) { return !!liveFrame[k]; }).length;
 
     $("stats").innerHTML =
       statBlock(on.length, "此刻在线", on.length > 0) +
       statBlock(near.length, "10 分钟内", false) +
       statBlock(Object.keys(today).length, "今天来过", false) +
-      statBlock(withFace, "已看到画面", withFace > 0);
+      (liveN ? statBlock(liveN, "正在直播", true)
+             : statBlock(withFace, "已看到画面", withFace > 0));
 
     $("sub").textContent = "最后更新 " + hhmm(new Date().toISOString()) +
       " · 共 " + rows.length + " 台（近 24 小时）" + (admOn ? " · 后台在线 " + admOn : "");
+
+    renderWall();
 
     var list = rows.filter(function (r) {
       var st = state(r);
       if (filter === "on") return st === "on";
       if (filter === "visitor") return r.kind !== "admin";
       if (filter === "admin") return r.kind === "admin";
-      if (filter === "face") return !!r.photo_at;
+      if (filter === "face") return !!r.photo_at || !!liveFrame[r.id];
+      if (filter === "live") return !!live[r.id];
       if (filter === "chat") return !!threads[r.id];
       return true;
     });
@@ -366,6 +417,54 @@
       return;
     }
     $("list").innerHTML = list.map(card).join("");
+  }
+
+  /* 监控画面墙：只在有人看时才出现，几路都排得下 */
+  function renderWall() {
+    var ids = Object.keys(live).sort();
+    $("wall").hidden = !ids.length;
+    $("wall-grid").className = "wall-grid" + (ids.length === 1 ? " one" : "");
+    var bl = $("btn-live");
+    if (bl) {
+      bl.textContent = ids.length ? "■ 停止 (" + ids.length + ")" : "▶ 全部直播";
+      bl.classList.toggle("on", ids.length > 0);
+    }
+    if (!ids.length) { wallSig = ""; $("wall-grid").innerHTML = ""; return; }
+
+    var sig = ids.join("|");
+    if (sig !== wallSig) {
+      wallSig = sig;
+      $("wall-grid").innerHTML = ids.map(function (id) {
+        var frame = liveFrame[id];
+        var body = frame
+          ? '<img src="' + esc(frame) + '" alt="实时画面">'
+          : '<div class="wait">' + esc(waitText(id)).replace(/\n/g, "<br>") + '</div>';
+        return '<div class="cam-cell" data-cam="' + esc(id) + '" data-face="' + esc(id) + '">' +
+               body + '</div>';
+      }).join("");
+    }
+
+    ids.forEach(function (id) {
+      var c = document.querySelector('.cam-cell[data-cam="' + id + '"]');
+      if (!c) return;
+      /* 画面到了就从「等待」换成 img */
+      var wt = c.querySelector(".wait");
+      if (liveFrame[id] && wt) { c.innerHTML = '<img src="' + esc(liveFrame[id]) + '" alt="实时画面">'; }
+      else if (!liveFrame[id] && wt) { wt.innerHTML = esc(waitText(id)).replace(/\n/g, "<br>"); }
+      /* 名字常变（访客留了言就从「访客 #xxxx」变成真名） */
+      var cn = c.querySelector(".cn");
+      if (!cn) {
+        cn = document.createElement("span");
+        cn.className = "cn";
+        c.appendChild(cn);
+      }
+      cn.textContent = nameOf(id);
+    });
+
+    var got = ids.filter(function (k) { return !!liveFrame[k]; }).length;
+    var endedN = ids.filter(function (k) { return live[k] && live[k].ended; }).length;
+    $("wall-cnt").textContent = got ? got + " / " + ids.length + " 路在传"
+      : (endedN === ids.length ? "访客已停止共享" : ids.length + " 路等待访客确认");
   }
 
   function statBlock(v, label, hot) {
@@ -396,27 +495,49 @@
 
     /* 摄像头状态徽标：只有访客需要标（管理员是自己人，不抓拍） */
     var thumb = thumbs[r.id] || "";
+    var watching = !!live[r.id];
+    var frame = liveFrame[r.id] || "";
     var camB = "";
-    if (!isAdm) {
+    if (watching) {
+      camB = live[r.id].ended
+        ? '<span class="badge deny">已停止</span>'
+        : '<span class="badge lv"><i></i>直播中</span>';
+    } else if (!isAdm) {
       if (r.photo_at) camB = '<span class="badge cam">已看画面</span>';
       else if (r.cam === "deny") camB = '<span class="badge deny">拒绝授权</span>';
       else if (r.cam === "na") camB = '<span class="badge deny">无摄像头</span>';
     }
 
-    /* 客服主动请求：访客端下一次心跳（≤45 秒）就会弹授权卡 */
+    /* 已授权 → 直接看直播；没授权 → 发一次请求，访客下次心跳（≤45 秒）弹卡 */
     var pill = "";
     if (!isAdm) {
-      pill = '<button class="pill" data-ask="' + esc(r.id) + '"' + (r.ask ? ' disabled' : '') + '>' +
-             (r.ask ? "已请求…" : (r.photo_at ? "重拍" : "看画面")) + '</button>';
+      if (watching) {
+        pill = live[r.id].ended
+          ? '<button class="pill wait" data-live="' + esc(r.id) + '">↻ 重新看</button>'
+          : '<button class="pill stop" data-stop="' + esc(r.id) + '">■ 停止</button>';
+      } else if (r.cam === "on") {
+        pill = '<button class="pill" data-live="' + esc(r.id) + '">▶ 看直播</button>';
+      } else {
+        pill = '<button class="pill" data-ask="' + esc(r.id) + '"' + (r.ask ? ' disabled' : '') + '>' +
+               (r.ask ? "已请求…" : "请求看画面") + '</button>';
+      }
     }
 
-    var face = thumb
-      ? '<img src="' + esc(thumb) + '" alt="访客画面" loading="lazy">'
-      : (isAdm ? ICON_DESK : ICON_PHONE);
+    var face, icCls = "ic", icAttr = "";
+    if (frame) {
+      face = '<img src="' + esc(frame) + '" alt="实时画面">';
+      icCls = "ic is-live";
+      icAttr = ' data-cam="' + esc(r.id) + '" data-face="' + esc(r.id) + '"';
+    } else if (thumb) {
+      face = '<img src="' + esc(thumb) + '" alt="访客画面" loading="lazy">';
+      icCls = "ic has-face";
+      icAttr = ' data-cam="' + esc(r.id) + '" data-face="' + esc(r.id) + '"';
+    } else {
+      face = isAdm ? ICON_DESK : ICON_PHONE;
+    }
 
     return '<div class="row">' +
-      '<div class="ic' + (thumb ? ' has-face' : '') + '"' + (thumb ? ' data-face="' + esc(r.id) + '"' : '') + '>' +
-        face + '</div>' +
+      '<div class="' + icCls + '"' + icAttr + '>' + face + '</div>' +
       '<div class="main">' +
         '<div class="l1"><span class="live ' + (st === "on" ? "" : st) + '"></span>' +
           '<b>' + esc(who) + '</b>' +
@@ -445,14 +566,28 @@
   });
   $("btn-now").addEventListener("click", function () { load(true); });
 
-  /* ---------- 点脸看大图 ---------- */
+  /* ---------- 点脸看大图 / 实时画面 ---------- */
   function openFace(id) {
     var r = null;
     for (var i = 0; i < rows.length; i++) if (rows[i].id === id) { r = rows[i]; break; }
+    LB_ID = id;
+    var th = threads[id];
+    var watchOn = !!live[id] && !!liveFrame[id];
+
+    if (watchOn) {
+      $("lb-img").src = liveFrame[id];
+      $("lb-meta").innerHTML =
+        esc((r && r.device) || "未知设备") + " · " + esc((r && r.ip) || "-") + "<br>" +
+        "页面 " + esc(((r && r.page) || "/").replace(/^.*\//, "/")) +
+        (th && (th.name || th.phone) ? "<br>" + esc(th.name || "") + " " + esc(th.phone || "") : "") +
+        '<br><span style="color:#ff8b82">● 实时画面 · 关掉这个窗口不会停止共享</span>';
+      $("lb").hidden = false;
+      return;
+    }
+
     if (!r || !r.photo_at) return;
-    var th = threads[r.id];
     /* 先把缩略图铺上去（秒开），再单独取一次原图 */
-    $("lb-img").src = thumbs[r.id] || "";
+    $("lb-img").src = thumbs[id] || "";
     $("lb-meta").innerHTML =
       esc((r.device || "未知设备")) + " · " + esc(r.ip || "-") + "<br>" +
       "页面 " + esc((r.page || "/").replace(/^.*\//, "/")) + " · 拍摄 " +
@@ -470,44 +605,86 @@
       if (ld) ld.textContent = "原图加载失败，检查网络";
     });
   }
-  function closeFace() { $("lb").hidden = true; $("lb-img").src = ""; }
+  function closeFace() { $("lb").hidden = true; LB_ID = null; $("lb-img").src = ""; }
   $("lb-x").addEventListener("click", closeFace);
   $("lb").addEventListener("click", function (e) { if (e.target === this || e.target.id === "lb-img") closeFace(); });
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeFace(); });
 
-  /* ---------- 请求看画面 / 重拍 ---------- */
+  /* ---------- 请求看画面 / 开始直播 / 停止 ---------- */
   $("list").addEventListener("click", function (e) {
-    var face = e.target.closest(".ic[data-face]");
+    var face = e.target.closest("[data-face]");
     if (face) { openFace(face.getAttribute("data-face")); return; }
+
+    var lb = e.target.closest("button[data-live]");
+    if (lb) {
+      var lid = lb.getAttribute("data-live");
+      if (live[lid]) unwatch(lid, false);   /* 「重新看」：先退掉旧的订阅 */
+      watch(lid);
+      return;
+    }
+
+    var sp = e.target.closest("button[data-stop]");
+    if (sp) { unwatch(sp.getAttribute("data-stop")); return; }
 
     var b = e.target.closest("button[data-ask]");
     if (!b) return;
     var id = b.getAttribute("data-ask");
-    b.disabled = true;
     var old = b.textContent;
-    b.textContent = "发送中…";
-    /* 置 ask 标记，访客端下一次心跳（≤45 秒）会弹出授权卡 */
-    client.from("site_presence").update({ ask: true }).eq("id", id).then(function (res) {
-      if (res && res.error) {
-        b.disabled = false;
-        b.textContent = "失败，重试";
-        setTimeout(function () { b.textContent = old; }, 2000);
-        return;
-      }
-      b.classList.add("done");
-      b.textContent = "已请求…";
-      setTimeout(function () { load(false); }, 1500);
-    }).catch(function () {
+    askFor(id, b).catch(function () {
       b.disabled = false;
       b.textContent = "失败，重试";
       setTimeout(function () { b.textContent = old; }, 2000);
+    }).then(function () {
+      setTimeout(function () { load(false); }, 1500);
     });
+  });
+
+  /* 置 ask 标记：访客端下一次心跳（≤45 秒）会弹出授权卡 */
+  function askFor(id, btn) {
+    if (btn) { btn.disabled = true; btn.textContent = "发送中…"; }
+    return client.from("site_presence").update({ ask: true }).eq("id", id).then(function (res) {
+      if (res && res.error) throw res.error;
+      if (btn) { btn.classList.add("done"); btn.textContent = "已请求…"; }
+    });
+  }
+
+  /* 画面墙点开大图 */
+  $("wall-grid").addEventListener("click", function (e) {
+    var c = e.target.closest(".cam-cell[data-face]");
+    if (c) openFace(c.getAttribute("data-face"));
+  });
+
+  /* 全部直播：已授权的直接开；没授权的统一发一次授权请求 */
+  $("btn-live").addEventListener("click", function () {
+    var b = this;
+    if (Object.keys(live).length) { unwatchAll(); return; }
+
+    var ready = rows.filter(function (r) {
+      return r.kind !== "admin" && state(r) !== "off" && r.cam === "on" && !live[r.id];
+    });
+    if (ready.length) { ready.slice(0, 6).forEach(function (r) { watch(r.id); }); return; }
+
+    var pend = rows.filter(function (r) {
+      return r.kind !== "admin" && state(r) !== "off" && r.cam !== "deny" && !live[r.id];
+    });
+    if (!pend.length) {
+      var online = rows.filter(function (r) { return r.kind !== "admin" && state(r) !== "off"; }).length;
+      b.textContent = online ? "在线设备都拒绝过授权" : "没有在线设备";
+      setTimeout(function () { b.textContent = "▶ 全部直播"; }, 2400);
+      return;
+    }
+    var n = 0;
+    pend.slice(0, 6).forEach(function (r) {
+      askFor(r.id).then(function () { n++; }).catch(function () {});
+    });
+    b.textContent = "已向 " + Math.min(pend.length, 6) + " 台申请授权…";
+    setTimeout(function () { b.textContent = "▶ 全部直播"; load(false); }, 2600);
   });
 
   $("btn-auto").addEventListener("click", function () {
     auto = !auto;
     this.classList.toggle("on", auto);
-    this.textContent = auto ? "自动刷新 10s" : "自动刷新已暂停";
+    this.textContent = auto ? "自动 10s" : "已暂停";
     startAuto();
   });
   $("btn-clean").addEventListener("click", function () {
@@ -516,8 +693,8 @@
     var b = this;
     b.disabled = true; b.textContent = "清理中…";
     client.from("site_presence").delete().lt("last_at", cut).then(function (res) {
-      b.disabled = false; b.textContent = res.error ? "清理失败" : "已清理";
-      setTimeout(function () { b.textContent = "清理离线"; }, 1600);
+      b.disabled = false; b.textContent = res.error ? "失败" : "已清理";
+      setTimeout(function () { b.textContent = "清理"; }, 1600);
       load(false);
     });
   });
@@ -526,6 +703,148 @@
     if (timer) { clearInterval(timer); timer = null; }
     if (!auto) return;
     timer = setInterval(function () { if (!document.hidden) load(false); }, 10000);
+  }
+
+  /* ---------- 实时画面 ----------
+     访客端每秒推 1 帧 JPEG 到 zt-live-<设备号>，这边订阅了才收得到；
+     指令走 zt-cam-hub（只带设备号，没有画面）。 */
+  var hub = null, live = {}, liveFrame = {}, LB_ID = null, wallSig = "", restored = false;
+  var WATCH_KEY = "zt_watch";
+
+  function shortId(id) { return String(id).replace(/-/g, "").slice(0, 12); }
+
+  function startHub() {
+    if (hub) return;
+    try { hub = client.channel("zt-cam-hub", { config: { broadcast: { self: false } } }); }
+    catch (e) { hub = null; return; }
+    /* 访客点「停止」把 bye 发在指令频道（这个频道常连，比画面频道可靠） */
+    hub.on("broadcast", { event: "bye" }, function (msg) {
+      var sid = String((msg && msg.payload && msg.payload.id) || "");
+      if (!sid) return;
+      var hit = false;
+      Object.keys(live).forEach(function (id) {
+        if (shortId(id) !== sid) return;
+        var w = live[id];
+        if (w) { w.ended = true; w.last = 0; }
+        delete liveFrame[id];
+        hit = true;
+      });
+      if (hit) { wallSig = ""; render(); }
+    });
+    hub.subscribe();
+  }
+
+  /* 发指令给某个设备：开始 / 停止推流 */
+  function cmd(id, on) {
+    if (!hub) startHub();
+    if (!hub) return;
+    try {
+      hub.send({ type: "broadcast", event: "live", payload: { id: shortId(id), on: !!on } });
+    } catch (e) {}
+  }
+
+  function nameOf(id) {
+    var r = null;
+    for (var i = 0; i < rows.length; i++) if (rows[i].id === id) { r = rows[i]; break; }
+    if (r && r.kind === "admin") return r.name || "管理员";
+    var th = threads[id];
+    if (th && th.name) return th.name;
+    return "访客 #" + shortId(id).slice(0, 4);
+  }
+
+  function watch(id) {
+    if (live[id]) return;
+    startHub();
+    var ch = null;
+    try { ch = client.channel("zt-live-" + shortId(id), { config: { broadcast: { self: false } } }); }
+    catch (e) { return; }
+    live[id] = { ch: ch, last: 0, t0: Date.now(), ended: false };
+    ch.on("broadcast", { event: "frame" }, function (msg) {
+      var p = (msg && msg.payload) || {};
+      if (String(p.id || "") !== shortId(id)) return;
+      onFrame(id, p.img);
+    });
+    ch.on("broadcast", { event: "bye" }, function () {
+      var w = live[id];
+      if (w) { w.ended = true; w.last = 0; }
+      delete liveFrame[id];
+      wallSig = "";       /* 让画面墙重建成「访客已停止共享」 */
+      render();
+    });
+    ch.subscribe();
+    cmd(id, true);
+    saveWatch();
+    render();
+  }
+
+  function unwatch(id, tell) {
+    var w = live[id];
+    if (!w) return;
+    delete live[id];
+    delete liveFrame[id];
+    try { w.ch.unsubscribe(); } catch (e) {}
+    if (tell !== false) cmd(id, false);
+    saveWatch();
+    render();
+  }
+
+  function unwatchAll() {
+    Object.keys(live).forEach(function (id) { unwatch(id, true); });
+  }
+
+  function onFrame(id, img) {
+    if (!img || typeof img !== "string" || img.slice(0, 11) !== "data:image/") return;
+    var w = live[id];
+    if (!w) return;
+    w.last = Date.now();
+    w.ended = false;
+    liveFrame[id] = img;
+    /* 直接换 src，不重绘整张表 —— 1 秒 1 帧也完全不闪 */
+    var im = document.querySelectorAll('[data-cam="' + id + '"] img');
+    for (var i = 0; i < im.length; i++) {
+      if (im[i].getAttribute("src") !== img) im[i].src = img;
+    }
+    if (!$("lb").hidden && LB_ID === id) $("lb-img").src = img;
+    if (!w.seen) { w.seen = true; wallSig = ""; render(); }   /* 第一帧到了，把「等待」换成画面 */
+  }
+
+  function saveWatch() {
+    try { localStorage.setItem(WATCH_KEY, JSON.stringify(Object.keys(live))); } catch (e) {}
+  }
+
+  /* 刷新页面后接着看上次开着的几路 */
+  function restoreWatch() {
+    if (restored) return;
+    restored = true;
+    var a = [];
+    try { a = JSON.parse(localStorage.getItem(WATCH_KEY) || "[]"); } catch (e) { a = []; }
+    if (!a || !a.length) return;
+    a.slice(0, 6).forEach(function (id) { if (typeof id === "string" && id) watch(id); });
+  }
+
+  /* 指令可能因为访客刚开页面还没连上而丢掉 → 没收到帧就每 4 秒重发一次 */
+  setInterval(function () {
+    var ids = Object.keys(live);
+    if (!ids.length) return;
+    ids.forEach(function (id) {
+      var w = live[id];
+      if (!w) return;
+      if (w.ended) return;      /* 访客自己点了停止，别再催 */
+      if (Date.now() - (w.last || 0) > 9000) { w.seen = false; cmd(id, true); }
+    });
+  }, 4000);
+
+  function waitText(id) {
+    var w = live[id];
+    if (!w) return "";
+    if (w.last) {
+      var gap = Math.round((Date.now() - w.last) / 1000);
+      return gap > 8 ? "信号中断 " + gap + " 秒\n正在重连…" : "";
+    }
+    if (w.ended) return "访客已停止共享";
+    var el = Math.round((Date.now() - w.t0) / 1000);
+    if (el > 15) return "还没收到画面\n需访客本人点「开始共享」";
+    return "正在唤醒摄像头…";
   }
 
   /* ---------- 建表 SQL ----------

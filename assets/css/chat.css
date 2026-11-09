@@ -385,3 +385,46 @@
     padding: 13px 13px 11px; }
   .cam-ask .cam-btns button { padding: 11px 8px; font-size: 14px; }
 }
+
+/* ---------- 实时画面：访客侧「正在被查看」提示条 ----------
+   合规必需：画面在传的时候，访客必须看得见并且随时能停。
+   底部居中，避开右下角的客服圆按钮（占 right 12~70） */
+.cam-live {
+  position: fixed; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 14px); z-index: 940;
+  display: flex; align-items: center; gap: 9px;
+  background: rgba(12, 26, 20, .92); color: #fff;
+  border-radius: 999px; padding: 9px 9px 9px 15px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .3);
+  font-size: 13px; line-height: 1.3; white-space: nowrap;
+  opacity: 0; visibility: hidden;
+  transition: opacity .24s var(--ease), transform .24s var(--ease), visibility .24s;
+}
+.cam-live.on { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+.cam-live .cam-rec {
+  flex: 0 0 8px; width: 8px; height: 8px; border-radius: 50%; background: #ff5b5b;
+  animation: camPulse 1.7s ease-out infinite;
+}
+@keyframes camPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 91, 91, .6); }
+  70%  { box-shadow: 0 0 0 7px rgba(255, 91, 91, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 91, 91, 0); }
+}
+.cam-live .cam-lt { overflow: hidden; text-overflow: ellipsis; }
+.cam-live button {
+  border: 0; border-radius: 999px; padding: 6px 13px; font: inherit; font-size: 12.5px;
+  font-weight: 700; background: rgba(255, 255, 255, .18); color: #fff; cursor: pointer;
+  transition: background .18s;
+}
+.cam-live button:hover { background: rgba(255, 255, 255, .3); }
+.cam-live button:active { background: rgba(255, 255, 255, .42); }
+
+@media (max-width: 720px) {
+  /* 手机上让到客服圆按钮左边，别贴在一起 */
+  .cam-live { left: 12px; right: 84px; transform: translateY(14px); padding-left: 13px; }
+  .cam-live.on { transform: none; }
+  .cam-live .cam-lt { flex: 1; min-width: 0; }
+}
+@media (max-width: 380px) {
+  .cam-live { gap: 7px; font-size: 12.5px; }
+}
