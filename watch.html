@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>监控台</title>
+<link rel="apple-touch-icon" href="assets/img/admin-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="监控台">
+<style>
+  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #07120e;
+    color: #8fb3a4; font: 14px/1.7 -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+  a { color: #35d08a; }
+  .b { text-align: center; padding: 20px; }
+  .d { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #23483a; border-top-color: #35d08a;
+    margin: 0 auto 14px; animation: s 1s linear infinite; }
+  @keyframes s { to { transform: rotate(360deg); } }
+</style>
+<script>location.replace("admin-app/watch.html" + location.search + location.hash);</script>
+<noscript><meta http-equiv="refresh" content="0;url=admin-app/watch.html"></noscript>
+</head>
+<body>
+  <div class="b">
+    <div class="d"></div>
+    正在打开监控台…<br>
+    <a href="admin-app/watch.html">如果没有自动跳转，点这里</a>
+  </div>
+</body>
+</html>

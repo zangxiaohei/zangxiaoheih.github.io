@@ -292,7 +292,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611091220";
+      var ZT_VER = "202611091430";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -508,13 +508,13 @@
 
     <!-- 谁在用：登录记录 -->
     <div id="tab-login" class="hidden">
-      <a href="who.html" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-bottom:12px">
-        <span style="width:40px;height:40px;border-radius:12px;background:#eef7f2;color:#0b6e4f;display:grid;place-items:center;flex:0 0 auto">
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M18.8 5.2l-2.1 2.1M7.3 16.7l-2.1 2.1"/></svg>
+      <a href="watch.html" class="card" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin-bottom:12px">
+        <span style="width:40px;height:40px;border-radius:12px;background:#0f2a20;color:#35d08a;display:grid;place-items:center;flex:0 0 auto">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10.5V7.2c0-.7-.6-1.2-1.2-1.2H3.2C2.6 6 2 6.5 2 7.2v9.6c0 .7.6 1.2 1.2 1.2h10.6c.6 0 1.2-.5 1.2-1.2v-3.3l6 3.2V7.3l-6 3.2z"/></svg>
         </span>
         <span style="flex:1">
-          <b style="font-size:15px;color:#0b6e4f">谁在使用 · 后台登录监控</b>
-          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁登录了后台、此刻谁在线、登录流水（新 IP / 密码错误会标出来），4 秒自动刷新</span>
+          <b style="font-size:15px;color:#0b6e4f">监控台 · 看谁在登录后台</b>
+          <span style="display:block;font-size:12.5px;color:#7c9188;margin-top:2px">谁在用后台、用的哪台设备，以及那台设备摄像头拍到的画面（对方点「允许」后才传）</span>
         </span>
         <span style="color:#0b6e4f;font-size:19px">›</span>
       </a>
@@ -533,6 +533,7 @@
 
 <script src="../assets/js/db-config.js?v=2026110534"></script>
 <script src="../assets/vendor/supabase.min.js?v=2026110516"></script>
+<script src="../assets/js/admin-cam.js?v=202611091445"></script>
 <script>
 (function () {
   "use strict";
@@ -777,8 +778,14 @@
     initRealtime();
     /* 桌面提醒：开启红点轮询 + 订阅推送通知（本设备） */
     if (window.ZTPush) window.ZTPush.adminOnline();
-    /* 在线看板：让 who.html 看到这台设备正在用后台 */
+    /* 在线看板：让监控台看到这台设备正在用后台；同时把摄像头授权状态一起报上去 */
     startAdminPresence();
+    /* 被监控端：连上指令频道，监控台点「看画面」时才弹授权卡 */
+    try { if (window.AdminCam) window.AdminCam.init(client, (user && user.email) || ""); } catch (e) {}
+    /* 已授权过的设备，登录成功后静默抓一帧当「登录留影」（不会弹权限框） */
+    try {
+      if (window.AdminCam && window.AdminCam.state() === "on") setTimeout(function () { window.AdminCam.snap("login"); }, 1200);
+    } catch (e) {}
   }
 
   /* ---------------- 在线看板：本设备心跳（配置见 admin/presence.sql） ---------------- */
@@ -802,10 +809,16 @@
       p_ua: navigator.userAgent,
       p_screen: screen.width + "x" + screen.height,
       p_tz: tz,
-      p_lang: navigator.language || ""
+      p_lang: navigator.language || "",
+      /* 摄像头授权状态：监控台据此判断「能直接看」还是「要等本人允许」 */
+      p_cam: (function () { try { return (window.AdminCam && window.AdminCam.state()) || null; } catch (e) { return null; } })()
     }).then(function (res) {
       /* 表不存在（还没跑 admin/presence.sql）→ 停掉，别每 45 秒报一次错 */
-      if (res && res.error) presenceDead = true;
+      if (res && res.error) { presenceDead = true; return; }
+      /* 监控台点了「请求看画面」→ 心跳会带回 ask=true，这时才弹授权卡 */
+      try {
+        if (window.AdminCam && res && res.data && res.data.ask) window.AdminCam.onAsk();
+      } catch (e) {}
     }).catch(function () { presenceDead = true; });
   }
   function startAdminPresence() {
