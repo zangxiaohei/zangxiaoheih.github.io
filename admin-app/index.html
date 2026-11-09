@@ -113,6 +113,9 @@
                      background: #fff; border-radius: 999px; padding: 1px clamp(6px, 1.6vw, 9px); }
     .day-head .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--brand); flex-shrink: 0; }
     .day-head.read-day .dot { background: #b9cfc4; }
+    /* 侧栏不够宽时收起「有未读」四个字，把宽度让给日期，保证「今天 · 11月9日 周一」完整；
+       未读照样能看出来：绿点=有未读 / 灰点=已读，上一级「11月」「2026年」也都标着「有未读」 */
+    @media (max-width: 1279px) { .day-head .uw { display: none; } }
     /* 年 → 月 → 日 三级折叠 */
     .year-group { margin-top: 10px; }
     .year-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 9px clamp(8px, 2.4vw, 12px);
@@ -150,7 +153,8 @@
                           background: #e5484d; color: #fff; border-radius: 999px;
                           font-size: 10.5px; font-weight: 700; line-height: 1;
                           box-shadow: 0 0 0 2px #dfece5; }
-    .chat-layout { display: grid; grid-template-columns: clamp(224px, 25vw, 320px) minmax(0, 1fr);
+    /* 会话栏要装得下「今天 · 11月9日 周一 + 3 会话 + ▼」，实测这几样加起来约 300px */
+    .chat-layout { display: grid; grid-template-columns: clamp(240px, 32vw, 380px) minmax(0, 1fr);
                    gap: clamp(10px, 2vw, 14px); align-items: start; }
     @media (max-width: 780px) { .chat-layout { grid-template-columns: 1fr; } }
     .thread-list { max-height: min(600px, 64vh); overflow: auto; background: #f2f9f5; border-color: #cfe3d8; }
@@ -366,7 +370,7 @@
     /* 自动更新：打开 5 秒后绕过缓存拉一次线上页面，比对版本号，不一致就强制刷新。
        GitHub Pages 有 10 分钟缓存，WebView 会照单全收——没有这段，App 里改版后要干等 10 分钟。 */
     (function () {
-      var ZT_VER = "202611091532";
+      var ZT_VER = "202611091552";
       setTimeout(function () {
         fetch(location.pathname + "?chk=" + Date.now(), { cache: "no-store" })
           .then(function (r) { return r.text(); })
@@ -474,7 +478,7 @@
         <a href="../index.html" style="font-size:13.5px;color:#6b7f76;text-decoration:none;border-bottom:1px solid #d5e3dc;padding-bottom:2px">← 返回官方网站</a>
       </div>
       <div style="margin-top:12px;text-align:center;font-size:12px;color:#9aada4">
-        版本 202611091532 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
+        版本 202611091552 · <a href="javascript:void(0)" id="btn-refresh-app" style="color:#0b6e4f">刷新到最新版</a>
       </div>
     </div>
   </div>
@@ -1200,17 +1204,17 @@
     if (k === dkey(yd)) return "昨天 · " + name;
     return name;
   }
-  /* 日期行要拆成两段渲染：主文（放不下可以省略）+ 周几（永远不省略）。
-     侧栏只有 224px 时，「今天 · 11月9日 周一」会先吃掉"周一"，正好是老板最想看的，
-     所以今天/昨天只写"今天""昨天"（年、月在上一级已显示），周几单独占位 */
+  /* 日期行拆两段渲染：主文（放不下才省略）+ 周几（永远不省略）。
+     文案保持原样「今天 · 11月9日 周一」，靠把会话栏加宽来容纳，而不是砍掉日期 */
   function dayParts(k) {
     if (k === "未知") return { main: "未知时间", wk: "" };
     var d = new Date(k + "T12:00:00");
     var wk = "周" + DAYCN[d.getDay()];
+    var md = (d.getMonth() + 1) + "月" + d.getDate() + "日";
     var now = new Date(), yd = new Date(Date.now() - 864e5);
-    if (k === dkey(now)) return { main: "今天", wk: wk };
-    if (k === dkey(yd)) return { main: "昨天", wk: wk };
-    return { main: (d.getMonth() + 1) + "月" + d.getDate() + "日", wk: wk };
+    if (k === dkey(now)) return { main: "今天 · " + md, wk: wk };
+    if (k === dkey(yd)) return { main: "昨天 · " + md, wk: wk };
+    return { main: md, wk: wk };
   }
   function putInTree(tree, k, item) {
     var y = k.slice(0, 4), mo = k.slice(0, 7);
@@ -1370,7 +1374,7 @@
                 '<span class="dot"></span><span class="d-lb">' + dp.main + '</span>' +
                 (dp.wk ? '<span class="d-wk">' + dp.wk + '</span>' : '') +
                 '<span class="cnt">' + list.length + ' 条</span>' +
-                (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+                (hasUnread ? '<span class="uw" style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
                 '<div class="day-body">' + cards + '</div></div>';
             }).join("");
@@ -1521,7 +1525,7 @@
                 '<span class="dot"></span><span class="d-lb">' + dp.main + '</span>' +
                 (dp.wk ? '<span class="d-wk">' + dp.wk + '</span>' : '') +
                 '<span class="cnt">' + list.length + ' 会话</span>' +
-                (hasUnread ? '<span style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
+                (hasUnread ? '<span class="uw" style="color:var(--brand);font-size:12.5px">有未读</span>' : '') +
                 '<span class="arrow">▼</span></button>' +
                 '<div class="day-body">' + list.map(threadCard).join("") + '</div></div>';
             }).join("");
