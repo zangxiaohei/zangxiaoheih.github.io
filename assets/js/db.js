@@ -113,6 +113,13 @@
       return client.rpc("chat_mark_read", { p_key: key });
     },
 
+    /* 已读状态：返回 { last_read: 客服读到的最大条 id, unread: 还没读的条数 }
+       访客端靠它把自己的消息标成「已送达 / 已读」，配置见 admin/chat-read-state.sql */
+    chatReadState: function (key) {
+      if (!client || !key) return Promise.resolve(null);
+      return client.rpc("chat_read_state", { p_key: key });
+    },
+
     /* 聊天附件上传（图片 / 文件）→ 返回公开链接
        桶名固定 chat-files，配置见 admin/chat-files.sql */
     uploadChatFile: function (file, key) {

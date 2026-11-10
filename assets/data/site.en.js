@@ -7,7 +7,7 @@
 window.SITE_EN = {
 
   company: {
-    name: "Zenithe Technical Service Co., Ltd.",
+    name: "Shenzhen Zenithe Technical Service Co., Ltd.",
     nameEn: "Compliance & Certification",
     mark: "Z",
     slogan: "Make every audit a competitive advantage",
@@ -20,7 +20,7 @@ window.SITE_EN = {
     hours: "Mon–Sat 09:00–18:00",
     icp: "粤ICP备00000000号",
     police: "粤公网安备 00000000000000 号",
-    copyright: "© 2026 Zenithe Technical Service Co., Ltd. All rights reserved."
+    copyright: "© 2026 Shenzhen Zenithe Technical Service Co., Ltd. All rights reserved."
   },
 
   nav: [

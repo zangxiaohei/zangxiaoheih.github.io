@@ -96,6 +96,17 @@
   background: var(--brand); color: #fff; border: 0;
   border-radius: 14px 4px 14px 14px;
 }
+/* 自己消息下面的「已送达 / 已读」——贴着气泡右下角，不占左右宽度 */
+.msg.me { position: relative; padding-bottom: 14px; margin-bottom: 2px; }
+.msg.me .rd {
+  position: absolute; right: 3px; bottom: 1px;
+  font-size: 10.5px; line-height: 1; color: #a7b5bf;
+  letter-spacing: .2px; user-select: none;
+}
+.msg.me .rd.on { color: #6f9c8b; }
+.msg.me .rd.bad { color: #d9534f; font-weight: 600; }
+.msg.me.no-rd { padding-bottom: 0; margin-bottom: 12px; }
+.msg.me.no-rd .rd { display: none; }
 .msg .bubble a { color: var(--accent); font-weight: 600; text-decoration: underline; }
 
 /* 快捷问题：单行横滑（参考百度商桥样式），鼠标滚轮/触屏可左右滑动 */

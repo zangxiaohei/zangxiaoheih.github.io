@@ -50,6 +50,8 @@
   var lastId = 0;          /* 已渲染的最大消息 id */
   var humanReplied = false; /* 客服人工回复过 → 机器人停止自动回复 */
   var pending = [];        /* 本地已显示、等待服务端回显的消息 */
+  var mine = [];           /* 自己发的消息节点，用于刷「已送达 / 已读」 */
+  var lastRead = 0;        /* 客服读到的最大消息 id */
   var pollTimer = null;
 
   function dbOn() { return !!(window.DB && window.DB.ok && window.DB.ok() && window.DB.chatSend); }
@@ -245,7 +247,7 @@
     s.textContent = text;
     body.appendChild(s);
   }
-  function addMsg(html, me, cls) {
+  function addMsg(html, me, cls, mid) {
     var now = Date.now();
     if (!lastStamp) addStamp(L("开始沟通 · " + hhmm(new Date(now)), "Chat started · " + hhmm(new Date(now))));
     else if (now - lastStamp > 5 * 60000) addStamp(hhmm(new Date(now)));
@@ -254,13 +256,59 @@
     var m = document.createElement("div");
     m.className = "msg" + (me ? " me" : "") + (cls ? " " + cls : "");
     m.innerHTML = (me ? "" : '<span class="b-av">' + (C.mark || "客") + '</span>') +
-      '<span class="bubble">' + html + '</span>';
+      '<span class="bubble">' + html + '</span>' +
+      (me ? '<span class="rd">' + L("已送达", "Sent") + '</span>' : "");
+    if (me) {
+      m.setAttribute("data-mid", mid || 0);
+      mine.push(m);
+    }
     body.appendChild(m);
     stick();
     return m;
   }
   function botSay(html, cls) { addMsg(html, false, cls); }
-  function meSay(text) { addMsg(msgHtml(text), true, clsOf(text)); }
+  function meSay(text, mid) { return addMsg(msgHtml(text), true, clsOf(text), mid); }
+
+  /* 可追踪的消息：本地机器人回答（no-rd）和发送失败的不参与编号与已读判断 */
+  function tracked(n) {
+    return !n.getAttribute("data-fail") && !n.classList.contains("no-rd");
+  }
+  /* 把服务端返回的 id 绑到最早一条还没编号的本地消息上（回显顺序 = 发送顺序） */
+  function bindMineId(mid) {
+    for (var i = 0; i < mine.length; i++) {
+      if (!tracked(mine[i])) continue;
+      if (!(+mine[i].getAttribute("data-mid") || 0)) {
+        mine[i].setAttribute("data-mid", mid);
+        return;
+      }
+    }
+  }
+  /* 刷新「已送达 / 已读」：id 不超过 lastRead 的都算客服看过了 */
+  function refreshRead() {
+    for (var i = 0; i < mine.length; i++) {
+      var n = mine[i];
+      if (!tracked(n)) continue;
+      var tag = n.querySelector(".rd");
+      if (!tag) continue;
+      var id = +n.getAttribute("data-mid") || 0;
+      var read = id > 0 && id <= lastRead;
+      var txt = read ? L("已读", "Read") : L("已送达", "Sent");
+      if (tag.textContent !== txt) {
+        tag.textContent = txt;
+        tag.classList.toggle("on", read);
+      }
+    }
+  }
+  /* 没发出去的那条：标成「未送达」，不参与后续已读判断 */
+  function markFailed(node) {
+    if (!node || !node.querySelector) return;
+    node.setAttribute("data-fail", "1");
+    var tag = node.querySelector(".rd");
+    if (tag) {
+      tag.textContent = L("未送达", "Not sent");
+      tag.classList.add("bad");
+    }
+  }
   function clsOf(c) { return parseStk(c) ? "stk" : (parseAtt(c) ? "att" : ""); }
 
   function escapeHtml(s) {
@@ -436,11 +484,27 @@
           if (!panel.classList.contains("open")) { unread++; setBadge(unread); }
           else { markRead(false); }
         } else {
-          if (pending.indexOf(m.content) !== -1) { clearPending(m.content); return; }
-          meSay(m.content);
+          if (pending.indexOf(m.content) !== -1) {
+            clearPending(m.content);
+            bindMineId(m.id);
+            return;
+          }
+          meSay(m.content, m.id);
         }
       });
+      refreshRead();   /* 刚渲染出来的历史消息先按已知状态落一遍，不必等下一轮 */
     }).catch(function () { /* 离线时静默，不影响本地问答 */ });
+
+    /* 顺带问一下客服读没读：自己的消息下面显示「已送达 / 已读」 */
+    if (window.DB.chatReadState) {
+      window.DB.chatReadState(VK).then(function (r) {
+        var d = r && r.data;
+        if (!d) return;
+        var lr = +d.last_read || 0;
+        if (lr !== lastRead) lastRead = lr;
+        refreshRead();
+      }).catch(function () { /* 没装 SQL 就静默停在「已送达」 */ });
+    }
   }
 
   document.addEventListener("visibilitychange", function () {
@@ -583,7 +647,7 @@
     /* 上传完成 → 先本地显示，再写库；pending 用于服务端回显去重 */
     function sendOne(payload) {
       var content = "[[att]]" + JSON.stringify(payload);
-      meSay(content);
+      var node = meSay(content);
       pending.push(content);
       window.DB.chatSend({ key: VK, name: PROFILE.name, phone: PROFILE.phone, content: content })
         .then(function (res) {
@@ -596,6 +660,7 @@
         })
         .catch(function () {
           clearPending(content);
+          markFailed(node);
           botSay(L("附件已经传上去了，但消息没发出去，请刷新后再试一次。",
                    "Uploaded but the message failed. Please refresh and retry."));
         });
@@ -686,7 +751,7 @@
     for (var i = 0; i < STICKERS.length; i++) if (STICKERS[i].id === id) st = STICKERS[i];
     if (!st) return;
     var content = "[[stk]]" + JSON.stringify({ id: st.id, t: st.t });
-    meSay(content);
+    var node = meSay(content);
     toggleEmoji(false);
     if (!dbOn()) return;
     pending.push(content);
@@ -698,6 +763,7 @@
       })
       .catch(function () {
         clearPending(content);
+        markFailed(node);
         botSay(L("表情没发出去，请检查网络后重试。", "Sticker failed to send. Please check your network."));
       });
   }
@@ -736,7 +802,7 @@
   function send() {
     var text = input.value.trim();
     if (!text) return;
-    meSay(text);
+    var node = meSay(text);
     pending.push(text);
     input.value = "";
     autoGrow();
@@ -761,6 +827,7 @@
         })
         .catch(function () {
           clearPending(text);
+          markFailed(node);
           botSay(L("消息发送失败了，请直接拨打 <b>" + ((window.SITE.company || {}).phone || "") + "</b>，或稍后再试。",
                    "Sending failed. Please call <b>" + ((window.SITE.company || {}).phone || "") + "</b> or try again later."));
         });
@@ -783,7 +850,8 @@
     if (!btn) return;
     var f = (C.faqs || [])[+btn.getAttribute("data-i")];
     if (!f) return;
-    meSay(f.q);
+    /* 快捷问题是本地机器人回答，不进对话记录 → 不显示已读标记 */
+    meSay(f.q).classList.add("no-rd");
     chips.innerHTML = "";
     if (humanReplied) return; /* 人工接入后快捷问题也不再自动答 */
     typing(true);
