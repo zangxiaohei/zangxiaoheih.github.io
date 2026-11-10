@@ -60,7 +60,7 @@
     "联系我们 | 中天技术服务": "Contact | Zenithe",
 
     /* 顶部 / 导航 / 页脚 */
-    "深圳市中天技术服务有限公司 | GRS、ISCC、EcoVadis、BSCI 一站式认证辅导": "Shenzhen Zenithe Technical Service | One-stop GRS, ISCC, EcoVadis & BSCI consulting",
+    "中天技术服务有限公司 | GRS、ISCC、EcoVadis、BSCI 一站式认证辅导": "Shenzhen Zenithe Technical Service | One-stop GRS, ISCC, EcoVadis & BSCI consulting",
     "免费咨询热线": "Consultation hotline",
     "免费诊断": "Free assessment",
     "免费诊断 / 报价": "Free assessment / quote",
