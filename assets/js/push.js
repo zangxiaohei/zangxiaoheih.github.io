@@ -92,6 +92,19 @@
     }).then(function (r) { return r.ok; }).catch(function () { return false; });
   }
 
+  /* 判断浏览器里已存在的订阅，是不是用当前这把 VAPID 公钥建的 */
+  function keyMatches(sub, vapid) {
+    try {
+      var cur = sub && sub.options && sub.options.applicationServerKey;
+      if (!cur || !vapid) return true;          // 读不到就当作匹配，避免误退订
+      var a = new Uint8Array(cur);
+      var b = urlB64ToUint8(vapid);
+      if (a.length !== b.length) return false;
+      for (var i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+      return true;
+    } catch (e) { return true; }
+  }
+
   function subscribePush(reg) {
     var vapid = cfg.vapidPublicKey;
     if (!vapid) return Promise.resolve(false);            // 未配置 VAPID 公钥则跳过
@@ -119,7 +132,16 @@
     if (!("PushManager" in window)) return Promise.resolve(done("err:此浏览器不支持 PushManager"));
     return navigator.serviceWorker.ready.then(function (reg) {
       return reg.pushManager.getSubscription().then(function (existing) {
-        if (existing) return syncSub(existing).then(function (srvOk) { return done(srvOk ? "ok" : "browser-only"); });
+        if (existing) {
+          /* 换过 VAPID 公钥后旧订阅就作废了：先退订，再用新公钥重新订阅，
+             否则服务器拿新私钥给旧订阅签名会被推送服务直接拒掉 */
+          if (!keyMatches(existing, cfg.vapidPublicKey)) {
+            return existing.unsubscribe()
+              .then(function () { return subscribePush(reg).then(done); })
+              .catch(function () { return subscribePush(reg).then(done); });
+          }
+          return syncSub(existing).then(function (srvOk) { return done(srvOk ? "ok" : "browser-only"); });
+        }
         return subscribePush(reg).then(done);
       });
     }).catch(function (e) { return done("err:ServiceWorker未就绪 " + (e && e.message ? e.message : e)); });

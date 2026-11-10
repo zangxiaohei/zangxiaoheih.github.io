@@ -67,12 +67,16 @@ ALTER TABLE public.app_secrets
   ADD COLUMN IF NOT EXISTS vapid_subject text NOT NULL DEFAULT '',
   ADD COLUMN IF NOT EXISTS notify_shared_secret text NOT NULL DEFAULT '';
 
-UPDATE public.app_secrets SET
-  vapid_public  = 'BMQ7u3AuGx9D-PFB9LUdPnaVtAog_iWdf__TIV9oJVSA0l-TJT6rvYi0cmvf_QycssR3UloH2vEAJiVoeWSWPFw',
-  vapid_private = 'dIlWZ2Axc2tHsvEGvBIKNYZmL3PoVV6bcSqCOsLZh50',
-  vapid_subject = 'mailto:1178602362@qq.com',
-  notify_shared_secret = encode(gen_random_bytes(24), 'hex')
-WHERE id = 1;
+-- ！VAPID 密钥属于机密，故意不写在这个文件里（本仓库是公开仓库，谁都能看）。
+-- 需要配置时，从本机 admin/_vapid_private.txt 取值，或在 Supabase 后台手工执行：
+--   UPDATE public.app_secrets SET
+--     vapid_public  = '<公钥>',
+--     vapid_private = '<私钥>',
+--     vapid_subject = 'mailto:你的邮箱',
+--     notify_shared_secret = encode(gen_random_bytes(24), 'hex')
+--   WHERE id = 1;
+-- 换了密钥之后，db-config.js 里的 vapidPublicKey 必须同步换成新的公钥，否则推送签名对不上。
+
 
 -- 查看本次生成的共享密钥（部署 Edge Function 后配 cron 时要用）：
 -- SELECT notify_shared_secret FROM public.app_secrets;
