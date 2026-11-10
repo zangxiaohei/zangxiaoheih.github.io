@@ -9,7 +9,7 @@ window.SITE = {
   /* ---------------- 1. 公司基本信息 ---------------- */
   company: {
     name: "中天技术服务有限公司",                       // 公司中文名（导航、页脚显示）
-    nameEn: "Shenzhen zenithe Technical Service Co.,Ltd",              // 英文名（logo 下方小字）
+    nameEn: "Zenithe Technical Service Co., Ltd",                       // 英文名（logo 下方小字）
     mark: "中天",                                 // logo 方块里的字（1 个字最好看）
     slogan: "让每一次审核，都变成竞争力",        // 页脚一句话简介
     desc: "专注社会责任、质量体系与可持续发展认证辅导十余年，为制造企业提供从申请、辅导、陪审到取证的一站式服务。",

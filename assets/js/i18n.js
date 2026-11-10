@@ -60,7 +60,7 @@
     "联系我们 | 中天技术服务": "Contact | Zenithe",
 
     /* 顶部 / 导航 / 页脚 */
-    "中天技术服务有限公司 | GRS、ISCC、EcoVadis、BSCI 一站式认证辅导": "Shenzhen Zenithe Technical Service | One-stop GRS, ISCC, EcoVadis & BSCI consulting",
+    "中天技术服务有限公司 | GRS、ISCC、EcoVadis、BSCI 一站式认证辅导": "Zenithe Technical Service | One-stop GRS, ISCC, EcoVadis & BSCI consulting",
     "免费咨询热线": "Consultation hotline",
     "免费诊断": "Free assessment",
     "免费诊断 / 报价": "Free assessment / quote",
@@ -464,13 +464,13 @@
     };
     setMeta('meta[name="description"]', "content", desc);
     setMeta('meta[property="og:description"]', "content", desc);
-    setMeta('meta[property="og:title"]', "content", "Shenzhen Zenithe Technical Service — one-stop compliance consulting");
+    setMeta('meta[property="og:title"]', "content", "Zenithe Technical Service — one-stop compliance consulting");
     var ld = document.querySelector('script[type="application/ld+json"]');
     if (!ld) return;
     try {
       var o = JSON.parse(ld.textContent);
       if (!o || o["@type"] !== "Organization") return;
-      o.name = "Shenzhen Zenithe Technical Service Co., Ltd.";
+      o.name = "Zenithe Technical Service Co., Ltd.";
       o.description = desc;
       o.address = { "@type": "PostalAddress", addressCountry: "CN", addressRegion: "Guangdong", addressLocality: "Dongguan" };
       o.knowsAbout = ["GRS certification", "ISCC certification", "EcoVadis rating", "BSCI audit", "ISO 9001"];
